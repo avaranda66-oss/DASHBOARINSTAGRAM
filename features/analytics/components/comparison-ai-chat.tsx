@@ -1,0 +1,117 @@
+'use client';
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Send, Loader2, Brain } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { ProfileMetrics } from './comparison-view';
+
+interface ComparisonAIChatProps {
+    client: ProfileMetrics;
+    competitors: ProfileMetrics[];
+    periodLabel: string;
+}
+
+export function ComparisonAIChat({ client, competitors, periodLabel }: ComparisonAIChatProps) {
+    const [aiResponse, setAiResponse] = useState<string | null>(null);
+    const [isLoadingAi, setIsLoadingAi] = useState(false);
+    const [question, setQuestion] = useState('');
+
+    const askAI = async (customQuestion?: string) => {
+        setIsLoadingAi(true);
+        try {
+            const res = await fetch('/api/apify/ai-comparison', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    client,
+                    competitors,
+                    periodSummary: periodLabel,
+                    question: customQuestion || undefined,
+                }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                setAiResponse(json.data);
+            } else {
+                setAiResponse(`Erro: ${json.error}`);
+            }
+        } catch {
+            setAiResponse('Erro ao conectar com a IA.');
+        } finally {
+            setIsLoadingAi(false);
+        }
+    };
+
+    const handleAskSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!question.trim()) {
+            askAI();
+        } else {
+            askAI(question.trim());
+        }
+        setQuestion('');
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/5 to-indigo-500/5 overflow-hidden mt-8"
+        >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-purple-500/20 bg-purple-500/5">
+                <Brain className="h-4 w-4 text-purple-400" />
+                <h4 className="text-sm font-semibold">Análise Competitiva IA (Gemini)</h4>
+            </div>
+            <div className="p-4 space-y-3">
+                {/* Question input */}
+                <form onSubmit={handleAskSubmit} className="flex gap-2">
+                    <input
+                        type="text"
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                        placeholder="Ex: Onde meu concorrente está ganhando de mim e como posso superar? Ou deixe vazio para análise geral..."
+                        disabled={isLoadingAi}
+                        className="flex-1 h-9 rounded-lg border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:opacity-50"
+                    />
+                    <Button
+                        type="submit"
+                        size="sm"
+                        disabled={isLoadingAi}
+                        className="bg-purple-600 hover:bg-purple-700 text-white h-9 px-4"
+                    >
+                        {isLoadingAi ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Send className="h-4 w-4" />
+                        )}
+                    </Button>
+                </form>
+
+                {/* AI Response */}
+                {isLoadingAi && (
+                    <div className="flex items-center justify-center py-6">
+                        <div className="relative">
+                            <div className="h-8 w-8 rounded-full border-2 border-muted" />
+                            <div className="absolute inset-0 h-8 w-8 rounded-full border-2 border-t-purple-500 animate-spin" />
+                        </div>
+                        <span className="ml-3 text-sm text-muted-foreground">Gemini está analisando a concorrência...</span>
+                    </div>
+                )}
+                {aiResponse && !isLoadingAi && (
+                    <div className="rounded-lg border border-border bg-card p-3">
+                        <div className="prose prose-sm prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
+                            {aiResponse}
+                        </div>
+                    </div>
+                )}
+                {!aiResponse && !isLoadingAi && (
+                    <p className="text-xs text-muted-foreground text-center">
+                        Envie uma pergunta ou clique no botão para uma análise competitiva geral com IA
+                    </p>
+                )}
+            </div>
+        </motion.div>
+    );
+}

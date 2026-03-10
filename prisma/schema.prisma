@@ -1,0 +1,94 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String?
+  type              String  // e.g., "instagram"
+  provider          String  // e.g., "facebook"
+  providerAccountId String  @unique 
+  access_token      String?
+  expires_at        Int?
+  username          String?
+  password          String?
+  picture           String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Content {
+  id            String   @id @default(cuid())
+  title         String
+  description   String?
+  type          String   // 'post' | 'story' | 'reel' | 'carousel'
+  status        String   // 'idea' | 'draft' | 'approved' | 'scheduled' | 'published'
+  scheduledAt   DateTime?
+  hashtags      String   // Armazenado como JSON string (ex: '["#restaurante"]') devido à limitação do SQLite
+  mediaUrls     String   // Armazenado como JSON string
+  accountId     String?
+  order         Int      @default(0)
+  
+  collections   Collection[] 
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Collection {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  color       String
+  icon        String?
+  startDate   DateTime?
+  endDate     DateTime?
+  
+  contents    Content[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Competitor {
+  id          String    @id @default(cuid())
+  name        String
+  handle      String    @unique
+  avatarUrl   String?
+  metrics     String?   // JSON string
+  lastChecked DateTime?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Analytics {
+  id          String    @id @default(cuid())
+  targetId    String    // Pode ser accountId ou competitor handle
+  type        String    // 'account' | 'competitor'
+  data        String    // JSON string com as métricas
+  period      String?   // ex: '7d', '30d'
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([targetId, type])
+}
+
+model Setting {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  value       String?   // JSON string
+  
+  createdAt   DateTime? @default(now())
+  updatedAt   DateTime? @updatedAt
+}
