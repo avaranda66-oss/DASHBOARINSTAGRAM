@@ -33,6 +33,7 @@ export default function SettingsPage() {
 
     const [apifyKey, setApifyKey] = useState('');
     const [geminiKey, setGeminiKey] = useState('');
+    const [firecrawlKey, setFirecrawlKey] = useState('');
 
     useEffect(() => {
         settingsStore.loadSettings();
@@ -42,13 +43,14 @@ export default function SettingsPage() {
         if (settingsStore.settings) {
             setApifyKey(settingsStore.settings.apifyApiKey || '');
             setGeminiKey(settingsStore.settings.geminiApiKey || '');
+            setFirecrawlKey(settingsStore.settings.firecrawlApiKey || '');
         }
     }, [settingsStore.settings]);
 
     const handleSaveApiKeys = async () => {
         setIsCheckingIg(true);
         try {
-            await settingsStore.updateApiKeys(apifyKey, geminiKey);
+            await settingsStore.updateApiKeys(apifyKey, geminiKey, firecrawlKey);
             toast.success('Chaves de API salvas com sucesso localmente!');
         } catch (e) {
             toast.error('Erro ao salvar as chaves de API.');
@@ -352,6 +354,17 @@ export default function SettingsPage() {
                                     onChange={(e) => setApifyKey(e.target.value)}
                                 />
                                 <p className="text-xs text-muted-foreground">Opcional. Usado por automações em background que raspam dados não estruturados.</p>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Firecrawl API Key <span className="text-[10px] text-emerald-500 font-normal">(Novo — Alternativa gratuita)</span></label>
+                                <input
+                                    type="password"
+                                    placeholder="fc-..."
+                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={firecrawlKey}
+                                    onChange={(e) => setFirecrawlKey(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">Opcional. Alternativa gratuita ao Apify (500 páginas/mês). Obtenha em <a href="https://firecrawl.dev" target="_blank" rel="noopener noreferrer" className="text-primary underline">firecrawl.dev</a>.</p>
                             </div>
                             <Button
                                 onClick={handleSaveApiKeys}

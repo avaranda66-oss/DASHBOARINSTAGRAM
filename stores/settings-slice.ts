@@ -9,7 +9,7 @@ interface SettingsState {
     settings: UserSettings | null;
     isLoading: boolean;
     loadSettings: () => Promise<void>;
-    updateApiKeys: (apifyKey?: string, geminiKey?: string) => Promise<void>;
+    updateApiKeys: (apifyKey?: string, geminiKey?: string, firecrawlKey?: string) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -52,7 +52,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         }
     },
 
-    updateApiKeys: async (apifyKey?: string, geminiKey?: string) => {
+    updateApiKeys: async (apifyKey?: string, geminiKey?: string, firecrawlKey?: string) => {
         const current = get().settings;
         if (!current) return;
 
@@ -61,10 +61,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             id: SETTINGS_ID,
             apifyApiKey: apifyKey || current.apifyApiKey,
             geminiApiKey: geminiKey || current.geminiApiKey,
+            firecrawlApiKey: firecrawlKey || current.firecrawlApiKey,
         };
 
         if (apifyKey === '') updatedSettings.apifyApiKey = '';
         if (geminiKey === '') updatedSettings.geminiApiKey = '';
+        if (firecrawlKey === '') updatedSettings.firecrawlApiKey = '';
 
         try {
             await settingsRepository.save(updatedSettings);

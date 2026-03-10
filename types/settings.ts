@@ -5,4 +5,5 @@ export interface UserSettings {
     sidebarCollapsed: boolean;
     apifyApiKey?: string;
     geminiApiKey?: string;
+    firecrawlApiKey?: string;
 }

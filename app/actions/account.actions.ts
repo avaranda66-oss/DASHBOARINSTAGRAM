@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function getAccountsAction(): Promise<Account[]> {
     const dbAccounts = await db.account.findMany();
-    return dbAccounts.map(acc => ({
+    return dbAccounts.map((acc: any) => ({
         id: acc.id,
         name: acc.username || acc.providerAccountId,
         handle: `@${acc.providerAccountId}`,

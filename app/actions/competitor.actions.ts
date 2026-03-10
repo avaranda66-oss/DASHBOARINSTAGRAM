@@ -9,7 +9,7 @@ export async function getCompetitorsAction(): Promise<CompetitorProfile[]> {
         orderBy: { createdAt: 'desc' }
     });
 
-    return competitors.map(c => ({
+    return competitors.map((c: any) => ({
         id: c.id,
         handle: c.handle,
         name: c.name,
