@@ -26,6 +26,13 @@ interface ScrapeResult {
     error?: string;
 }
 
+interface MapsReview {
+    author: string;
+    rating: number;
+    text: string;
+    date: string;
+}
+
 interface MapsData {
     id?: string;
     name?: string;
@@ -39,6 +46,8 @@ interface MapsData {
     photoUrl?: string | null;
     screenshotPath?: string | null;
     highlights: string[];
+    reviews?: MapsReview[];
+    aiAnalysis?: any;
     scrapedAt?: Date | string;
 }
 
@@ -123,6 +132,7 @@ export default function IntelligencePage() {
     const [mapsLoading, setMapsLoading] = useState(false);
     const [mapsResult, setMapsResult] = useState<ScrapeResult | null>(null);
     const [mapsData, setMapsData] = useState<MapsData | null>(null);
+    const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
     const [savedBusinesses, setSavedBusinesses] = useState<MapsData[]>([]);
     const [savingMaps, setSavingMaps] = useState(false);
     const [editingReviews, setEditingReviews] = useState<string | null>(null);
@@ -191,6 +201,44 @@ export default function IntelligencePage() {
             }
         } catch (e: any) { toast.error(e.message); }
         finally { setMapsLoading(false); }
+    };
+
+    const handleAnalyzeAI = async (business: MapsData) => {
+        if (!business.reviews || business.reviews.length === 0) {
+            toast.error('Nenhum review para analisar.');
+            return;
+        }
+        setIsAnalyzingAI(true);
+        try {
+            const res = await fetch('/api/maps-analysis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ businessName: business.name, reviews: business.reviews }),
+            });
+            const result = await res.json();
+            
+            if (result.success && result.data) {
+                toast.success('Análise de IA concluída!');
+                
+                // Update local state
+                if (mapsData?.name === business.name) {
+                    setMapsData(prev => prev ? { ...prev, aiAnalysis: result.data } : prev);
+                }
+                
+                setSavedBusinesses(prev => prev.map(b => b.id === business.id ? { ...b, aiAnalysis: result.data } : b));
+                
+                // Save to DB if it's already a saved business
+                if (business.id) {
+                    import('@/app/actions/maps.actions').then(m => m.saveMapsAnalysisAction(business.id!, result.data));
+                }
+            } else {
+                toast.error(result.error || 'Erro na análise de IA.');
+            }
+        } catch (e: any) {
+            toast.error(e.message);
+        } finally {
+            setIsAnalyzingAI(false);
+        }
     };
 
     const handleSaveBusiness = async () => {
@@ -463,9 +511,7 @@ export default function IntelligencePage() {
                                                     <p className="text-xs text-muted-foreground">Reviews</p>
                                                 </div>
                                             </div>
-                                            {!mapsData.totalReviews && (
-                                                <p className="text-[10px] text-amber-500 mt-2">⚠ O Firecrawl nem sempre captura o total de reviews. Você pode editar manualmente após salvar.</p>
-                                            )}
+
                                         </CardContent>
                                     </Card>
                                     <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20">
@@ -482,16 +528,102 @@ export default function IntelligencePage() {
                                 </div>
                             )}
 
-                            {/* Screenshot */}
+                            {/* AI Analysis and Reviews Section */}
+                            {mapsData?.reviews && mapsData.reviews.length > 0 && (
+                                <div className="space-y-4 mt-6">
+                                    <h3 className="text-lg font-bold flex items-center justify-between">
+                                        <span className="flex items-center gap-2"><Star className="h-5 w-5 text-yellow-500" /> Reviews Extraídos ({mapsData.reviews.length})</span>
+                                        <Button 
+                                            size="sm" 
+                                            variant="secondary" 
+                                            className="bg-purple-600/10 text-purple-600 hover:bg-purple-600/20 hover:text-purple-700 border border-purple-500/30"
+                                            onClick={() => handleAnalyzeAI(mapsData)}
+                                            disabled={isAnalyzingAI}
+                                        >
+                                            {isAnalyzingAI ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Flame className="h-4 w-4 mr-2" />}
+                                            Gerar Análise com IA
+                                        </Button>
+                                    </h3>
+                                    
+                                    {mapsData.aiAnalysis && (
+                                        <Card className="bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border-purple-500/20">
+                                            <CardHeader className="pb-3">
+                                                <CardTitle className="text-lg flex items-center gap-2 text-purple-700 dark:text-purple-400">
+                                                    <Flame className="h-5 w-5" /> Inteligência Competitiva e Sentimento
+                                                </CardTitle>
+                                                <CardDescription className="text-purple-600/80 dark:text-purple-300/80">
+                                                    {mapsData.aiAnalysis.summary}
+                                                </CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="flex items-center gap-4 mb-6">
+                                                    <div className="flex-1">
+                                                        <div className="h-3 w-full rounded-full bg-muted overflow-hidden flex">
+                                                            <div className="bg-green-500 h-full" style={{ width: `${mapsData.aiAnalysis.sentimentScore?.positive || 0}%` }} title="Positivo"></div>
+                                                            <div className="bg-yellow-500 h-full" style={{ width: `${mapsData.aiAnalysis.sentimentScore?.neutral || 0}%` }} title="Neutro"></div>
+                                                            <div className="bg-red-500 h-full" style={{ width: `${mapsData.aiAnalysis.sentimentScore?.negative || 0}%` }} title="Negativo"></div>
+                                                        </div>
+                                                        <div className="flex justify-between text-[10px] text-muted-foreground mt-1 px-1">
+                                                            <span className="text-green-600 dark:text-green-400 font-medium">Positivo ({mapsData.aiAnalysis.sentimentScore?.positive || 0}%)</span>
+                                                            <span className="text-red-600 dark:text-red-400 font-medium">Negativo ({mapsData.aiAnalysis.sentimentScore?.negative || 0}%)</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div className="bg-green-500/5 border border-green-500/20 rounded-md p-3">
+                                                        <h4 className="text-xs font-bold text-green-700 dark:text-green-400 mb-2">Pontos Fortes Recorrentes</h4>
+                                                        <ul className="space-y-1.5 text-xs">
+                                                            {mapsData.aiAnalysis.positiveHighlights?.map((h: string, i: number) => <li key={i} className="flex gap-1.5"><Check className="h-3.5 w-3.5 text-green-500 shrink-0" />{h}</li>)}
+                                                        </ul>
+                                                    </div>
+                                                    <div className="bg-red-500/5 border border-red-500/20 rounded-md p-3">
+                                                        <h4 className="text-xs font-bold text-red-700 dark:text-red-400 mb-2">Principais Reclamações</h4>
+                                                        <ul className="space-y-1.5 text-xs">
+                                                            {mapsData.aiAnalysis.negativeHighlights?.map((h: string, i: number) => <li key={i} className="flex gap-1.5"><X className="h-3.5 w-3.5 text-red-500 shrink-0" />{h}</li>)}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="mt-4 bg-purple-500/5 border border-purple-500/20 rounded-md p-3">
+                                                    <h4 className="text-xs font-bold text-purple-700 dark:text-purple-400 mb-2">Ações Recomendadas</h4>
+                                                    <ul className="space-y-1.5 text-xs text-muted-foreground">
+                                                        {mapsData.aiAnalysis.recommendations?.map((r: string, i: number) => <li key={i} className="flex gap-1.5">— {r}</li>)}
+                                                    </ul>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-1 pb-1 custom-scrollbar">
+                                        {mapsData.reviews.map((r, i) => (
+                                            <Card key={i} className="bg-card shadow-sm text-sm border-border/50">
+                                                <CardContent className="p-4 flex flex-col h-full">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <span className="font-semibold text-xs truncate max-w-[150px]">{r.author}</span>
+                                                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">{r.date || 'Recente'}</span>
+                                                    </div>
+                                                    <div className="flex gap-0.5 mb-2">
+                                                        {Array.from({length: 5}).map((_, idx) => <Star key={idx} className={cn("h-3 w-3", idx < r.rating ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground/30")} />)}
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground italic flex-1 line-clamp-4">{r.text || 'Sem comentário escrito.'}</p>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Screenshot (collapsible) */}
                             {mapsData?.screenshotPath && (
-                                <Card>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm flex items-center gap-2">📸 Screenshot do Maps</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <img src={mapsData.screenshotPath} alt="Maps Screenshot" className="w-full rounded-lg border border-border shadow-sm" />
-                                    </CardContent>
-                                </Card>
+                                <details className="group mt-4 mb-4">
+                                    <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Info className="h-3.5 w-3.5" /> Ver Screenshot completo</summary>
+                                    <Card className="mt-2">
+                                        <CardContent className="p-2">
+                                            <img src={mapsData.screenshotPath} alt="Maps Screenshot" className="w-full rounded-lg border border-border shadow-sm max-h-[400px] object-cover object-top" />
+                                        </CardContent>
+                                    </Card>
+                                </details>
                             )}
                         </>
                     )}
@@ -615,6 +747,24 @@ export default function IntelligencePage() {
                                                                 <td className="py-2.5 pr-4 text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3 text-green-500" /> Reputação</td>
                                                                 {vsBusinesses.map(b => (
                                                                     <td key={b.id} className={cn('text-center py-2.5 px-3 font-semibold', reputationColor(b.rating))}>{reputationLabel(b.rating)}</td>
+                                                                ))}
+                                                            </tr>
+                                                            <tr className="border-b border-border/50 bg-purple-500/5">
+                                                                <td className="py-2.5 pr-4 text-xs text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1"><Flame className="h-3 w-3" /> Sentimento IA</td>
+                                                                {vsBusinesses.map(b => (
+                                                                    <td key={b.id} className="text-center py-2.5 px-3">
+                                                                        {b.aiAnalysis?.sentimentScore ? (
+                                                                            <div className="flex flex-col items-center gap-1">
+                                                                                <span className="text-xs font-bold text-green-600">{b.aiAnalysis.sentimentScore.positive}% Positivo</span>
+                                                                                <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden flex">
+                                                                                    <div className="bg-green-500 h-full" style={{ width: `${b.aiAnalysis.sentimentScore.positive}%` }}></div>
+                                                                                    <div className="bg-red-500 h-full" style={{ width: `${b.aiAnalysis.sentimentScore.negative}%` }}></div>
+                                                                                </div>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-[10px] text-muted-foreground">Sem análise</span>
+                                                                        )}
+                                                                    </td>
                                                                 ))}
                                                             </tr>
                                                             <tr className="border-b border-border/50">

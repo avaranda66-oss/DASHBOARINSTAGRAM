@@ -13,6 +13,8 @@ export interface MapsBusinessData {
     website?: string | null;
     highlights?: string[];
     rawMarkdown?: string | null;
+    reviews?: object[] | null;
+    aiAnalysis?: object | null;
 }
 
 /**
@@ -38,6 +40,8 @@ export async function saveMapsBusinessAction(data: MapsBusinessData) {
                     website: data.website,
                     highlights: data.highlights ? JSON.stringify(data.highlights) : null,
                     rawMarkdown: data.rawMarkdown,
+                    reviews: data.reviews ? JSON.stringify(data.reviews) : null,
+                    aiAnalysis: data.aiAnalysis ? JSON.stringify(data.aiAnalysis) : undefined,
                     scrapedAt: new Date(),
                 },
             });
@@ -56,6 +60,8 @@ export async function saveMapsBusinessAction(data: MapsBusinessData) {
                 website: data.website,
                 highlights: data.highlights ? JSON.stringify(data.highlights) : null,
                 rawMarkdown: data.rawMarkdown,
+                reviews: data.reviews ? JSON.stringify(data.reviews) : null,
+                aiAnalysis: data.aiAnalysis ? JSON.stringify(data.aiAnalysis) : null,
             },
         });
         return { success: true, data: created, isUpdate: false };
@@ -76,10 +82,28 @@ export async function getMapsBusinessesAction() {
         return businesses.map(b => ({
             ...b,
             highlights: b.highlights ? JSON.parse(b.highlights) : [],
+            reviews: b.reviews ? JSON.parse(b.reviews) : [],
+            aiAnalysis: b.aiAnalysis ? JSON.parse(b.aiAnalysis) : null,
         }));
     } catch (error) {
         console.error('[getMapsBusinessesAction] Error:', error);
         return [];
+    }
+}
+
+/**
+ * Save AI analysis for an existing Maps business
+ */
+export async function saveMapsAnalysisAction(id: string, aiAnalysis: object) {
+    try {
+        const updated = await prisma.mapsBusiness.update({
+            where: { id },
+            data: { aiAnalysis: JSON.stringify(aiAnalysis) },
+        });
+        return { success: true, data: updated };
+    } catch (error) {
+        console.error('[saveMapsAnalysisAction] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
     }
 }
 

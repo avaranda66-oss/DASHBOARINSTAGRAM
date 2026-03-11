@@ -105,6 +105,8 @@ model MapsBusiness {
   website       String?
   highlights    String?   // JSON array string
   rawMarkdown   String?   // Full scraped markdown for re-parsing
+  reviews       String?   // JSON array of scraped reviews
+  aiAnalysis    String?   // JSON object of AI sentiment analysis
   
   scrapedAt     DateTime  @default(now())
   createdAt     DateTime  @default(now())

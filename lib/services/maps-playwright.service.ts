@@ -4,6 +4,13 @@ import fs from 'fs';
 
 const SCREENSHOTS_DIR = path.join(process.cwd(), 'public', 'maps-screenshots');
 
+export interface MapsReview {
+    author: string;
+    rating: number;
+    text: string;
+    date: string;
+}
+
 export interface MapsScrapedData {
     name: string;
     rating: number | null;
@@ -16,6 +23,7 @@ export interface MapsScrapedData {
     photoUrl: string | null;
     screenshotPath: string | null;
     highlights: string[];
+    reviews?: MapsReview[];
 }
 
 /**
@@ -153,10 +161,62 @@ export async function scrapeGoogleMapsWithPlaywright(query: string): Promise<{
             return { name, rating, totalReviews, address, phone, category, hours, website, photoUrl };
         });
 
-        // Take screenshot
+        // Take screenshot of the main page
         const screenshotName = `maps-${Date.now()}.png`;
         const screenshotPath = path.join(SCREENSHOTS_DIR, screenshotName);
         await page.screenshot({ path: screenshotPath, fullPage: false });
+
+        // --- Extract Reviews ---
+        let reviews: MapsReview[] = [];
+        try {
+            // Click the "Reviews" tab
+            const reviewsTab = page.locator('button[role="tab"]:has-text("Avaliações"), button[role="tab"]:has-text("Reviews")').first();
+            if (await reviewsTab.isVisible({ timeout: 3000 })) {
+                await reviewsTab.click();
+                await page.waitForTimeout(3000);
+
+                // Try to scroll the reviews pane to load more
+                const scrollablePane = page.locator('div[role="main"] > div:nth-child(2) > div > div:nth-child(3)');
+                if (await scrollablePane.isVisible({ timeout: 2000 })) {
+                    for (let i = 0; i < 3; i++) {
+                        await scrollablePane.evaluate(node => node.scrollBy(0, 3000));
+                        await page.waitForTimeout(1500);
+                    }
+                }
+
+                // Click "More" buttons for long reviews
+                const moreButtons = await page.locator('button.w8nwRe:has-text("Mais"), button.w8nwRe:has-text("More")').all();
+                for (const btn of moreButtons) {
+                    try { await btn.click(); await page.waitForTimeout(100); } catch { /* ignore */ }
+                }
+
+                // Extract reviews
+                reviews = await page.evaluate(() => {
+                    const reviewNodes = document.querySelectorAll('div.jJc9Ad');
+                    const results: MapsReview[] = [];
+                    
+                    for (const node of reviewNodes) {
+                        try {
+                            const author = node.querySelector('div.d4r55')?.textContent?.trim() || '';
+                            const text = node.querySelector('span.wiI7pd')?.textContent?.trim() || '';
+                            const date = node.querySelector('span.rsqaWe')?.textContent?.trim() || '';
+                            
+                            let rating = 0;
+                            const ratingLabel = node.querySelector('span.kvMYJc')?.getAttribute('aria-label') || '';
+                            const ratingMatch = ratingLabel.match(/(\d)/);
+                            if (ratingMatch) rating = parseInt(ratingMatch[1], 10);
+
+                            if (author && text) {
+                                results.push({ author, text, date, rating });
+                            }
+                        } catch { /* skip errors for individual reviews */ }
+                    }
+                    return results;
+                });
+            }
+        } catch (e: any) {
+            console.error('[MapsPlaywright] Error extracting reviews:', e.message);
+        }
 
         await browser.close();
 
@@ -168,6 +228,7 @@ export async function scrapeGoogleMapsWithPlaywright(query: string): Promise<{
                 ...data,
                 screenshotPath: `/maps-screenshots/${screenshotName}`,
                 highlights: [],
+                reviews,
             },
         };
     } catch (error: any) {
