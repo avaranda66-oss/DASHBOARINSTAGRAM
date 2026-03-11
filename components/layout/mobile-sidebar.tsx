@@ -13,6 +13,7 @@ import {
     Menu,
     Instagram,
     BarChart3,
+    Radar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
     { href: '/dashboard/collections', label: 'Coleções', icon: FolderOpen },
     { href: '/dashboard/accounts', label: 'Contas', icon: Users },
     { href: '/dashboard/analytics', label: 'Métricas', icon: BarChart3 },
+    { href: '/dashboard/intelligence', label: 'Inteligência', icon: Radar },
     { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
 ] as const;
 

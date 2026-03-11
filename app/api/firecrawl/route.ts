@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { scrapeUrl, scrapeInstagramProfile } from '@/lib/services/firecrawl.service';
+import { scrapeUrl, scrapeInstagramProfile, scrapeGoogleMaps } from '@/lib/services/firecrawl.service';
 
 /**
  * POST /api/firecrawl
@@ -7,7 +7,7 @@ import { scrapeUrl, scrapeInstagramProfile } from '@/lib/services/firecrawl.serv
  * Alternative scraping endpoint using Firecrawl instead of Apify.
  * This route is ADDITIVE — the existing /api/apify routes are untouched.
  * 
- * Body: { url: string, type?: 'scrape' | 'instagram' }
+ * Body: { url: string, type?: 'scrape' | 'instagram' | 'maps' }
  * Returns: { success: boolean, data?: object, error?: string }
  */
 export async function POST(request: Request) {
@@ -26,6 +26,8 @@ export async function POST(request: Request) {
 
         if (type === 'instagram') {
             result = await scrapeInstagramProfile(url);
+        } else if (type === 'maps') {
+            result = await scrapeGoogleMaps(url);
         } else {
             result = await scrapeUrl(url);
         }

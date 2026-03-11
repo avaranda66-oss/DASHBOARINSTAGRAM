@@ -253,14 +253,16 @@ export class InstagramService {
 
         try {
             await this.verifyAccountMatch(context, handle);
-            await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle' });
 
-            // Checa se está na tela de login
+            // Navega direto para a tela de criação (pula homepage redundante + busca de botão que nunca acha)
+            console.log('[InstagramService] Navegando direto para /create/select/...');
+            await page.goto('https://www.instagram.com/create/select/', { waitUntil: 'networkidle' });
+
+            // Checa se caiu na tela de login (sessão expirada)
             const isLoginPage = await page.locator('input[name="username"], :text-is("Log in"), :text-is("Entrar"), :text-is("Usar outro perfil")').first().isVisible({ timeout: 3000 });
             if (isLoginPage) {
                 console.log(`Aviso: Sessão expirada para @${username}. Tentando auto-login...`);
 
-                // Fecha o navegador atual para o script de login poder rodar livremente e salvar a sessão
                 await context.close();
                 await browser.close();
 
@@ -270,25 +272,7 @@ export class InstagramService {
                     throw new Error("Sessão expirada. (Auto-login falhou/sem senha). Por favor, vá em Configurações > Contas e reconecte o Instagram manualmente.");
                 }
 
-                // Se o auto-login deu certo, precisa reiniciar o processo do zero (nova chamada recursiva ou refazer o setup)
                 return await this.publishPost(username, imageUrls, caption, headless);
-            }
-
-            const createSelectors = ['svg[aria-label="New post"]', 'svg[aria-label="Nova publicação"]', '[data-testid="new-post-button"]'];
-            let clickedCreate = false;
-            for (const sel of createSelectors) {
-                try {
-                    const btn = page.locator(sel).last();
-                    if (await btn.isVisible({ timeout: 2000 })) {
-                        await btn.click({ force: true });
-                        clickedCreate = true;
-                        break;
-                    }
-                } catch (e) { }
-            }
-            if (!clickedCreate) {
-                console.log('[InstagramService] Botão de criar não encontrado, navegando direto para /create/select/');
-                await page.goto('https://www.instagram.com/create/select/', { waitUntil: 'networkidle' });
             }
 
             await page.waitForTimeout(2000);
