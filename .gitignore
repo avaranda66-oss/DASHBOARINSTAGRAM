@@ -56,6 +56,9 @@ public/story-debug-*
 public/diag-*
 public/canvas_*
 
+# User uploaded media (personal images, AI-generated content)
+public/uploads/
+
 # Session data (Playwright cookies, tokens)
 sessions/
 

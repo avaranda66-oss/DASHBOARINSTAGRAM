@@ -7,14 +7,32 @@
 
 import type { InstagramPostMetrics, ApifyRunStatus } from '@/types/analytics';
 
+import prisma from '@/lib/db';
+
 const APIFY_BASE = 'https://api.apify.com/v2';
 const ACTOR_ID = 'apify~instagram-post-scraper';
 const POLL_INTERVAL_MS = 2_000;
 const MAX_POLL_MS = 5 * 60 * 1_000; // 5 minutes
 
-function getApiKey(): string {
+async function getApiKey(): Promise<string> {
+    // 1. Try DB settings first (saved via Settings UI)
+    try {
+        const setting = await prisma.setting.findUnique({
+            where: { key: 'global-settings' },
+        });
+        if (setting?.value) {
+            const parsed = JSON.parse(setting.value);
+            if (parsed.apifyApiKey && parsed.apifyApiKey.trim() !== '') {
+                return parsed.apifyApiKey;
+            }
+        }
+    } catch (e) {
+        // DB not available, fall through to env
+    }
+
+    // 2. Fall back to environment variable
     const key = process.env.APIFY_API_KEY;
-    if (!key) throw new Error('APIFY_API_KEY is not set in environment variables');
+    if (!key) throw new Error('APIFY_API_KEY não configurada. Vá em Settings → Chaves de API.');
     return key;
 }
 
@@ -43,7 +61,7 @@ export async function startInstagramScraper(
     resultsLimit: number = 20,
     periodDays?: number,
 ): Promise<string> {
-    const token = getApiKey();
+    const token = await getApiKey();
 
     // The actor expects a `username` array of plain usernames (no URLs)
     const usernames = profileUrls.map(extractUsername).filter(Boolean);
@@ -73,7 +91,7 @@ export async function startInstagramScraper(
 
 /** Get the current status of an Apify actor run */
 export async function getRunStatus(runId: string): Promise<ApifyRunStatus> {
-    const token = getApiKey();
+    const token = await getApiKey();
 
     const res = await fetch(`${APIFY_BASE}/actor-runs/${runId}?token=${token}`);
     if (!res.ok) {
@@ -92,7 +110,7 @@ export async function getRunStatus(runId: string): Promise<ApifyRunStatus> {
 export async function getDatasetItems(
     datasetId: string,
 ): Promise<InstagramPostMetrics[]> {
-    const token = getApiKey();
+    const token = await getApiKey();
 
     const res = await fetch(
         `${APIFY_BASE}/datasets/${datasetId}/items?token=${token}&format=json`,

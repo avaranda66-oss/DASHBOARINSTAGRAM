@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { Bot, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Bot, Sparkles, Flame, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { checkApiStatusAction, type ApiStatusResult } from '@/app/actions/api-status.actions';
 import { cn } from '@/lib/utils';
@@ -70,6 +70,28 @@ export function ApiStatusIndicator() {
                         {status.apifyOnline
                             ? "Apify Scraper configurado no .env ou nas Configurações"
                             : "Apify não configurado. Scrapers em background não funcionarão."}
+                    </TooltipContent>
+                </Tooltip>
+
+                {/* FIRECRAWL INDICATOR */}
+                <Tooltip>
+                    <TooltipTrigger
+                        onClick={() => router.push('/dashboard/settings')}
+                        className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-colors border outline-none",
+                            status.firecrawlOnline
+                                ? "bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20"
+                                : "bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20"
+                        )}
+                    >
+                        <Flame className="h-3.5 w-3.5" />
+                        <span className="hidden lg:inline">{status.firecrawlOnline ? 'Firecrawl OK' : 'Firecrawl Offline'}</span>
+                        {status.firecrawlOnline ? <CheckCircle2 className="h-3 w-3 lg:hidden" /> : <AlertCircle className="h-3 w-3 lg:hidden" />}
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                        {status.firecrawlOnline
+                            ? "Firecrawl configurado nas Configurações. Alternativa gratuita ao Apify."
+                            : "Firecrawl não configurado. Clique para adicionar sua API key gratuita."}
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>

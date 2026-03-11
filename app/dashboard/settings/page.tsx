@@ -292,10 +292,25 @@ export default function SettingsPage() {
                                                 variant="outline"
                                                 size="sm"
                                                 className="h-8 text-[10px] flex-1 sm:flex-none"
-                                                onClick={() => accountStore.checkAutomationStatus(acc.id)}
+                                                onClick={async () => {
+                                                    setIsCheckingIg(true);
+                                                    try {
+                                                        await accountStore.checkAutomationStatus(acc.id);
+                                                        const updatedAcc = accountStore.accounts.find(a => a.id === acc.id);
+                                                        if (updatedAcc?.isAutomationConnected) {
+                                                            toast.success(`${acc.name}: Conectado ao Bot Local! ✅`);
+                                                        } else {
+                                                            toast.warning(`${acc.name}: Desconectado. Sessão não encontrada.`);
+                                                        }
+                                                    } catch (e) {
+                                                        toast.error('Erro ao verificar status de automação.');
+                                                    } finally {
+                                                        setIsCheckingIg(false);
+                                                    }
+                                                }}
                                                 disabled={isCheckingIg}
                                             >
-                                                Verificar
+                                                {isCheckingIg ? 'Verificando...' : 'Verificar'}
                                             </Button>
                                             <Button
                                                 variant="default"

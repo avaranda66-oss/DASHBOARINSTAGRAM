@@ -5,6 +5,7 @@ import prisma from '@/lib/db';
 export type ApiStatusResult = {
     geminiOnline: boolean;
     apifyOnline: boolean;
+    firecrawlOnline: boolean;
 };
 
 export async function checkApiStatusAction(): Promise<ApiStatusResult> {
@@ -12,6 +13,7 @@ export async function checkApiStatusAction(): Promise<ApiStatusResult> {
         const result: ApiStatusResult = {
             geminiOnline: false,
             apifyOnline: false,
+            firecrawlOnline: false,
         };
 
         // 1. First, prioritize DB custom keys
@@ -28,6 +30,9 @@ export async function checkApiStatusAction(): Promise<ApiStatusResult> {
                 if (parsed.apifyApiKey && parsed.apifyApiKey.trim() !== '') {
                     result.apifyOnline = true;
                 }
+                if (parsed.firecrawlApiKey && parsed.firecrawlApiKey.trim() !== '') {
+                    result.firecrawlOnline = true;
+                }
             } catch (e) {
                 console.error('Failed to parse settings JSON:', e);
             }
@@ -42,9 +47,13 @@ export async function checkApiStatusAction(): Promise<ApiStatusResult> {
             result.apifyOnline = true;
         }
 
+        if (!result.firecrawlOnline && process.env.FIRECRAWL_API_KEY) {
+            result.firecrawlOnline = true;
+        }
+
         return result;
     } catch (error) {
         console.error('Failed to check API status:', error);
-        return { geminiOnline: false, apifyOnline: false };
+        return { geminiOnline: false, apifyOnline: false, firecrawlOnline: false };
     }
 }

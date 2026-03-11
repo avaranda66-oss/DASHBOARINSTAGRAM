@@ -9,6 +9,8 @@ export const useKeyboardShortcut = (
 ) => {
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
+            // Guard: se key não foi definida, ignora
+            if (!key) return;
             // Verifica se a tecla principal bate (case insensitive)
             if (e.key.toLowerCase() !== key.toLowerCase()) return;
 
