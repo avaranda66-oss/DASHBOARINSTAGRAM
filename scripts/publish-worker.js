@@ -70,7 +70,41 @@ async function run() {
 
         console.log("Escrevendo legenda...");
         await page.waitForTimeout(2000);
-        await page.keyboard.insertText(caption);
+        
+        if (caption && caption.trim() !== '') {
+            // Tentar clicar no campo de legenda antes de digitar
+            const captionSelectors = [
+                'div[aria-label="Write a caption..."]',
+                'div[aria-label="Escreva uma legenda..."]',
+                'div[aria-label="Escribe un pie de foto..."]',
+                'div[contenteditable="true"]',
+                'textarea[aria-label="Write a caption..."]',
+                'textarea[aria-label="Escreva uma legenda..."]',
+            ];
+            
+            let captionClicked = false;
+            for (const sel of captionSelectors) {
+                const el = page.locator(sel).first();
+                if (await el.isVisible({ timeout: 2000 }).catch(() => false)) {
+                    await el.click();
+                    await page.waitForTimeout(500);
+                    captionClicked = true;
+                    console.log(`Campo de legenda encontrado: ${sel}`);
+                    break;
+                }
+            }
+            
+            if (!captionClicked) {
+                console.warn("Campo de legenda não encontrado por seletor. Tentando Tab...");
+                await page.keyboard.press('Tab');
+                await page.waitForTimeout(500);
+            }
+            
+            await page.keyboard.insertText(caption);
+            console.log(`Legenda inserida (${caption.length} chars)`);
+        } else {
+            console.log("Sem legenda para inserir.");
+        }
         await page.waitForTimeout(1000);
 
         console.log("Compartilhando!");
