@@ -5,8 +5,9 @@ import { useAccountStore, useContentStore } from '@/stores';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { AccountFormDialog } from './account-form-dialog';
-import { Plus, Users, Edit3 } from 'lucide-react';
+import { Plus, Users, Edit3, MapPin, Phone, Clock } from 'lucide-react';
 import type { Account } from '@/types/account';
+import { parseBusinessInfo } from '../schemas/account.schema';
 
 const getInitials = (name: string) =>
     name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -56,6 +57,7 @@ export function AccountList() {
                     {accounts.map((account) => {
                         const contentCount = contents.filter((c) => c.accountId === account.id).length;
 
+                        const bizInfo = parseBusinessInfo(account.notes ?? null);
                         return (
                             <Card key={account.id} className="group relative overflow-hidden flex flex-col h-full border-border/50 hover:border-border transition-all hover:shadow-md">
                                 {account.isAutomationConnected && (
@@ -88,12 +90,35 @@ export function AccountList() {
                                     </div>
 
                                     <h3 className="text-lg font-semibold line-clamp-1">{account.name}</h3>
-                                    <p className="text-sm text-pink-500 font-medium mb-4">{account.handle}</p>
+                                    <p className="text-sm text-pink-500 font-medium mb-3">{account.handle}</p>
 
-                                    {account.notes && (
-                                        <p className="text-xs text-muted-foreground line-clamp-2 w-full mb-4 px-2 italic">
-                                            "{account.notes}"
-                                        </p>
+                                    {bizInfo.businessType && (
+                                        <span className="text-[11px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground mb-3">
+                                            {bizInfo.businessType}
+                                        </span>
+                                    )}
+
+                                    {(bizInfo.address || bizInfo.phone || bizInfo.hours) && (
+                                        <div className="w-full text-left space-y-1 mb-3">
+                                            {bizInfo.address && (
+                                                <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                                                    <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground/60" />
+                                                    <span className="line-clamp-1">{bizInfo.address}</span>
+                                                </p>
+                                            )}
+                                            {bizInfo.phone && (
+                                                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                                    <Phone className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                                                    {bizInfo.phone}
+                                                </p>
+                                            )}
+                                            {bizInfo.hours && (
+                                                <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                                                    <Clock className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground/60" />
+                                                    <span className="line-clamp-2">{bizInfo.hours}</span>
+                                                </p>
+                                            )}
+                                        </div>
                                     )}
 
                                     <div className="mt-auto pt-4 w-full border-t border-border/50 flex items-center justify-between text-sm">

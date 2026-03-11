@@ -70,6 +70,15 @@ export interface ApifyRunStatus {
     datasetId: string | null;
 }
 
+/** Metrics returned by Meta Graph API (private data — own account only) */
+export interface MetaPostMetrics extends InstagramPostMetrics {
+    reach: number;
+    saved: number;
+    shares: number;
+    totalInteractions: number;
+    source: 'meta';
+}
+
 /** Cached analytics data stored in localStorage, linked to an account handle */
 export interface CachedAnalytics {
     id: string;

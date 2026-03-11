@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
     BarChart3, AlertCircle, RefreshCw, TrendingUp,
-    Users, Swords, Plus, X, GitCompare, Filter,
+    Users, Swords, Plus, X, GitCompare, Filter, Zap, ShieldCheck,
 } from 'lucide-react';
+
 import { nanoid } from 'nanoid';
 import { useAnalytics } from '@/features/analytics/hooks/use-analytics';
 import { AnalyticsSearch } from '@/features/analytics/components/analytics-search';
@@ -18,13 +19,17 @@ import { ComparisonView, computeSummary } from '@/features/analytics/components/
 import type { ProfileData } from '@/features/analytics/components/comparison-view';
 import { CommentsAnalysis } from '@/features/analytics/components/comments-analysis';
 import { Button } from '@/components/ui/button';
-import { useAccountStore } from '@/stores';
+import { useAccountStore, useSettingsStore } from '@/stores';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getCompetitorsAction, saveCompetitorAction, deleteCompetitorAction } from '@/app/actions/competitor.actions';
 import { getAnalyticsAction } from '@/app/actions/analytics.actions';
 import { useAnalyticsStore } from '@/stores';
 import type { CompetitorProfile } from '@/types/competitor';
+import { MinhaContaView } from '@/features/analytics/components/minha-conta-view';
+
+type DataSource = 'apify' | 'meta';
+type ViewMode = 'individual' | 'vs' | 'minha-conta';
 
 const container = {
     hidden: { opacity: 0 },
@@ -35,8 +40,6 @@ const item = {
     show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 };
 
-type ViewMode = 'individual' | 'vs';
-
 export default function AnalyticsPage() {
     const {
         posts, summary, isLoading, error, hasData, isEmpty,
@@ -46,12 +49,19 @@ export default function AnalyticsPage() {
     } = useAnalytics();
 
     const { accounts, isLoaded: accountsLoaded, loadAccounts } = useAccountStore();
+    const settingsStore = useSettingsStore();
 
     const [competitors, setCompetitors] = useState<CompetitorProfile[]>([]);
     const [showAddCompetitor, setShowAddCompetitor] = useState(false);
     const [newCompetitorHandle, setNewCompetitorHandle] = useState('');
     const [fixedInsights, setFixedInsights] = useState<string | null>(null);
     const [isLoadingFixed, setIsLoadingFixed] = useState(false);
+
+    // Meta API state
+    const [dataSource, setDataSource] = useState<DataSource>('apify');
+    const [isLoadingMeta, setIsLoadingMeta] = useState(false);
+    const [metaError, setMetaError] = useState<string | null>(null);
+    const analyticsStore = useAnalyticsStore();
 
     // VS Mode state
     const [viewMode, setViewMode] = useState<ViewMode>('individual');
@@ -65,8 +75,40 @@ export default function AnalyticsPage() {
     const currentComp = competitors.find(c => c.handle.toLowerCase() === currentHandleForAvatar);
 
     useEffect(() => { if (!accountsLoaded) loadAccounts(); }, [accountsLoaded, loadAccounts]);
+    useEffect(() => { settingsStore.loadSettings(); }, []);
     useEffect(() => { getCompetitorsAction().then(setCompetitors); }, []);
     useEffect(() => { setFixedInsights(null); }, [posts]);
+
+    const metaConnected = !!settingsStore.settings?.metaAccessToken;
+    const metaUsername = settingsStore.settings?.metaUsername;
+
+    const handleFetchMeta = async () => {
+        const token = settingsStore.settings?.metaAccessToken;
+        if (!token) {
+            setMetaError('Configure o Token Meta em Configurações antes de usar esta fonte.');
+            return;
+        }
+        setIsLoadingMeta(true);
+        setMetaError(null);
+        try {
+            const res = await fetch('/api/meta-insights', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, limit: 50 }),
+            });
+            const json = await res.json();
+            if (!json.success) {
+                setMetaError(json.error ?? 'Erro ao buscar dados Meta API.');
+                return;
+            }
+            // Alimentar o store de analytics com os dados normalizados
+            analyticsStore.setPostsFromMeta(json.data, json.username ?? metaUsername ?? 'meta');
+        } catch (err: any) {
+            setMetaError(err.message ?? 'Erro de rede ao chamar Meta API.');
+        } finally {
+            setIsLoadingMeta(false);
+        }
+    };
 
     const addCompetitor = useCallback(async () => {
         const handle = newCompetitorHandle.trim().replace(/^@/, '').replace(/\/+$/, '');
@@ -263,9 +305,50 @@ export default function AnalyticsPage() {
                         >
                             <GitCompare className="h-3 w-3" /> VS
                         </button>
+                        <button
+                            onClick={() => setViewMode('minha-conta')}
+                            className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1 ${viewMode === 'minha-conta'
+                                ? 'bg-blue-500/20 text-blue-400'
+                                : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            title="Dados privados exclusivos via Meta API"
+                        >
+                            <Zap className="h-3 w-3" /> Minha Conta
+                            {metaConnected && <ShieldCheck className="h-3 w-3 text-green-500" />}
+                        </button>
                     </div>
                 </div>
             </motion.div>
+
+            {/* ===== MINHA CONTA (Meta API) ===== */}
+            {viewMode === 'minha-conta' && (
+                <motion.div variants={item}>
+                    {!metaConnected ? (
+                        <div className="rounded-xl border border-dashed border-border p-12 text-center">
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10">
+                                <Zap className="h-7 w-7 text-blue-400" />
+                            </div>
+                            <h3 className="mt-4 text-lg font-semibold">Meta API não configurada</h3>
+                            <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">
+                                Configure seu token Meta em Configurações para acessar dados privados como alcance real, saves e compartilhamentos.
+                            </p>
+                            <Button
+                                className="mt-4"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.location.href = '/dashboard/settings'}
+                            >
+                                Ir para Configurações →
+                            </Button>
+                        </div>
+                    ) : (
+                        <MinhaContaView
+                            token={settingsStore.settings!.metaAccessToken!}
+                            username={metaUsername}
+                        />
+                    )}
+                </motion.div>
+            )}
 
             {/* ===== VS MODE ===== */}
             {viewMode === 'vs' && (
@@ -559,7 +642,7 @@ export default function AnalyticsPage() {
                             </motion.div>
 
                             <motion.div variants={item}>
-                                <CommentsAnalysis posts={posts} />
+                                <CommentsAnalysis posts={posts} metaToken={settingsStore.settings?.metaAccessToken ?? undefined} />
                             </motion.div>
 
                             <motion.div variants={item}>

@@ -1,17 +1,18 @@
 <div align="center">
-  <img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js" alt="Next.js" />
-  <img src="https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react" alt="React" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind" />
-  <img src="https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white" alt="Prisma" />
-  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Zustand-453F3C?style=for-the-badge" alt="Zustand" />
-  <img src="https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion" />
+  <img src="https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js" alt="Next.js" />
+  <img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react" alt="React" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind" />
+  <img src="https://img.shields.io/badge/Prisma-5-3982CE?style=for-the-badge&logo=Prisma&logoColor=white" alt="Prisma" />
+  <img src="https://img.shields.io/badge/TypeScript-5-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Zustand-5-453F3C?style=for-the-badge" alt="Zustand" />
+  <img src="https://img.shields.io/badge/Framer_Motion-12-0055FF?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion" />
+  <img src="https://img.shields.io/badge/Recharts-3-22b5bf?style=for-the-badge" alt="Recharts" />
 </div>
 
 <h1 align="center">📸 Instagram Dashboard</h1>
-<h3 align="center">Content Manager · Analytics Engine · Automation Hub</h3>
+<h3 align="center">Content Manager · Analytics Engine · Meta API Hub · Automation</h3>
 
-<p align="center">O manual completo, exaustivo e verificado linha-a-linha da central de comando para produção de conteúdo, controle visual de agendas, inteligência analítica e automação de publicação no Instagram.</p>
+<p align="center">Central de comando completa para produção de conteúdo, controle visual de agendas, inteligência analítica via Meta Graph API + Apify, análise de comentários com IA e automação de publicação no Instagram.</p>
 
 ---
 
@@ -21,16 +22,17 @@
 2. [Tela Inicial: Dashboard Home](#-1-tela-inicial-dashboard-home)
 3. [Storyboard (Kanban)](#-2-storyboard-kanban)
 4. [Calendário Editorial](#-3-calendário-editorial)
-5. [Editor de Conteúdo (Content Editor)](#-4-editor-de-conteúdo-content-editor)
+5. [Editor de Conteúdo](#-4-editor-de-conteúdo-content-editor)
 6. [Painel de Filtros Avançados](#-5-painel-de-filtros-avançados)
 7. [Métricas / Analytics](#-6-métricas--analytics)
 8. [Contas Instagram](#-7-contas-instagram)
 9. [Coleções / Campanhas](#-8-coleções--campanhas)
-10. [Configurações](#️-9-configurações)
-11. [Banco de Dados (Prisma Schema)](#-10-banco-de-dados-prisma-schema)
-12. [Estrutura de Pastas](#-11-estrutura-de-pastas)
-13. [Como Instalar e Rodar](#-12-como-instalar-e-rodar)
-14. [Uso com IAs de Terminal](#-13-uso-com-ias-de-terminal)
+10. [Intelligence Hub (Maps + Scraping)](#-9-intelligence-hub-maps--scraping)
+11. [Configurações](#️-10-configurações)
+12. [Banco de Dados (Prisma Schema)](#-11-banco-de-dados-prisma-schema)
+13. [Estrutura de Pastas](#-12-estrutura-de-pastas)
+14. [Como Instalar e Rodar](#-13-como-instalar-e-rodar)
+15. [Uso com IAs de Terminal](#-14-uso-com-ias-de-terminal)
 
 ---
 
@@ -39,24 +41,23 @@
 O sistema inteiro é encapsulado por um **App Shell** composto por dois elementos fixos:
 
 ### Sidebar (Menu Lateral)
-- Contém **7 links de navegação**: Dashboard, Storyboard, Calendário, Coleções, Contas, Métricas e Configurações.
+- Contém **8 links de navegação**: Dashboard, Storyboard, Calendário, Coleções, Contas, Métricas, Intelligence Hub e Configurações.
 - Logo animada do Instagram no topo com gradiente real da marca.
 - **Sidebar Colapsável:** Botão com seta (`◀ / ▶`) no rodapé da sidebar permite recolher o menu para modo mini (apenas ícones, 72px) ou expandir com nome completo (240px). A animação é suave via Framer Motion.
 - **Indicador de aba ativa:** Uma barra vertical com gradiente Instagram aparece à esquerda do item selecionado, animada com spring physics.
 - **Sidebar Mobile:** Em telas pequenas, o menu é substituído por um drawer lateral acessível via botão hamburger.
 
 ### Header (Cabeçalho Superior)
-- **Título dinâmico da página:** Muda automaticamente conforme a rota atual ("Storyboard", "Calendário Editorial", etc).
+- **Título dinâmico da página:** Muda automaticamente conforme a rota atual.
 - **Barra de Pesquisa Global (`SearchBar`):** Campo de texto para buscas rápidas dentro do contexto atual.
 - **Filtro de Conta (`AccountFilter`):** Dropdown rápido no topo para filtrar todas as telas pela conta/cliente selecionado.
 - **Indicador de Status de API (`ApiStatusBadge`):** Badge em tempo real mostrando `Online` (verde) ou `Warning` (amarelo), verificando se as chaves do Gemini e Apify estão configuradas no banco.
 - **Theme Toggle (Lua/Sol):** Ícone no canto superior direito para alternância instantânea entre Modo Escuro e Claro. Persistido via `next-themes`.
-- **Ícone de Usuário:** Botão circular à direita.
 
 ### ⚡ Command Palette (Atalho Secreto)
 Pressione **`Ctrl + K`** (Windows) ou **`Cmd + K`** (Mac) de qualquer tela do sistema. Abre um menu estilo Spotlight com 4 seções:
 - **Ações Rápidas:** Criar Novo Conteúdo, Nova Coleção, Nova Conta Instagram.
-- **Navegação:** Ir direto para Dashboard, Storyboard, Calendário, Coleções, Contas, Configurações.
+- **Navegação:** Ir direto para qualquer página do dashboard.
 - **Conteúdos Recentes:** Lista os 5 últimos conteúdos criados com link direto para edição.
 - **Preferências:** Alternar Tema (Dark/Light) sem sair do teclado.
 
@@ -72,36 +73,33 @@ Página de boas-vindas e visão geral de toda a operação.
 - **Esta Semana:** Próximos conteúdos com data futura (top 5).
 - **Publicados:** Quantidade com status `published`.
 
-**Grid "Por Status":** 5 mini-cards mostrando contagem por status: Ideia (cinza), Rascunho (amarelo), Aprovado (verde), Agendado (roxo), Publicado (azul), Falhou (vermelho). Cada um com ícone e cor distinta.
+**Grid "Por Status":** 5 mini-cards mostrando contagem por status: Ideia, Rascunho, Aprovado, Agendado, Publicado, Falhou. Cada um com ícone e cor distinta.
 
-**"Próximos Conteúdos":** Lista com até 5 posts futuros, mostrando: título truncado, data formatada em PT-BR (ex: "Sex, 15 Mar · 09:00"), badge colorido do tipo (Post/Story/Reel/Carrossel).
+**"Próximos Conteúdos":** Lista com até 5 posts futuros com título, data formatada em PT-BR e badge colorido do tipo.
 
-**"Ações Rápidas":** 3 botões grandes:
-- `Novo Conteúdo` (gradiente Instagram, abre o Editor).
-- `Ir ao Storyboard`
-- `Ir ao Calendário`
+**"Ações Rápidas":** 3 botões grandes: Novo Conteúdo, Ir ao Storyboard, Ir ao Calendário.
 
 ---
 
 ## 📋 2. Storyboard (Kanban)
 
-Engine de planejamento criativo usando `@hello-pangea/dnd`.
+Engine de planejamento criativo usando `@dnd-kit/core` com drag-and-drop entre colunas.
 
 ### As 6 Colunas do Board
-| Coluna | Cor | Ícone | Descrição |
-|--------|-----|-------|-----------|
-| **Ideia** | Cinza `#94A3B8` | 💡 Lightbulb | Brainstorm inicial |
-| **Rascunho** | Amarelo `#F59E0B` | ✏️ FileEdit | Copy sendo trabalhada |
-| **Aprovado** | Verde `#10B981` | ✅ CheckCircle2 | Aprovado pelo diretor de arte |
-| **Agendado** | Roxo `#6366F1` | 🕐 Clock | Data/hora definida |
-| **Publicado** | Azul `#8B5CF6` | 📤 Send | Já foi ao ar |
-| **Falhou** | Vermelho `#EF4444` | ⚠️ AlertCircle | Erro na publicação automática |
+| Coluna | Cor | Descrição |
+|--------|-----|-----------|
+| **Ideia** | Cinza | Brainstorm inicial |
+| **Rascunho** | Amarelo | Copy sendo trabalhada |
+| **Aprovado** | Verde | Aprovado pelo diretor de arte |
+| **Agendado** | Roxo | Data/hora definida |
+| **Publicado** | Azul | Já foi ao ar |
+| **Falhou** | Vermelho | Erro na publicação automática |
 
 ### Interações
 - **Drag and Drop livre** entre todas as 6 colunas. O status do conteúdo no banco é atualizado automaticamente ao soltar.
-- **Botão `+` no topo de cada coluna:** Abre o Editor com o status da coluna pré-selecionado (ex: clicar no `+` da coluna Rascunho cria um card já com `status: draft`).
+- **Botão `+` no topo de cada coluna:** Abre o Editor com o status da coluna pré-selecionado.
 - **Clique no card:** Abre o Editor completo para aquele conteúdo.
-- **Informações visíveis no card:** Título, legenda truncada, tipo com ícone e badge colorido, data agendada formatada, tags de hashtag.
+- **Informações visíveis no card:** Título, legenda truncada, tipo com badge colorido, data agendada formatada, tags de hashtag.
 
 ---
 
@@ -112,13 +110,12 @@ Engine de planejamento criativo usando `@hello-pangea/dnd`.
 ### Visão Mensal
 - Grid clássico de 30 dias com badges coloridos indicando densidade e formato dos posts por dia.
 
-### Visão Semanal (Agenda Flex)
-- 7 colunas (Segunda a Domingo) em Flexbox. Cards empilhados cronologicamente sem buracos de horário vazio.
-- **Botão `+ Adicionar`** no rodapé de cada dia, já pré-selecionando a data ao abrir o Editor.
+### Visão Semanal
+- 7 colunas (Segunda a Domingo). Cards empilhados cronologicamente.
+- **Botão `+ Adicionar`** no rodapé de cada dia, pré-selecionando a data ao abrir o Editor.
 
 ### Visão Diária
 - Feed vertical grande mostrando todos os conteúdos detalhados do dia selecionado.
-- **Botão `+ Agendar Novo Conteúdo`** pontilhado, abre o Editor já travado naquele dia.
 
 ---
 
@@ -127,93 +124,164 @@ Engine de planejamento criativo usando `@hello-pangea/dnd`.
 Drawer lateral (Sheet direito) que aparece ao criar ou editar qualquer conteúdo. Possui **2 abas internas: Editar e Preview.**
 
 ### Aba "Editar"
-- **Título** *(obrigatório)*: Input de texto para nome interno.
-- **Descrição / Legenda**: Textarea com múltiplas linhas para a copy completa do post.
-- **Tipo** *(obrigatório)*: Dropdown com 4 opções: `Post`, `Story`, `Reel`, `Carrossel`.
-- **Status** *(obrigatório)*: Dropdown com 6 opções: `Ideia`, `Rascunho`, `Aprovado`, `Agendado`, `Publicado`, `Falhou`.
-- **Conta Instagram**: Dropdown com todas as contas cadastradas (ou "Nenhuma Conta").
-- **Data/Hora**: Input `datetime-local` para agendamento.
-- **Hashtags (`TagInput`)**: Campo interativo. Digite uma hashtag, pressione Enter, e ela vira um chip visual removível. Múltiplas hashtags.
-- **Coleções (Multi-Select Chips)**: Lista de todas as coleções cadastradas como botões redondos. Clique para ativar/desativar a associação. Suporta múltiplas coleções por conteúdo. Mostra ícone e cor da coleção.
-- **Mídia (Upload de Imagens e Vídeos)**: Área de upload com drop zone. Aceita: JPEG, PNG, WebP, GIF, MP4, MOV. Mostra preview visual da mídia enviada com botão de remover. Upload via API route `/api/upload`.
+- **Título** *(obrigatório)*, **Descrição / Legenda**, **Tipo** (Post/Story/Reel/Carrossel), **Status** (6 opções), **Conta Instagram**, **Data/Hora**, **Hashtags (`TagInput`)** interativo com chips visuais, **Coleções** (multi-select), **Upload de Mídia** (JPEG, PNG, WebP, GIF, MP4, MOV).
 
 ### Aba "Preview" (Simulador Instagram)
-- Reproduz um **mini feed do Instagram** completo (mockup visual pixel-perfect):
-  - Header com avatar circular, nome da conta e ícone `...`.
-  - Área de imagem com aspect ratio 4:5, com indicador de carrossel `1/N`.
-  - Barra de ações (Like, Comment, Share, Bookmark).
-  - "1.042 curtidas" simulado.
-  - Legenda compilada automaticamente (Título + Descrição + Hashtags).
-  - **Contador de caracteres** (`X / 2200`) com alerta vermelho se exceder o limite do Instagram.
+- Reproduz um mini feed do Instagram completo (mockup visual pixel-perfect) com header de perfil, área de imagem 4:5, barra de ações, legenda compilada automaticamente e **contador de caracteres** (`X / 2200`).
 
 ### Botões de Ação
-- **Salvar** (gradiente Instagram): Salva ou cria o conteúdo no banco.
-- **Duplicar**: Cria uma cópia exata do conteúdo (apenas em modo edição).
-- **Excluir**: Remove permanentemente o conteúdo (apenas em modo edição).
-- **Publicar via Robô** 🤖: Envia o conteúdo para a **fila de automação** do sistema. O botão mostra estados: "Publicar via Robô" → "Na fila de espera..." → "Postando agora...". Quando na fila, aparece uma animação pulsante informando que o robô processará o post automaticamente. Requer um bot local configurado (ver Configurações).
+- **Salvar**, **Duplicar**, **Excluir**, **Publicar via Robô** 🤖 (envia para fila de automação).
 
 ---
 
 ## 🔍 5. Painel de Filtros Avançados
 
-Drawer lateral (Sheet direito) com 6 eixos de filtragem aplicados em tempo real ao Storyboard e Calendário:
+Drawer lateral com 6 eixos de filtragem em tempo real (Storyboard e Calendário):
 
-1. **Tipos de Conteúdo**: Checkboxes para Post, Story, Reel, Carrossel.
-2. **Status do Funil**: Checkboxes para Ideia, Rascunho, Aprovado, Agendado, Publicado, Falhou.
-3. **Conta Instagram**: Dropdown com todas as contas (ou "Todas as contas").
-4. **Coleção / Campanha**: Dropdown com todas as coleções (ou "Qualquer coleção").
-5. **Período de Agendamento**: Dois campos `datetime-local` (Início e Fim) para filtrar por range de data.
-6. **Hashtag Específica**: Input de texto para filtrar por hashtag (ex: `#promo`).
-
-**Rodapé**: Botões "Limpar Todos" (desativa todos os filtros) e "Visualizar Resultados" (fecha o painel).
+1. **Tipos de Conteúdo** — Post, Story, Reel, Carrossel
+2. **Status do Funil** — Ideia, Rascunho, Aprovado, Agendado, Publicado, Falhou
+3. **Conta Instagram**
+4. **Coleção / Campanha**
+5. **Período de Agendamento** — range de datas
+6. **Hashtag Específica**
 
 ---
 
 ## 📈 6. Métricas / Analytics
 
-A tela mais complexa do sistema. Possui **2 modos de visualização** alternáveis no topo:
+A tela mais complexa do sistema. Possui **3 abas de visualização** no topo.
 
-### Modo Individual
-Análise detalhada de um único perfil Instagram.
+---
+
+### Aba "Individual" — Análise via Apify (Perfis Públicos)
+
+Análise detalhada de um único perfil Instagram via web scraping (Apify).
 
 **Seleção de perfil:**
-- **Pills de Clientes:** Lista todos os perfis da aba "Contas" como pills azuis clicáveis.
-- **Pills de Concorrentes:** Lista concorrentes em pills laranjas. Botão `+ Concorrente` para adicionar novos via handle/URL. Botão `X` no hover para remover.
+- **Pills de Clientes** (azuis) e **Pills de Concorrentes** (laranjas). Botão `+ Concorrente` para adicionar novos.
 
-**Barra de Busca (`AnalyticsSearch`):** Campo para inserir URL ou @handle do Instagram. Ativa o scraping via API Apify.
+**Barra de Busca (`AnalyticsSearch`):** Campo para URL ou @handle. Dispara o scraping via API Apify.
 
-**Filtros de Período:** Pills clicáveis: `Todo período`, `7 dias`, `30 dias`, `60 dias`, `90 dias`, `Personalizado`. O modo Personalizado abre dois inputs de data (início e fim).
+**Filtros de Período:** `Todo período`, `7 dias`, `30 dias`, `60 dias`, `90 dias`, `Personalizado`.
 
-**Após carregar os dados:**
-- **Cabeçalho do perfil:** Avatar circular, nome `@usuario`, contagem de posts e última atualização. Botões `Atualizar` (busca últimos 10 posts) e `Limpar`.
-- **KPI Cards:** Cards animados com métricas resumidas (Total Posts, Likes, Comentários, Views, Engajamento médio, Melhor Post).
-- **🏆 Melhor Post:** Card dourado em destaque mostrando a legenda (truncada), likes e comentários do post de maior performance.
-- **Insights & Análise (`InsightsPanel`):** Painel de inteligência que pode gerar relatórios via IA (Google Gemini) através do botão de carregar.
-- **Top Engajadores (`TopEngagers`):** Ranking dos 10 perfis que mais comentaram na página analisada.
-- **Análise de Comentários (`CommentsAnalysis`):** Módulo com análise de sentimento (Positivo/Neutro/Negativo) dos comentários coletados, com gráfico de barra visual e métricas percentuais. Integrado ao Google Gemini.
-- **Análise por Post (`PostCards`):** Grid de cards individuais para cada post, com thumbnail, métricas de likes/comments/views, e tipo do post.
+**Componentes após carregar:**
+- **KPI Cards** — Total Posts, Likes, Comentários, Views, Engajamento médio, Melhor Post
+- **🏆 Melhor Post** — Card dourado em destaque
+- **Insights & Análise (`InsightsPanel`)** — Relatório via Google Gemini
+- **Top Engajadores (`TopEngagers`)** — Ranking dos 10 usuários que mais comentaram
+- **Análise de Comentários (`CommentsAnalysis`)** — Módulo completo (ver detalhes abaixo)
+- **Análise por Post (`PostCards`)** — Grid com thumbnail, métricas, tipo do post
 
-### Modo VS (Comparação de Concorrentes)
+#### Módulo de Comentários (`CommentsAnalysis`)
+
+Análise de sentimento e geração de respostas com IA, com **2 fontes de atualização**:
+
+| Botão | Fonte | O que faz |
+|-------|-------|-----------|
+| **🟠 Apify (N posts)** | Apify scraper | Busca todos os comentários de todos os N posts carregados (ideal para análise completa) |
+| **🔵 Meta (só novos)** | Meta Graph API | Busca apenas comentários publicados APÓS o último já armazenado (incremental, rápido) |
+
+**Merge aditivo:** Ambas as fontes se somam — comentários do Apify nunca são apagados ao atualizar via Meta e vice-versa.
+
+**Filtros e ordenação:** Sentimento (Positivo/Neutro/Negativo/Marca), período (48h/7d/30d/Todos), e ordenação por data, likes ou sentimento.
+
+**IA de Opinião:** Botão "Analisar com IA" gera uma *Opinião da IA* curta (máx 15 palavras) para cada comentário via Google Gemini.
+
+**Sugestão de Resposta:**
+- Botão "Sugerir Respostas" gera automaticamente um texto de resposta para comentários recentes não respondidos.
+- A IA usa as **informações reais do negócio** (endereço, telefone, horário) cadastradas na conta para responder perguntas dos clientes sem usar placeholders.
+- Cada sugestão tem um **botão `×`** para limpar e solicitar uma nova geração.
+- Status da sugestão: ⏳ Pendente · ✅ Enviada · ❌ Erro
+
+**Auto-resposta robótica:** Botão "🚀 Postar" envia as respostas pendentes via Playwright (automação local).
+
+---
+
+### Aba "VS" — Comparação de Concorrentes
+
 Compara seu cliente contra 1 ou mais concorrentes lado a lado.
-- **Seleção:** Escolha "⭐ Seu Cliente" (azul) e "⚔️ Concorrentes" (laranja) entre todos os handles disponíveis.
-- **Botão "Comparar @cliente VS N concorrentes":** Dispara a análise comparativa.
-- **`ComparisonView`:** Tabelas comparativas completas com:
-  - Avatares dos perfis com botão de refresh individual.
-  - **Médias por Post:** Likes/Post, Comentários/Post, Sentimento (barra verde/cinza/vermelha), Engajamento/Post, Engajamento Qualificado, Taxa de Engajamento em Reels (%), Views/Reel.
-  - **Engajamento por Tipo de Conteúdo:** Breakdown por Posts (imagem), Reels (vídeo), Carrosséis, com setas comparativas (▲/▼ percentual contra o cliente).
-  - **Médias Temporais:** Posts/Semana, Engajamento/Semana, Likes/Semana, Comentários/Semana, Posts/Mês, Engajamento/Mês, Likes/Mês, Comentários/Mês.
-  - **Distribuição de Conteúdo (%):** Barras empilhadas mostrando o mix de Posts/Reels/Carrosséis.
-  - **Gráficos de barras animados:** Engajamento por Post e Frequência de Postagem.
-- **Comparison AI Chat:** Chatbot integrado com Google Gemini que recebe os dados de todos os perfis como contexto. Permite perguntar livremente (ex: "Por que meu engajamento caiu contra o concorrente?") e recebe respostas consultivas.
+
+- **Seleção:** "⭐ Seu Cliente" (azul) e "⚔️ Concorrentes" (laranja).
+- **`ComparisonView`:** Tabelas comparativas com:
+  - **Médias por Post:** Likes, Comentários, Sentimento, Engajamento, Taxa de Engajamento em Reels
+  - **Engajamento por Tipo de Conteúdo:** Posts/Reels/Carrosséis com setas ▲/▼ percentuais
+  - **Médias Temporais:** Posts/semana, Engajamento/semana, Posts/mês, Engajamento/mês
+  - **Distribuição de Conteúdo (%):** Barras empilhadas
+  - **Gráficos de barras animados:** Engajamento por Post e Frequência de Postagem
+- **Comparison AI Chat:** Chatbot integrado com Google Gemini usando os dados de todos os perfis como contexto.
+
+---
+
+### Aba "Minha Conta" — Analytics via Meta Graph API
+
+Análise profunda dos próprios posts usando dados **privados e precisos** da Meta (alcance real, saves, shares) — métricas que o Apify não consegue acessar.
+
+**Requisito:** Token de acesso Meta (`instagram_business_basic` + `instagram_business_manage_insights`).
+
+**Cache automático:** Os dados são salvos no banco de dados e carregam automaticamente na próxima visita. Badge indica se está exibindo cache (`💾 Cache de DD/MM`) ou dados frescos (`🔄 Atualizado em DD/MM`).
+
+#### 5 Abas Internas
+
+**1. Visão Geral**
+- 6 KPI Cards: Alcance Total, Total de Curtidas, Saves, Shares, Engajamento Real (%), Comentários
+- 3 Cards de breakdown por tipo de conteúdo (Foto / Vídeo / Carrossel) com média de alcance
+
+**2. Gráficos** *(powered by Recharts)*
+- **Timeline de Alcance** — AreaChart com Alcance + Saves + Shares de cada post ao longo do tempo (X-axis: data `dd/MM`, tooltip com caption truncada)
+- **Comparação por Tipo** — BarChart horizontal agrupado com médias de Alcance/Saves/Shares por tipo (Foto/Vídeo/Carrossel)
+- **Melhor Dia da Semana** — BarChart com alcance médio por dia (Seg–Dom), destaca automaticamente o melhor dia
+
+**3. Melhores Posts**
+- 4 tabs: **Mais Alcance · Mais Saves · Mais Shares · Mais Curtidas**
+- Cada tab: Top 5 posts com thumbnail, caption e métrica destacada
+- Seção "Menores Performances": 3 posts com pior resultado para aprender o que evitar
+- *Nota: Posts sem dados de alcance (publicados antes da conversão para conta Comercial/Criador) são excluídos com banner explicativo*
+
+**4. Hashtags**
+- Tabela de efetividade computada localmente (sem chamada de API extra):
+  - Para cada hashtag: nº de posts que a usaram, média de Alcance, média de Saves
+  - Ordenado por Alcance médio DESC
+  - Badge de performance: 🔥 Alta (top 25%) · ⚡ Média · 💤 Baixa
+  - Insight automático: "Sua hashtag #X tem Nx mais alcance que a média"
+
+**5. Estratégia IA**
+- Botão "Gerar Relatório Estratégico" → chama Gemini com todos os dados da conta
+- Relatório estruturado com 5 seções: Melhor formato, Melhor dia/horário, Top hashtags, Pontos de atenção, Ações concretas para próximas 4 semanas
+- Botão "Regenerar" após primeira geração
 
 ---
 
 ## 👥 7. Contas Instagram
 
 Tela `AccountList` para gerenciar múltiplos perfis/clientes.
-- Grid de cards com avatar, nome, handle `@usuario`.
-- **Botão `+ Nova Conta`:** Formulário para adicionar um novo perfil.
-- Após cadastro, a conta aparece em todos os filtros do sistema (Storyboard, Calendário, Analytics, Editor).
+
+### Cards de Conta
+Grid de cards com avatar, nome, handle `@usuario`, tipo de negócio (badge), endereço, telefone e horário de funcionamento (quando cadastrados).
+
+### Formulário de Conta
+Sheet lateral com os seguintes campos:
+
+**Dados básicos:**
+- Nome *(obrigatório)*, Handle/@  *(obrigatório)*, Avatar (upload de foto, máx 2MB), Senha do Instagram (para auto-login do robô)
+
+**Informações do Negócio** *(usadas pela IA para responder comentários)*:
+
+| Campo | Descrição | Exemplo |
+|-------|-----------|---------|
+| Tipo de negócio | Categoria da empresa | Restaurante, Clínica... |
+| Endereço | Endereço físico completo | Rua das Flores, 123 – SP |
+| Telefone / WhatsApp | Contato principal | (11) 99999-9999 |
+| Horário de funcionamento | Dias e horários | Seg-Sex 12h–22h |
+| Site / Cardápio / Link | URL do site ou cardápio digital | https://cardapio.empresa.com |
+| Observações extras | Informações adicionais | Pet-friendly, aceita reservas... |
+
+> **Como a IA usa essas informações:** Quando o robô gera sugestões de resposta para comentários (ex.: "qual o endereço?", "qual o horário?"), ele usa SOMENTE os dados reais cadastrados aqui — **nunca usa placeholders como `[endereço]`**. Se a informação não estiver cadastrada, orienta o cliente a entrar em contato pelo Direct.
+
+**Persistência:** Todas as informações são salvas no banco de dados SQLite e carregadas automaticamente na próxima visita. Os dados estruturados são armazenados como JSON na coluna `notes` do modelo `Account`.
+
+**Automação (Playwright):**
+- Badge de status (Conectado / Aguardando Login)
+- Botão "Conectar Agora" / "Reconectar" para abrir sessão Playwright
 
 ---
 
@@ -226,7 +294,32 @@ Tela `CollectionList` para criar agrupamentos temáticos.
 
 ---
 
-## ⚙️ 9. Configurações
+## 🔭 9. Intelligence Hub (Maps + Scraping)
+
+Central de pesquisa avançada com **3 abas**:
+
+### Aba "Extrator de Maps"
+Scraping completo de perfis do Google Maps usando Playwright:
+- **Entrada:** URL de negócio no Google Maps
+- **Processo:** Playwright navega autonomamente, extrai todos os dados da página
+- **Dados coletados:** Nome, Rating, Total de avaliações, Endereço, Telefone, Categoria, Horários de funcionamento, Highlights/características, Reviews completas com texto e rating
+- **Análise IA:** Gemini analisa as reviews e gera relatório de sentimento (positivo/negativo/neutro) + insights do negócio
+- **Persistência:** Dados salvos no banco (`MapsBusiness` model) e recuperados automaticamente
+- **Screenshots de debug:** Capturas de tela automáticas do processo (ignoradas pelo git)
+
+### Aba "VS Maps"
+Comparação lado a lado de 2 negócios do Google Maps:
+- Rating comparativo, total de reviews, análise de sentimento comparada
+- Insights da IA sobre os diferenciais competitivos
+
+### Aba "Web Scraper" (FireCrawl)
+Scraping de qualquer URL usando a API FireCrawl:
+- Converte páginas web em Markdown estruturado
+- Útil para importar dados de menus, catálogos, etc.
+
+---
+
+## ⚙️ 10. Configurações
 
 Página dividida em **5 cards organizados:**
 
@@ -234,58 +327,104 @@ Página dividida em **5 cards organizados:**
 - Botões `Claro` (☀️) e `Escuro` (🌙) para definir o tema do sistema.
 
 ### Card 2: Preferências
-- **Visualização Padrão do Calendário:** Selector com 3 opções: Mensal, Semanal, Diário. Define qual visão abre por padrão na aba Calendário.
+- **Visualização Padrão do Calendário:** Selector com 3 opções: Mensal, Semanal, Diário.
 
 ### Card 3: Automação do Instagram (Bot Local)
-- Lista todas as contas cadastradas com:
-  - Avatar, nome, handle `@`.
-  - **Status de conexão em tempo real:** Badge `Conectado` (verde pulsante) ou `Desconectado` (amarelo).
-  - **Botão "Verificar":** Checa se a sessão Playwright está ativa.
-  - **Botão "Conectar Agora" / "Reconectar"** (gradiente Instagram): Abre o navegador Chromium local para login humano do Instagram. Ao fechar, o status é atualizado automaticamente.
-- Nota de rodapé: *"A automação local utiliza Chromium na sua máquina para simular ações humanas reais com segurança."*
+- Lista todas as contas com status de conexão em tempo real (Conectado/Desconectado).
+- **Botão "Conectar Agora" / "Reconectar":** Abre o Chromium local para login do Instagram.
+- A sessão é salva em `sessions/` e ``.chrome-session-maps/` (nunca comitados ao git).
 
-### Card 4: Integrações Locais (API Keys)
-- **Google Gemini API Key:** Input mascarado (`type="password"`) com placeholder `AIzaSy...`. Descrição: "Chave necessária para gerar imagens, stories montados e legendas com IA."
-- **Apify API Key:** Input mascarado com placeholder `apify_api_...`. Descrição: "Opcional. Usado por automações em background que raspam dados não estruturados."
-- **Botão "Salvar Chaves de API":** Persiste as chaves no banco SQLite local — sem precisar editar `.env`.
+### Card 4: Integrações (API Keys)
+- **Google Gemini API Key** — para análise de IA (comentários, estratégia, insights)
+- **Apify API Key** — para scraping de perfis públicos
+- **Meta Access Token** — para acesso à Meta Graph API (métricas privadas da própria conta)
+- **FireCrawl API Key** — para web scraping via FireCrawl
+- Todas as chaves são salvas no banco SQLite local (sem precisar editar `.env`)
 
 ### Card 5: Gerenciamento de Dados
-- **Exportar Backup (JSON):** Botão que gera o download de um arquivo `ig-dashboard-export-YYYY-MM-DD.json` contendo todos os conteúdos, coleções e contas.
-- **Importar Backup:** Seletor de arquivo `.json`. Confirma antes de substituir os dados atuais. Após importação, contagem dos itens importados é exibida e a página recarrega.
-- **🔴 Zona de Perigo:** Card vermelho com botão "Resetar Tudo" que apaga todos os dados do localStorage permanentemente, com confirmação dupla.
-
-### Rodapé
-- Versão do sistema (v1.0.0), stack tecnológica e link para o repositório GitHub.
+- **Exportar Backup (JSON):** Download de todos os dados.
+- **Importar Backup:** Restaura dados de arquivo `.json`.
+- **🔴 Zona de Perigo:** Botão "Resetar Tudo" com confirmação dupla.
 
 ---
 
-## 🗄️ 10. Banco de Dados (Prisma Schema)
+## 🗄️ 11. Banco de Dados (Prisma Schema)
 
-O banco SQLite possui **6 modelos:**
+SQLite local gerenciado pelo Prisma ORM. **7 modelos:**
 
 | Modelo | Campos Principais | Uso |
 |--------|------------------|-----|
-| **Account** | id, username, password, picture, access_token | Contas Instagram |
+| **Account** | id, username, password, picture, access_token, **notes** (JSON estruturado) | Contas Instagram + info do negócio |
 | **Content** | id, title, description, type, status, scheduledAt, hashtags (JSON), mediaUrls (JSON), accountId, order | Posts/Stories/Reels |
 | **Collection** | id, name, description, color, icon, startDate, endDate | Campanhas |
 | **Competitor** | id, name, handle, avatarUrl, metrics (JSON) | Perfis concorrentes |
-| **Analytics** | id, targetId, type, data (JSON), period | Cache de métricas |
-| **Setting** | id, key, value (JSON) | Config (API keys etc) |
+| **Analytics** | id, targetId, type (`'account'`\|`'competitor'`\|`'meta'`), data (JSON), period | Cache de métricas Apify e Meta |
+| **Setting** | id, key, value (JSON) | Config (API keys, preferências) |
+| **MapsBusiness** | id, name, rating, totalReviews, address, phone, category, hours, highlights, rawMarkdown, reviews, aiAnalysis | Dados do Google Maps |
+
+> **Nota sobre `Analytics.type`:** O valor `'meta'` armazena o cache dos dados da aba "Minha Conta" (Meta Graph API), incluindo todos os posts com métricas privadas (reach, saves, shares). O `targetId` é o username da conta.
+
+> **Nota sobre `Account.notes`:** Armazena JSON com os campos estruturados do negócio (`businessType`, `address`, `phone`, `hours`, `website`, `extras`). Compatível com texto legado (string simples).
 
 ---
 
-## 📂 11. Estrutura de Pastas
+## 📂 12. Estrutura de Pastas
 
 ```plaintext
 DASHBOARD-OSS/
 ├── app/
-│   ├── dashboard/           # Páginas: Home, Storyboard, Calendar, Collections, Accounts, Analytics, Settings
-│   ├── api/                 # 8 API Routes: ai-comment-analysis, ai-import, apify, auth, automation, image-proxy, import-md, upload
-│   └── actions/             # 8 Server Actions: account, analytics, api-status, collection, competitor, content, instagram, settings
+│   ├── dashboard/           # Páginas: Home, Storyboard, Calendar, Collections, Accounts, Analytics, Intelligence, Settings
+│   ├── api/                 # 20 API Routes:
+│   │   ├── ai-comment-analysis/   # Análise de sentimento + sugestão de resposta (Gemini)
+│   │   ├── ai-import/             # Importação de dados com IA
+│   │   ├── apify/                 # Integração Apify (insights, ai-analysis, ai-comparison, status)
+│   │   ├── auth/instagram/        # OAuth Instagram + callback
+│   │   ├── automation/            # Bot Playwright (auth, respond-comments)
+│   │   ├── firecrawl/             # Web scraping via FireCrawl
+│   │   ├── image-proxy/           # Proxy de imagens externas
+│   │   ├── import-md/             # Importação via Markdown
+│   │   ├── maps-analysis/         # Análise IA de reviews do Maps
+│   │   ├── maps-scrape/           # Scraping Google Maps (Playwright)
+│   │   ├── meta-ai-strategy/      # Relatório estratégico IA (Meta + Gemini)
+│   │   ├── meta-comments/         # Busca de comentários via Meta Graph API
+│   │   ├── meta-insights/         # Métricas privadas via Meta Graph API
+│   │   └── upload/                # Upload de mídia
+│   │
+│   └── actions/             # 9 Server Actions:
+│       ├── account.actions.ts     # CRUD de contas (com notes/business info)
+│       ├── analytics.actions.ts   # Cache de métricas (Apify + Meta)
+│       ├── api-status.actions.ts  # Status das integrações
+│       ├── collection.actions.ts  # CRUD de coleções
+│       ├── competitor.actions.ts  # CRUD de concorrentes
+│       ├── content.actions.ts     # CRUD de conteúdo
+│       ├── instagram.actions.ts   # Automação e publicação
+│       ├── maps.actions.ts        # Operações com Google Maps
+│       └── settings.actions.ts    # Persistência de configurações
 │
-├── features/                # Feature Modules (Feature-Sliced Design)
-│   ├── accounts/            # AccountList, AccountFilter, AccountForm
-│   ├── analytics/           # KpiCards, PostCards, PostsTable, ComparisonView, ComparisonAIChat, InsightsPanel, TopEngagers, CommentsAnalysis, AnalyticsSearch
+├── features/                # Feature Modules
+│   ├── accounts/
+│   │   ├── components/      # AccountList, AccountFormDialog (campos estruturados)
+│   │   └── schemas/         # account.schema.ts (BusinessInfo + serialização JSON)
+│   │
+│   ├── analytics/
+│   │   └── components/
+│   │       ├── analytics-search.tsx
+│   │       ├── comments-analysis.tsx    # Análise de comentários + IA + Meta/Apify refresh
+│   │       ├── comparison-ai-chat.tsx
+│   │       ├── comparison-view.tsx
+│   │       ├── insights-panel.tsx
+│   │       ├── kpi-cards.tsx
+│   │       ├── minha-conta-view.tsx     # Analytics Meta API (5 abas)
+│   │       ├── meta-ai-strategy.tsx     # Relatório estratégico Gemini
+│   │       ├── meta-content-type-chart.tsx  # BarChart por tipo de conteúdo
+│   │       ├── meta-hashtag-analysis.tsx    # Análise de efetividade de hashtags
+│   │       ├── meta-posting-day-chart.tsx   # BarChart melhor dia da semana
+│   │       ├── meta-timeline-chart.tsx      # AreaChart timeline de alcance
+│   │       ├── meta-top-posts.tsx           # Top 5 + piores por métrica
+│   │       ├── post-cards.tsx
+│   │       ├── posts-table.tsx
+│   │       └── top-engagers.tsx
+│   │
 │   ├── calendar/            # MonthView, WeekView, DayView
 │   ├── collections/         # CollectionList, CollectionForm
 │   ├── content/             # ContentEditorDialog, TagInput, content.schema (Zod)
@@ -294,40 +433,41 @@ DASHBOARD-OSS/
 ├── components/
 │   ├── layout/              # AppSidebar, AppHeader, AppLayout, MobileSidebar, ThemeToggle
 │   ├── shared/              # CommandPalette, FilterPanel, ActiveFiltersBar, SearchBar, ApiStatusIndicator
-│   └── ui/                  # 13 Shadcn/UI components (Button, Card, Dialog, Sheet, Select, Tooltip...)
+│   └── ui/                  # Shadcn/UI components (Button, Card, Dialog, Sheet, Select, Tooltip...)
 │
-├── stores/                  # 8 Zustand Slices
+├── stores/                  # Zustand Slices (sem persist — dados vêm do banco SQLite)
 │   ├── ui-slice.ts          # Sidebar, modais, filtros globais
 │   ├── content-slice.ts     # CRUD de conteúdos
 │   ├── account-slice.ts     # CRUD de contas + automação
-│   ├── analytics-slice.ts   # Cache e state analytics
+│   ├── analytics-slice.ts   # State analytics + comentários + Meta refresh
 │   ├── calendar-slice.ts    # View, data selecionada
 │   ├── collection-slice.ts  # CRUD de coleções
 │   ├── automation-slice.ts  # Fila de publicação do robô
-│   └── settings-slice.ts    # API keys
-│
-├── hooks/                   # 4 Custom Hooks
-│   ├── use-filtered-contents.ts  # Filtragem reativa de conteúdos
-│   ├── use-keyboard-shortcut.ts  # Suporte Ctrl+K, atalhos
-│   ├── use-media-query.ts        # Responsividade
-│   └── use-theme.ts              # Tema dark/light
+│   └── settings-slice.ts    # API keys + preferências
 │
 ├── lib/
-│   ├── services/            # apify.service.ts, instagram.service.ts, scheduler.service.ts
-│   ├── repository/          # database.repository.ts, local-storage.repository.ts (dual storage)
-│   ├── utils/               # sentiment.ts (análise de sentimento local)
-│   ├── constants.ts         # CONTENT_STATUSES, CONTENT_TYPES, BOARD_COLUMNS, TYPE_BADGE_COLORS
-│   └── db.ts                # Instância global Prisma Client
+│   ├── services/
+│   │   ├── ai-adapter.ts              # Abstração multi-IA (Gemini, OpenRouter/Custom)
+│   │   ├── apify.service.ts           # Cliente Apify para scraping
+│   │   ├── firecrawl.service.ts       # Cliente FireCrawl
+│   │   ├── instagram.service.ts       # Automação Playwright do Instagram
+│   │   ├── instagram-graph.service.ts # Meta Graph API (insights, comments, token verify)
+│   │   ├── maps-playwright.service.ts # Scraping Google Maps com Playwright
+│   │   └── scheduler.service.ts       # Scheduler de publicação
+│   ├── utils/
+│   │   └── sentiment.ts               # Análise de sentimento local (sem API)
+│   ├── constants.ts                   # CONTENT_STATUSES, CONTENT_TYPES, BOARD_COLUMNS
+│   └── db.ts                          # Instância global Prisma Client
 │
-├── scripts/                 # 33 scripts standalone (automação, testes, injeção de dados, scheduler, publish-worker)
+├── hooks/                   # use-filtered-contents, use-keyboard-shortcut, use-media-query, use-theme
+├── types/                   # account.ts, analytics.ts, collection.ts, competitor.ts, content.ts, settings.ts
 ├── prisma/                  # schema.prisma (SQLite) + migrations
-├── types/                   # TypeScript types (Account, Analytics, Collection, Competitor, Content, Settings)
-└── docs/                    # PRD (prd.md), Architecture (architecture.md), User Stories
+└── docs/                    # PRD, Architecture, User Stories
 ```
 
 ---
 
-## 📦 12. Como Instalar e Rodar
+## 📦 13. Como Instalar e Rodar
 
 ### Requisitos
 - **Node.js** >= 18
@@ -340,23 +480,42 @@ pnpm install
 
 # 2. Criar variáveis de ambiente
 cp .env.example .env
-# Edite o .env com seu DATABASE_URL (SQLite já vem configurado)
+# O DATABASE_URL já vem configurado para SQLite local
 
-# 3. Gerar Prisma Client e criar tabelas
-npx prisma generate
+# 3. Criar as tabelas no banco
 npx prisma db push
 
-# 4. Iniciar o servidor
+# 4. Iniciar o servidor de desenvolvimento
 pnpm dev
 ```
+
 Abra [http://localhost:3000](http://localhost:3000) no navegador.
+
+### Configuração das Integrações (via UI)
+Após iniciar, acesse **Configurações → Card 4** e configure:
+- **Google Gemini API Key** — obrigatório para todas as funcionalidades de IA
+- **Apify API Key** — para scraping de perfis públicos e concorrentes
+- **Meta Access Token** — para a aba "Minha Conta" (métricas privadas do Instagram)
+- **FireCrawl API Key** — para o Web Scraper do Intelligence Hub
+
+### Playwright / Automação Local
+```bash
+# Instalar browsers do Playwright (necessário para automação e Maps scraping)
+npx playwright install chromium
+```
 
 ---
 
-## 🤖 13. Uso com IAs de Terminal
+## 🤖 14. Uso com IAs de Terminal
 
-O projeto foi desenhado para ser operado em conjunto com agentes de terminal (Antigravity, Cursor, Claude Code, etc). A IA pode ler o `prisma/schema.prisma`, criar scripts em `scripts/`, e popular o banco de dados diretamente. Você apenas abre o Dashboard visual, revisa no Storyboard, arrasta para Agendado e aprova.
+O projeto foi desenhado para ser operado em conjunto com agentes de terminal (Claude Code, Cursor, etc). A IA pode ler o `prisma/schema.prisma`, criar scripts em `scripts/`, e popular o banco de dados diretamente. Você apenas abre o Dashboard visual, revisa no Storyboard, arrasta para Agendado e aprova.
+
+### Segurança
+- Nenhuma API key é armazenada em arquivos do projeto — todas ficam no banco SQLite local (nunca commitado)
+- O arquivo `.env` contém apenas a `DATABASE_URL` (SQLite local) — seguro para versionar
+- Sessões Playwright, screenshots de debug, scripts de teste com dados reais e o banco SQLite estão no `.gitignore`
 
 ---
 
 > Construído com foco obsessivo em usabilidade, orquestração analítica e automação inteligente por baixo do capô.
+> Stack: **Next.js 16** · **React 19** · **TypeScript 5** · **Tailwind 4** · **Prisma 5 (SQLite)** · **Zustand 5** · **Framer Motion** · **Recharts** · **Playwright** · **Google Gemini** · **Meta Graph API** · **Apify**

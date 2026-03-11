@@ -1,10 +1,11 @@
 'use client';
 
 import { create } from 'zustand';
-import type { InstagramPostMetrics, AnalyticsSummary, CachedAnalytics } from '@/types/analytics';
+import type { InstagramPostMetrics, AnalyticsSummary, CachedAnalytics, PostComment } from '@/types/analytics';
 import { analyzeCommentsSentiment } from '@/lib/utils/sentiment';
 import { saveAnalyticsAction, getAnalyticsAction } from '@/app/actions/analytics.actions';
 import { saveCompetitorAction, getCompetitorsAction } from '@/app/actions/competitor.actions';
+import { getAccountsAction } from '@/app/actions/account.actions';
 
 interface AnalyticsSlice {
     posts: InstagramPostMetrics[];
@@ -26,11 +27,15 @@ interface AnalyticsSlice {
     fetchAndMerge: (profileUrl: string, resultsLimit?: number, period?: number) => Promise<void>;
     loadFromCache: (accountHandle: string) => Promise<boolean>;
     clearMetrics: () => void;
+    setPostsFromMeta: (posts: InstagramPostMetrics[], username: string) => void;
     generateInsights: () => Promise<void>;
     generateAiOpinions: (postShortCodes: string[]) => Promise<void>;
     updateCommentAiOpinion: (postShortCode: string, commentId: string, opinion: string) => Promise<void>;
     generateReplySuggestions: (postShortCodes: string[]) => Promise<void>;
+    clearReplySuggestion: (postShortCode: string, commentId: string) => void;
     executeAutoReplies: (replies: { postShortCode: string, commentId: string, text: string, ownerUsername?: string }[]) => Promise<void>;
+    isRefreshingComments: boolean;
+    refreshCommentsViaMeta: (token: string) => Promise<{ added: number; updated: number } | null>;
 }
 
 const CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000; // 6 horas
@@ -132,6 +137,7 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
     selectedAccountHandle: null,
     insightsHtml: null,
     isLoadingInsights: false,
+    isRefreshingComments: false,
     avatarUrl: null,
     filterPeriod: 'all',
     customDateRange: null,
@@ -289,6 +295,21 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
             profileUrl: '',
             selectedAccountHandle: null,
             insightsHtml: null,
+        });
+    },
+
+    setPostsFromMeta: (posts: InstagramPostMetrics[], username: string) => {
+        const { filterPeriod, customDateRange } = get();
+        const summary = computeSummary(posts, filterPeriod, customDateRange);
+        set({
+            posts,
+            summary,
+            lastFetchedAt: new Date().toISOString(),
+            profileUrl: `https://www.instagram.com/${username}/`,
+            selectedAccountHandle: username,
+            error: null,
+            insightsHtml: null,
+            isLoading: false,
         });
     },
 
@@ -455,17 +476,32 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
         if (targetComments.length === 0) return;
         set({ isLoadingInsights: true });
 
+        // Buscar contexto da conta para enriquecer o prompt da IA
+        let accountContext: { name?: string; handle?: string; notes?: string } = {};
         try {
-            // Reusing the AI analysis endpoint with a different prompt style or creating a new one
-            // To keep it simple and consistent with the user's AI analysis request,
-            // we'll assume the same AI endpoint can handle a "suggestion" mode if we prompt correctly,
-            // or we create a specific one for replies. Let's create a specific one for better prompt engineering.
+            const accounts = await getAccountsAction();
+            const matchedAccount = accounts.find(
+                (a) => a.handle.toLowerCase() === selectedAccountHandle.toLowerCase()
+            );
+            if (matchedAccount) {
+                accountContext = {
+                    name: matchedAccount.name,
+                    handle: matchedAccount.handle,
+                    notes: matchedAccount.notes ?? undefined,
+                };
+            }
+        } catch {
+            // Falha silenciosa — continua sem contexto
+        }
+
+        try {
             const res = await fetch('/api/ai-comment-analysis', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     comments: targetComments.slice(0, 20),
-                    mode: 'reply_suggestion'
+                    mode: 'reply_suggestion',
+                    accountContext,
                 })
             });
 
@@ -504,6 +540,23 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
         } catch (error) {
             set({ isLoadingInsights: false, error: 'Falha na conexão com a API de IA' });
         }
+    },
+
+    clearReplySuggestion: (postShortCode, commentId) => {
+        set((state) => ({
+            posts: state.posts.map((p) =>
+                p.shortCode !== postShortCode ? p : {
+                    ...p,
+                    latestComments: p.latestComments.map((c) =>
+                        c.id !== commentId ? c : {
+                            ...c,
+                            aiReplySuggestion: undefined,
+                            replyStatus: undefined,
+                        }
+                    ),
+                }
+            ),
+        }));
     },
 
     executeAutoReplies: async (replies: { postShortCode: string, commentId: string, text: string, ownerUsername?: string }[]) => {
@@ -551,6 +604,103 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
             }
         } catch (error) {
             set({ isLoadingInsights: false, error: 'Falha na conexão com a API de automação' });
+        }
+    },
+
+    refreshCommentsViaMeta: async (token: string) => {
+        const { posts, selectedAccountHandle } = get();
+        if (!posts.length || !selectedAccountHandle || !token) return null;
+
+        set({ isRefreshingComments: true, error: null });
+
+        try {
+            const shortCodes = posts.map((p) => p.shortCode).filter(Boolean);
+
+            // Calcular o `since` como o timestamp do comentário mais recente que já temos
+            // Isso garante que o Meta API só retorne comentários NOVOS (não existentes no Apify)
+            let globalMostRecent = 0;
+            posts.forEach((p) => {
+                (p.latestComments ?? []).forEach((c) => {
+                    const t = c.timestamp ? new Date(c.timestamp).getTime() : 0;
+                    if (t > globalMostRecent) globalMostRecent = t;
+                });
+            });
+            // sinceUnix: 1 segundo depois do comentário mais recente (evita buscar o próprio comentário)
+            // Se não há comentários ainda, busca últimas 48h (fallback no serviço)
+            const sinceUnix = globalMostRecent > 0
+                ? Math.floor(globalMostRecent / 1000) + 1
+                : undefined;
+
+            const res = await fetch('/api/meta-comments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, shortCodes, sinceUnix }),
+            });
+
+            const json = await res.json();
+            if (!json.success) throw new Error(json.error ?? 'Erro ao buscar comentários.');
+
+            const freshByShortCode: Record<string, PostComment[]> = {};
+            (json.data as { shortCode: string; comments: PostComment[] }[]).forEach((item) => {
+                freshByShortCode[item.shortCode] = item.comments;
+            });
+
+            let added = 0;
+            let updated = 0;
+
+            const updatedPosts = posts.map((post) => {
+                const fresh = freshByShortCode[post.shortCode];
+                // Se Meta não retornou nada para este post, mantém comentários intactos
+                if (!fresh || fresh.length === 0) return post;
+
+                const existingComments = post.latestComments ?? [];
+
+                // Mapa dos existentes para preservar dados de IA
+                const existingById = new Map<string, PostComment>();
+                existingComments.forEach((c) => existingById.set(c.id, c));
+
+                // Novos comentários do Meta (que ainda não existem no store)
+                const newComments: PostComment[] = [];
+                fresh.forEach((fc) => {
+                    if (!existingById.has(fc.id)) {
+                        added++;
+                        newComments.push(fc);
+                    } else {
+                        // Comentário já existe — atualiza only like count (pode ter mudado)
+                        updated++;
+                        const ex = existingById.get(fc.id)!;
+                        existingById.set(fc.id, {
+                            ...ex,
+                            likesCount: fc.likesCount,
+                        });
+                    }
+                });
+
+                // Merge aditivo: existentes (com dados de IA preservados) + novos do Meta
+                const merged = [
+                    ...newComments,
+                    ...Array.from(existingById.values()),
+                ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+                return { ...post, latestComments: merged };
+            });
+
+            const now = new Date().toISOString();
+            const cached: CachedAnalytics = {
+                id: `analytics-${selectedAccountHandle}`,
+                accountHandle: selectedAccountHandle,
+                posts: updatedPosts,
+                fetchedAt: now,
+            };
+            const type = selectedAccountHandle.includes('competitor') ? 'competitor' : 'account';
+            await saveAnalyticsAction(cached, type);
+
+            set({ posts: updatedPosts, isRefreshingComments: false });
+            return { added, updated };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Erro desconhecido';
+            set({ isRefreshingComments: false, error: message });
+            return null;
         }
     },
 }));

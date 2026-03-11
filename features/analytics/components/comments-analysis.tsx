@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquareQuote, Search, SlidersHorizontal, ArrowDownAZ, Heart, CornerDownRight, Sparkles, Loader2 } from 'lucide-react';
+import { MessageSquareQuote, Search, SlidersHorizontal, ArrowDownAZ, Heart, CornerDownRight, Sparkles, Loader2, RefreshCw, CheckCircle2, X } from 'lucide-react';
 import { InstagramPostMetrics, PostComment } from '@/types/analytics';
 import { useAnalyticsStore } from '@/stores/analytics-slice';
 import { analyzeSingleComment, SentimentResult } from '@/lib/utils/sentiment';
 
 interface CommentsAnalysisProps {
     posts: InstagramPostMetrics[];
+    metaToken?: string;
 }
 
 interface AnalyzedComment extends PostComment {
@@ -20,12 +21,44 @@ interface AnalyzedComment extends PostComment {
 type FilterOption = 'ALL' | 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'BRAND_REPLY' | 'SUPER_POSITIVE' | 'ELABORATED' | 'INTENT';
 type SortOption = 'RECENT' | 'ENGAGEMENT';
 
-export function CommentsAnalysis({ posts }: CommentsAnalysisProps) {
+export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
     const [filter, setFilter] = useState<FilterOption>('ALL');
     const [sort, setSort] = useState<SortOption>('ENGAGEMENT');
     const [noRecentToast, setNoRecentToast] = useState(false);
+    const [refreshResult, setRefreshResult] = useState<{ added: number; updated: number } | null>(null);
 
-    const { generateAiOpinions, generateReplySuggestions, executeAutoReplies, isLoadingInsights } = useAnalyticsStore();
+    const { generateAiOpinions, generateReplySuggestions, clearReplySuggestion, executeAutoReplies, isLoadingInsights, isRefreshingComments, refreshCommentsViaMeta, fetchAndMerge, profileUrl } = useAnalyticsStore();
+    const [isApifyRefreshing, setIsApifyRefreshing] = useState(false);
+    const [apifyResult, setApifyResult] = useState<string | null>(null);
+
+    const handleRefreshViaMeta = async () => {
+        if (!metaToken) return;
+        setRefreshResult(null);
+        const result = await refreshCommentsViaMeta(metaToken);
+        if (result) {
+            setRefreshResult(result);
+            setTimeout(() => setRefreshResult(null), 5000);
+        }
+    };
+
+    const handleRefreshViaApify = async () => {
+        if (!profileUrl) return;
+        setIsApifyRefreshing(true);
+        setApifyResult(null);
+        try {
+            // Usa a quantidade de posts já carregados como limite — garante que comentários
+            // novos em posts antigos também sejam atualizados (não apenas os N mais recentes)
+            const limit = Math.max(posts.length, 20);
+            await fetchAndMerge(profileUrl, limit);
+            setApifyResult('ok');
+            setTimeout(() => setApifyResult(null), 5000);
+        } catch {
+            setApifyResult('error');
+            setTimeout(() => setApifyResult(null), 5000);
+        } finally {
+            setIsApifyRefreshing(false);
+        }
+    };
 
     const allComments = useMemo(() => {
         const extracted: AnalyzedComment[] = [];
@@ -121,7 +154,54 @@ export function CommentsAnalysis({ posts }: CommentsAnalysisProps) {
                             <MessageSquareQuote className="h-4 w-4 text-purple-400" />
                             Raio-X de Comentários
                         </h3>
-                        <p className="text-[10px] text-muted-foreground mt-1">Análise individual baseada nos últimos comentários raspados.</p>
+                        <div className="flex items-center gap-2 mt-1">
+                            <p className="text-[10px] text-muted-foreground">Análise individual baseada nos últimos comentários raspados.</p>
+                            {/* Botão: Atualizar via Apify (sempre disponível se há conta) */}
+                            {profileUrl && (
+                                <button
+                                    onClick={handleRefreshViaApify}
+                                    disabled={isApifyRefreshing || isLoadingInsights}
+                                    title="Busca os 15 posts mais recentes via Apify para atualizar comentários"
+                                    className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/5 px-2 py-0.5 text-[10px] font-medium text-orange-400 hover:bg-orange-500/15 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                    {isApifyRefreshing ? (
+                                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                    ) : apifyResult === 'ok' ? (
+                                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />
+                                    ) : (
+                                        <RefreshCw className="h-2.5 w-2.5" />
+                                    )}
+                                    {isApifyRefreshing
+                                        ? 'Buscando...'
+                                        : apifyResult === 'ok'
+                                            ? 'Atualizado!'
+                                            : `Apify (${Math.max(posts.length, 20)} posts)`}
+                                </button>
+                            )}
+
+                            {/* Botão: Atualizar via Meta API (só se token configurado) */}
+                            {metaToken && (
+                                <button
+                                    onClick={handleRefreshViaMeta}
+                                    disabled={isRefreshingComments}
+                                    title="Busca apenas comentários NOVOS diretamente pelo Meta Graph API (mais rápido)"
+                                    className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/5 px-2 py-0.5 text-[10px] font-medium text-blue-400 hover:bg-blue-500/15 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                    {isRefreshingComments ? (
+                                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                    ) : refreshResult ? (
+                                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />
+                                    ) : (
+                                        <RefreshCw className="h-2.5 w-2.5" />
+                                    )}
+                                    {isRefreshingComments
+                                        ? 'Buscando novos...'
+                                        : refreshResult
+                                            ? `+${refreshResult.added} novos`
+                                            : 'Meta (só novos)'}
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -312,22 +392,33 @@ export function CommentsAnalysis({ posts }: CommentsAnalysisProps) {
                                                 <span className="text-[9px] font-bold text-muted-foreground flex items-center gap-1 uppercase tracking-tighter">
                                                     🤖 Sugestão de Resposta
                                                 </span>
-                                                {comment.replyStatus === 'sent' && (
-                                                    <span className="text-[9px] text-green-400 font-bold flex items-center gap-0.5"> ✅ Enviada</span>
-                                                )}
-                                                {comment.replyStatus === 'error' && (
-                                                    <span className="text-[9px] text-red-400 font-bold flex items-center gap-0.5" title={comment.replyError}> ❌ Erro</span>
-                                                )}
-                                                {comment.replyStatus === 'pending' && (() => {
-                                                    const post = posts.find(p => p.shortCode === comment.postShortCode);
-                                                    const alreadyReplied = post?.latestComments?.some(other =>
-                                                        other.ownerUsername === post.ownerUsername &&
-                                                        other.text.toLowerCase().includes(`@${comment.ownerUsername.toLowerCase()}`)
-                                                    );
-                                                    return alreadyReplied
-                                                        ? <span className="text-[9px] text-green-400 font-bold flex items-center gap-0.5"> ✅ Já respondido</span>
-                                                        : <span className="text-[9px] text-purple-400 font-bold animate-pulse"> ⏳ Pendente</span>;
-                                                })()}
+                                                <div className="flex items-center gap-1.5">
+                                                    {comment.replyStatus === 'sent' && (
+                                                        <span className="text-[9px] text-green-400 font-bold flex items-center gap-0.5"> ✅ Enviada</span>
+                                                    )}
+                                                    {comment.replyStatus === 'error' && (
+                                                        <span className="text-[9px] text-red-400 font-bold flex items-center gap-0.5" title={comment.replyError}> ❌ Erro</span>
+                                                    )}
+                                                    {comment.replyStatus === 'pending' && (() => {
+                                                        const post = posts.find(p => p.shortCode === comment.postShortCode);
+                                                        const alreadyReplied = post?.latestComments?.some(other =>
+                                                            other.ownerUsername === post.ownerUsername &&
+                                                            other.text.toLowerCase().includes(`@${comment.ownerUsername.toLowerCase()}`)
+                                                        );
+                                                        return alreadyReplied
+                                                            ? <span className="text-[9px] text-green-400 font-bold flex items-center gap-0.5"> ✅ Já respondido</span>
+                                                            : <span className="text-[9px] text-purple-400 font-bold animate-pulse"> ⏳ Pendente</span>;
+                                                    })()}
+                                                    {comment.replyStatus !== 'sent' && (
+                                                        <button
+                                                            onClick={() => clearReplySuggestion(comment.postShortCode, comment.id)}
+                                                            title="Limpar sugestão para gerar nova"
+                                                            className="ml-1 h-4 w-4 flex items-center justify-center rounded text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                                        >
+                                                            <X className="h-2.5 w-2.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                             <p className="text-[10px] text-foreground/70 leading-relaxed italic">
                                                 "{comment.aiReplySuggestion}"

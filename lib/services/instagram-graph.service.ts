@@ -1,0 +1,260 @@
+import type { InstagramPostMetrics, PostComment } from '@/types/analytics';
+
+const GRAPH_BASE = 'https://graph.instagram.com';
+const GRAPH_VERSION = 'v21.0';
+
+type MediaType = 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM' | string;
+
+const mediaTypeMap: Record<string, InstagramPostMetrics['type']> = {
+    IMAGE: 'Image',
+    VIDEO: 'Video',
+    CAROUSEL_ALBUM: 'Sidecar',
+};
+
+function extractShortCode(permalink: string): string {
+    // "https://www.instagram.com/p/CxYZ123abc/" → "CxYZ123abc"
+    const match = permalink.match(/\/p\/([^/]+)/);
+    return match?.[1] ?? '';
+}
+
+function extractHashtags(caption: string): string[] {
+    const matches = caption.match(/#[\w\u00C0-\u024F\u1E00-\u1EFF]+/g);
+    return matches ?? [];
+}
+
+interface RawMediaItem {
+    id: string;
+    caption?: string;
+    media_type: MediaType;
+    media_url?: string;
+    thumbnail_url?: string;
+    permalink: string;
+    timestamp: string;
+    like_count?: number;
+    comments_count?: number;
+    username?: string;
+}
+
+interface InsightValue {
+    name: string;
+    values?: Array<{ value: number }>;
+    value?: number;
+}
+
+/**
+ * Busca os posts e insights privados (reach, saves, shares) via Meta Graph API.
+ * Requer token com escopo: instagram_business_basic, instagram_business_manage_insights
+ */
+export async function fetchInstagramInsights(token: string, limit = 50): Promise<InstagramPostMetrics[]> {
+    // 1. Buscar lista de posts
+    const mediaUrl =
+        `${GRAPH_BASE}/${GRAPH_VERSION}/me/media` +
+        `?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,username` +
+        `&limit=${limit}` +
+        `&access_token=${token}`;
+
+    const mediaRes = await fetch(mediaUrl);
+    const mediaData = await mediaRes.json();
+
+    if (mediaData.error) {
+        throw new Error(`Meta API: ${mediaData.error.message} (código ${mediaData.error.code})`);
+    }
+
+    if (!mediaData.data || !Array.isArray(mediaData.data)) {
+        throw new Error('Meta API: resposta inesperada ao buscar posts');
+    }
+
+    const items: RawMediaItem[] = mediaData.data;
+    const posts: InstagramPostMetrics[] = [];
+
+    // 2. Para cada post, buscar insights privados
+    for (const item of items) {
+        // Métricas base (sempre disponíveis)
+        const basePost: InstagramPostMetrics = {
+            id: item.id,
+            shortCode: extractShortCode(item.permalink),
+            url: item.permalink,
+            type: mediaTypeMap[item.media_type] ?? 'Image',
+            caption: item.caption ?? '',
+            hashtags: extractHashtags(item.caption ?? ''),
+            likesCount: item.like_count ?? 0,
+            commentsCount: item.comments_count ?? 0,
+            videoViewCount: null,
+            videoPlayCount: null,
+            timestamp: item.timestamp,
+            displayUrl: item.media_url ?? item.thumbnail_url ?? '',
+            ownerUsername: item.username ?? '',
+            ownerProfilePicUrl: undefined,
+            latestComments: [],
+        };
+
+        // 3. Buscar insights avançados (reach, saves, shares, views)
+        try {
+            // Métricas variam por tipo de mídia
+            let metricsParam = 'reach,saved,shares,total_interactions';
+            if (item.media_type === 'VIDEO' || item.media_type === 'CAROUSEL_ALBUM') {
+                metricsParam += ',views';
+            }
+
+            const insightsUrl =
+                `${GRAPH_BASE}/${GRAPH_VERSION}/${item.id}/insights` +
+                `?metric=${metricsParam}` +
+                `&access_token=${token}`;
+
+            const insightsRes = await fetch(insightsUrl);
+            const insightsData = await insightsRes.json();
+
+            if (insightsData.data && Array.isArray(insightsData.data)) {
+                const insightMap: Record<string, number> = {};
+
+                insightsData.data.forEach((insight: InsightValue) => {
+                    // A API retorna o valor em `values[0].value` ou diretamente em `value`
+                    const val = insight.values?.[0]?.value ?? insight.value ?? 0;
+                    insightMap[insight.name] = typeof val === 'number' ? val : 0;
+                });
+
+                // Adicionar campos privados como propriedades extras
+                (basePost as any).reach = insightMap['reach'] ?? 0;
+                (basePost as any).saved = insightMap['saved'] ?? 0;
+                (basePost as any).shares = insightMap['shares'] ?? 0;
+                (basePost as any).totalInteractions = insightMap['total_interactions'] ?? 0;
+                (basePost as any).source = 'meta';
+
+                // Views para vídeos/reels
+                if (insightMap['views'] != null) {
+                    basePost.videoViewCount = insightMap['views'];
+                }
+            }
+        } catch (insightErr) {
+            console.warn(`[MetaGraph] Não foi possível buscar insights para ${item.id}:`, insightErr);
+            // Continua sem insights avançados — post ainda é incluído
+        }
+
+        // Calcular engagement rate (likes + comments) / reach * 100
+        const reach = (basePost as any).reach ?? 0;
+        if (reach > 0) {
+            basePost.engagementRate =
+                ((basePost.likesCount + basePost.commentsCount) / reach) * 100;
+        }
+
+        posts.push(basePost);
+    }
+
+    return posts;
+}
+
+interface RawComment {
+    id: string;
+    text: string;
+    username: string;
+    timestamp: string;
+    like_count?: number;
+}
+
+/**
+ * Busca comentários recentes dos posts via Meta Graph API.
+ * Usa o parâmetro `since` para buscar apenas comentários NOVOS após o timestamp informado.
+ * Retorna comentários ordenados do mais recente para o mais antigo.
+ *
+ * @param sinceUnix  Timestamp Unix (segundos). Se fornecido, busca apenas comentários após essa data.
+ *                   Permite pular os comentários antigos que o Apify já possui.
+ */
+export async function fetchPostComments(
+    token: string,
+    shortCodes?: string[],
+    sinceUnix?: number,
+): Promise<{ shortCode: string; comments: PostComment[] }[]> {
+    // 1. Buscar lista de mídia com IDs do Meta (necessários para buscar comentários)
+    const mediaItems: { id: string; shortCode: string }[] = [];
+    let nextUrl: string | null =
+        `${GRAPH_BASE}/${GRAPH_VERSION}/me/media?fields=id,permalink&limit=50&access_token=${token}`;
+    let pages = 0;
+
+    while (nextUrl && pages < 5) {
+        const mediaPageRes: Response = await fetch(nextUrl);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: any = await mediaPageRes.json();
+        if (data.error) throw new Error(`Meta API: ${data.error.message} (código ${data.error.code})`);
+
+        for (const item of data.data ?? []) {
+            const sc = extractShortCode(item.permalink);
+            if (!shortCodes || shortCodes.includes(sc)) {
+                mediaItems.push({ id: item.id, shortCode: sc });
+            }
+        }
+        nextUrl = data.paging?.next ?? null;
+        pages++;
+
+        // Para cedo se já temos todos os shortcodes pedidos
+        if (shortCodes && mediaItems.length >= shortCodes.length) break;
+    }
+
+    // 2. Para cada mídia encontrada, buscar comentários
+    const results: { shortCode: string; comments: PostComment[] }[] = [];
+
+    // Parâmetro `since`: Meta API retorna comentários em ordem cronológica (mais antigo primeiro).
+    // Usando `since` pulamos diretamente para os comentários mais novos.
+    // Se não há `since`, buscamos últimas 48h para garantir comentários recentes.
+    const sinceParam = sinceUnix
+        ? `&since=${sinceUnix}`
+        : `&since=${Math.floor((Date.now() - 48 * 60 * 60 * 1000) / 1000)}`;
+
+    for (const media of mediaItems) {
+        try {
+            // Usando `since` o Meta API já filtra apenas comentários após aquele momento.
+            // Paginar até 3 páginas (150 comentários recentes) é suficiente com esse filtro.
+            const allComments: PostComment[] = [];
+            let commentNextUrl: string | null =
+                `${GRAPH_BASE}/${GRAPH_VERSION}/${media.id}/comments` +
+                `?fields=id,text,username,timestamp,like_count&limit=50${sinceParam}&access_token=${token}`;
+            let commentPages = 0;
+
+            while (commentNextUrl && commentPages < 3) {
+                const commentRes: Response = await fetch(commentNextUrl);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const commentData: any = await commentRes.json();
+
+                if (commentData.error || !Array.isArray(commentData.data)) break;
+
+                const batch: PostComment[] = (commentData.data as RawComment[]).map((c) => ({
+                    id: c.id,
+                    text: c.text,
+                    ownerUsername: c.username,
+                    timestamp: c.timestamp,
+                    likesCount: c.like_count ?? 0,
+                }));
+
+                allComments.push(...batch);
+                commentNextUrl = commentData.paging?.next ?? null;
+                commentPages++;
+            }
+
+            // Ordenar do mais recente para o mais antigo (Meta retorna mais antigos primeiro)
+            allComments.sort(
+                (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
+
+            results.push({ shortCode: media.shortCode, comments: allComments });
+        } catch {
+            // Segue para o próximo post se um falhar
+        }
+    }
+
+    return results;
+}
+
+/**
+ * Verifica se um token Meta está válido fazendo uma requisição leve.
+ */
+export async function verifyMetaToken(token: string): Promise<{ valid: boolean; username?: string }> {
+    try {
+        const res = await fetch(
+            `${GRAPH_BASE}/${GRAPH_VERSION}/me?fields=username&access_token=${token}`
+        );
+        const data = await res.json();
+        if (data.error) return { valid: false };
+        return { valid: true, username: data.username };
+    } catch {
+        return { valid: false };
+    }
+}

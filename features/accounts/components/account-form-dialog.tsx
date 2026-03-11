@@ -4,9 +4,15 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Save, X, Trash2, Camera, Eye, EyeOff } from 'lucide-react';
+import { Save, X, Trash2, Camera, Eye, EyeOff, MapPin, Phone, Clock, Globe, Info, Briefcase } from 'lucide-react';
 import { useAccountStore } from '@/stores';
-import { accountSchema, type AccountFormData } from '../schemas/account.schema';
+import {
+    accountSchema,
+    type AccountFormData,
+    type BusinessInfo,
+    serializeBusinessInfo,
+    parseBusinessInfo,
+} from '../schemas/account.schema';
 import { saveAccountAction } from '@/app/actions/account.actions';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,6 +30,7 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
     const { addAccount, updateAccount, deleteAccount, connectAutomation } = useAccountStore();
     const [avatarPreview, setAvatarPreview] = useState<string | null>(account?.avatarUrl || null);
     const [showPassword, setShowPassword] = useState(false);
+    const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({});
 
     const {
         register,
@@ -41,7 +48,6 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
         },
     });
 
-    // Reset form when opened with an account or account changes
     useEffect(() => {
         if (open) {
             reset({
@@ -51,19 +57,26 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
                 notes: account?.notes || null,
             });
             setAvatarPreview(account?.avatarUrl || null);
+            setBusinessInfo(parseBusinessInfo(account?.notes ?? null));
         }
     }, [open, account, reset]);
 
+    const updateField = (field: keyof BusinessInfo, value: string) => {
+        setBusinessInfo((prev) => ({ ...prev, [field]: value }));
+    };
+
     const onSubmit = (data: AccountFormData) => {
-        // Format handle to always start with @ and be lowercase without spaces
         const formattedHandle = data.handle.startsWith('@')
             ? data.handle.replace(/\s/g, '').toLowerCase()
             : `@${data.handle.replace(/\s/g, '').toLowerCase()}`;
+
+        const serializedNotes = serializeBusinessInfo(businessInfo);
 
         const formattedData = {
             ...data,
             handle: formattedHandle,
             avatarUrl: avatarPreview,
+            notes: serializedNotes,
         };
 
         if (isEditing) {
@@ -74,9 +87,7 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
             toast.success('Conta criada!');
         }
 
-        // Sincronizar silenciosamente a conta e senha (se houver) no Prisma para uso da Automação (Backend)
         saveAccountAction(formattedData as any).catch(console.error);
-
         handleClose();
     };
 
@@ -93,6 +104,7 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
         onOpenChange(false);
         reset();
         setAvatarPreview(null);
+        setBusinessInfo({});
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,7 +189,7 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
                             </label>
                             <div className="relative mt-1.5">
                                 <Input
-                                    type={showPassword ? "text" : "password"}
+                                    type={showPassword ? 'text' : 'password'}
                                     {...register('password')}
                                     placeholder="Senha do Instagram"
                                     autoComplete="new-password"
@@ -192,19 +204,107 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
                                 </button>
                             </div>
                             <p className="mt-1.5 text-[11px] text-muted-foreground leading-tight">
-                                Informar a senha permite que o robô faça login sozinho se a sessão da conta expirar durante uma postagem.
+                                Informar a senha permite que o robô faça login sozinho se a sessão expirar.
                             </p>
                         </div>
 
-                        {/* Notes */}
-                        <div>
-                            <label className="text-sm font-medium">Notas da Conta</label>
-                            <textarea
-                                {...register('notes')}
-                                placeholder="Informações adicionais, hashtags padrão, links..."
-                                rows={4}
-                                className="mt-1.5 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                            />
+                        {/* Business Info Section */}
+                        <div className="pt-1">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Info className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">Informações do Negócio</span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mb-3 leading-tight">
+                                Essas informações são usadas pela IA para sugerir respostas mais precisas aos comentários dos clientes.
+                            </p>
+
+                            <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                                {/* Tipo de negócio */}
+                                <div>
+                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
+                                        <Briefcase className="h-3 w-3" />
+                                        Tipo de negócio
+                                    </label>
+                                    <Input
+                                        value={businessInfo.businessType ?? ''}
+                                        onChange={(e) => updateField('businessType', e.target.value)}
+                                        placeholder="Ex: Restaurante, Loja de roupas, Clínica..."
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+
+                                {/* Endereço */}
+                                <div>
+                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
+                                        <MapPin className="h-3 w-3" />
+                                        Endereço
+                                    </label>
+                                    <Input
+                                        value={businessInfo.address ?? ''}
+                                        onChange={(e) => updateField('address', e.target.value)}
+                                        placeholder="Ex: Rua das Flores, 123 – São Paulo, SP"
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+
+                                {/* Telefone */}
+                                <div>
+                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
+                                        <Phone className="h-3 w-3" />
+                                        Telefone / WhatsApp
+                                    </label>
+                                    <Input
+                                        value={businessInfo.phone ?? ''}
+                                        onChange={(e) => updateField('phone', e.target.value)}
+                                        placeholder="Ex: (11) 99999-9999"
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+
+                                {/* Horário */}
+                                <div>
+                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
+                                        <Clock className="h-3 w-3" />
+                                        Horário de funcionamento
+                                    </label>
+                                    <textarea
+                                        value={businessInfo.hours ?? ''}
+                                        onChange={(e) => updateField('hours', e.target.value)}
+                                        placeholder="Ex: Seg-Sex das 12h às 22h&#10;Sáb das 12h às 23h&#10;Dom fechado"
+                                        rows={2}
+                                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                    />
+                                </div>
+
+                                {/* Site / Cardápio */}
+                                <div>
+                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
+                                        <Globe className="h-3 w-3" />
+                                        Site / Cardápio / Link
+                                    </label>
+                                    <Input
+                                        value={businessInfo.website ?? ''}
+                                        onChange={(e) => updateField('website', e.target.value)}
+                                        placeholder="Ex: https://cardapio.minhaempresa.com"
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+
+                                {/* Observações */}
+                                <div>
+                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
+                                        <Info className="h-3 w-3" />
+                                        Observações extras
+                                    </label>
+                                    <textarea
+                                        value={businessInfo.extras ?? ''}
+                                        onChange={(e) => updateField('extras', e.target.value)}
+                                        placeholder="Ex: Aceitamos reservas pelo WhatsApp, temos estacionamento, somos pet-friendly..."
+                                        rows={3}
+                                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* Automation Status */}
@@ -227,7 +327,7 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
                                             const ok = await connectAutomation(account.id);
                                             if (!ok) toast.error('Falha ao abrir janela de login.');
                                         }}
-                                        className="h-7 text-[10px] px-2 h-7"
+                                        className="h-7 text-[10px] px-2"
                                     >
                                         {account.isAutomationConnected ? 'Reconectar' : 'Conectar Agora'}
                                     </Button>

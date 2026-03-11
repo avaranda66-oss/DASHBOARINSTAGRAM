@@ -36,12 +36,21 @@ export const useAccountStore = create<AccountSlice>()((set, get) => ({
 
     loadAccounts: async () => {
         // Tenta migrar do localStorage se ainda houver dados lá
+        // NOTA: nunca sobrescreve notes com null — preserva notas já salvas no banco
         const localData = typeof window !== 'undefined' ? localStorage.getItem('ig-dashboard:accounts') : null;
         if (localData) {
             try {
                 const localAccounts: Account[] = JSON.parse(localData);
+                // Carrega dados do banco primeiro para não perder notes já salvas
+                const existingDbAccounts = await getAccountsAction();
+                const dbNotesByHandle = new Map(
+                    existingDbAccounts.map((a) => [a.handle.replace('@', '').toLowerCase(), a.notes])
+                );
                 for (const acc of localAccounts) {
-                    await saveAccountAction(acc);
+                    const handle = acc.handle.replace('@', '').toLowerCase();
+                    // Preserva notes do banco se o acc local não tiver notes
+                    const mergedAcc = { ...acc, notes: acc.notes ?? dbNotesByHandle.get(handle) ?? null };
+                    await saveAccountAction(mergedAcc);
                 }
                 localStorage.removeItem('ig-dashboard:accounts');
             } catch (e) {

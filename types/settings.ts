@@ -11,4 +11,8 @@ export interface UserSettings {
     aiModel?: string;
     antigravityApiKey?: string;
     antigravityBaseUrl?: string;
+    // Meta Graph API
+    metaAccessToken?: string;
+    metaTokenExpiresAt?: number; // Unix timestamp
+    metaUsername?: string;
 }

@@ -11,7 +11,7 @@ export async function getAccountsAction(): Promise<Account[]> {
         name: acc.username || acc.providerAccountId,
         handle: `@${acc.providerAccountId}`,
         avatarUrl: acc.picture,
-        notes: null,
+        notes: acc.notes ?? null,
         password: acc.password,
         oauthToken: acc.access_token,
         isAutomationConnected: false, // Will be checked by store
@@ -34,12 +34,14 @@ export async function saveAccountAction(account: Account) {
                 password: account.password || null,
                 picture: account.avatarUrl || null,
                 access_token: account.oauthToken || null,
+                notes: account.notes ?? null,
             },
             update: {
                 username: account.name || undefined,
                 password: account.password || undefined,
                 picture: account.avatarUrl || undefined,
                 access_token: account.oauthToken || undefined,
+                notes: account.notes ?? null,
             }
         });
 

@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { useContentStore, useCollectionStore, useAccountStore, useCalendarStore, useSettingsStore } from '@/stores';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Moon, Sun, Download, Upload, Trash2, Calendar, Monitor, Smartphone, Github, Instagram, ExternalLink, ShieldCheck, ShieldAlert, Key } from 'lucide-react';
+import { Moon, Sun, Download, Upload, Trash2, Calendar, Monitor, Smartphone, Github, Instagram, ExternalLink, ShieldCheck, ShieldAlert, Key, Zap, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { checkInstagramLoginAction, loginInstagramAction } from '@/app/actions/instagram.actions';
 
 const exportSchema = z.object({
@@ -39,8 +39,34 @@ export default function SettingsPage() {
     const [antigravityKey, setAntigravityKey] = useState('');
     const [antigravityBaseUrl, setAntigravityBaseUrl] = useState('');
 
+    // Meta API state
+    const [metaToken, setMetaToken] = useState('');
+    const [isSavingMeta, setIsSavingMeta] = useState(false);
+    const [isVerifyingMeta, setIsVerifyingMeta] = useState(false);
+
     useEffect(() => {
         settingsStore.loadSettings();
+
+        // Feedback de OAuth redirect
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const success = params.get('success');
+            const oauthError = params.get('error');
+            const oauthUsername = params.get('username');
+
+            if (success === 'meta_connected') {
+                toast.success(`Meta API conectada${oauthUsername ? ` como @${oauthUsername}` : ''}!`);
+                window.history.replaceState({}, '', '/dashboard/settings');
+            } else if (oauthError) {
+                const messages: Record<string, string> = {
+                    oauth_denied: 'Permissão negada. Tente novamente.',
+                    no_code: 'Código de autorização não recebido.',
+                    auth_failed: 'Falha na autenticação. Verifique as credenciais do App.',
+                };
+                toast.error(messages[oauthError] ?? 'Erro no fluxo OAuth.');
+                window.history.replaceState({}, '', '/dashboard/settings');
+            }
+        }
     }, []);
 
     useEffect(() => {
@@ -52,8 +78,70 @@ export default function SettingsPage() {
             setAiModel(settingsStore.settings.aiModel || 'gemini-2.5-flash');
             setAntigravityKey(settingsStore.settings.antigravityApiKey || '');
             setAntigravityBaseUrl(settingsStore.settings.antigravityBaseUrl || '');
+            setMetaToken(settingsStore.settings.metaAccessToken || '');
         }
     }, [settingsStore.settings]);
+
+    // Helpers Meta API
+    const metaConnected = !!settingsStore.settings?.metaAccessToken;
+    const metaUsername = settingsStore.settings?.metaUsername;
+    const metaExpiresAt = settingsStore.settings?.metaTokenExpiresAt;
+    const metaExpiresDate = metaExpiresAt ? new Date(metaExpiresAt * 1000) : null;
+    const metaExpiringSoon = metaExpiresAt
+        ? metaExpiresAt - Math.floor(Date.now() / 1000) < 7 * 24 * 60 * 60
+        : false;
+
+    const handleSaveMetaToken = async () => {
+        if (!metaToken.trim()) {
+            toast.error('Cole o token de acesso antes de salvar.');
+            return;
+        }
+        setIsSavingMeta(true);
+        try {
+            // Verificar token via API antes de salvar
+            const res = await fetch(`/api/meta-insights?token=${encodeURIComponent(metaToken.trim())}`);
+            const json = await res.json();
+            if (!json.success) {
+                toast.error('Token inválido ou expirado. Verifique e tente novamente.');
+                return;
+            }
+            // Salvar com expiração estimada de 60 dias a partir de agora
+            const expiresAt = Math.floor(Date.now() / 1000) + 60 * 24 * 60 * 60;
+            await settingsStore.updateMetaToken(metaToken.trim(), expiresAt, json.username);
+            toast.success(`Meta API conectada! Conta @${json.username || 'desconhecida'}`);
+        } catch {
+            toast.error('Erro ao verificar o token Meta.');
+        } finally {
+            setIsSavingMeta(false);
+        }
+    };
+
+    const handleDisconnectMeta = async () => {
+        const ok = window.confirm('Desconectar conta Meta API? Você precisará reconectar para usar métricas privadas.');
+        if (!ok) return;
+        await settingsStore.clearMetaToken();
+        setMetaToken('');
+        toast.success('Conta Meta API desconectada.');
+    };
+
+    const handleVerifyMeta = async () => {
+        const token = settingsStore.settings?.metaAccessToken;
+        if (!token) return;
+        setIsVerifyingMeta(true);
+        try {
+            const res = await fetch(`/api/meta-insights?token=${encodeURIComponent(token)}`);
+            const json = await res.json();
+            if (json.success) {
+                toast.success(`Token válido! Conta @${json.username}`);
+            } else {
+                toast.error('Token expirado ou inválido. Reconecte sua conta.');
+            }
+        } catch {
+            toast.error('Erro ao verificar token.');
+        } finally {
+            setIsVerifyingMeta(false);
+        }
+    };
 
     const handleSaveApiKeys = async () => {
         setIsCheckingIg(true);
@@ -341,6 +429,129 @@ export default function SettingsPage() {
                         <p className="text-[10px] text-muted-foreground italic px-1 pt-2">
                             A automação local utiliza Chromium na sua máquina para simular ações humanas reais com segurança.
                         </p>
+                    </CardContent>
+                </Card>
+
+                {/* Meta API */}
+                <Card className="border-border">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Zap className="h-5 w-5 text-blue-500" />
+                            Meta API Oficial
+                            {metaConnected && (
+                                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-bold text-green-500 border border-green-500/20">
+                                    <CheckCircle2 className="h-3 w-3" /> CONECTADO
+                                </span>
+                            )}
+                        </CardTitle>
+                        <CardDescription>
+                            Acesse métricas privadas da sua conta: alcance real, saves, compartilhamentos e muito mais — dados que o Apify não consegue obter.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {metaConnected && (
+                            <div className={`flex items-start gap-3 rounded-lg p-3 border ${metaExpiringSoon ? 'bg-amber-500/5 border-amber-500/20' : 'bg-green-500/5 border-green-500/20'}`}>
+                                <div className="mt-0.5">
+                                    {metaExpiringSoon
+                                        ? <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                        : <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    }
+                                </div>
+                                <div className="flex-1 space-y-0.5">
+                                    <p className="text-sm font-medium">
+                                        {metaUsername ? `@${metaUsername}` : 'Conta conectada'}
+                                    </p>
+                                    {metaExpiresDate && (
+                                        <p className={`text-xs ${metaExpiringSoon ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                                            {metaExpiringSoon ? '⚠️ Token expira em breve — ' : 'Token válido até '}
+                                            {metaExpiresDate.toLocaleDateString('pt-BR')}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-[10px]"
+                                        onClick={handleVerifyMeta}
+                                        disabled={isVerifyingMeta}
+                                    >
+                                        {isVerifyingMeta ? 'Verificando...' : 'Verificar'}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-[10px] text-destructive hover:text-destructive"
+                                        onClick={handleDisconnectMeta}
+                                    >
+                                        <XCircle className="h-3 w-3 mr-1" /> Desconectar
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-3 max-w-lg">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">
+                                    Token de Acesso (Long-lived Token)
+                                </label>
+                                <input
+                                    type="password"
+                                    placeholder="IGAAY..."
+                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    value={metaToken}
+                                    onChange={(e) => setMetaToken(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Cole aqui seu Long-lived Token do Instagram (válido por 60 dias).
+                                    Obtenha em{' '}
+                                    <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                                        Graph API Explorer
+                                    </a>.
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    onClick={handleSaveMetaToken}
+                                    disabled={isSavingMeta || !metaToken.trim()}
+                                    size="sm"
+                                >
+                                    {isSavingMeta ? 'Verificando...' : metaConnected ? 'Atualizar Token' : 'Salvar e Conectar'}
+                                </Button>
+                                {process.env.NEXT_PUBLIC_APP_URL && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => window.location.href = '/api/auth/instagram'}
+                                    >
+                                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                                        Conectar via OAuth
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="rounded-lg bg-blue-500/5 border border-blue-500/10 p-3 space-y-1.5">
+                            <p className="text-xs font-medium text-blue-400">O que a Meta API oferece vs Apify:</p>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                {[
+                                    { label: 'Alcance real (reach)', meta: true, apify: false },
+                                    { label: 'Saves', meta: true, apify: false },
+                                    { label: 'Compartilhamentos', meta: true, apify: false },
+                                    { label: 'Total interações', meta: true, apify: false },
+                                    { label: 'Métricas de concorrentes', meta: false, apify: true },
+                                    { label: 'Sem limite de posts', meta: false, apify: true },
+                                ].map((row) => (
+                                    <div key={row.label} className="flex items-center gap-1.5">
+                                        <span className={`text-[10px] font-bold ${row.meta ? 'text-green-500' : 'text-muted-foreground/40'}`}>
+                                            {row.meta ? '✓' : '✗'}
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground">{row.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
 

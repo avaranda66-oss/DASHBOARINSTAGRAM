@@ -11,6 +11,8 @@ interface SettingsState {
     loadSettings: () => Promise<void>;
     updateApiKeys: (apifyKey?: string, geminiKey?: string, firecrawlKey?: string) => Promise<void>;
     updateAISettings: (aiProvider: string, aiModel: string, antigravityApiKey?: string, antigravityBaseUrl?: string) => Promise<void>;
+    updateMetaToken: (token: string, expiresAt?: number, username?: string) => Promise<void>;
+    clearMetaToken: () => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -97,6 +99,48 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             set({ settings: updatedSettings });
         } catch (error) {
             console.error('Failed to update AI settings:', error);
+        }
+    },
+
+    updateMetaToken: async (token: string, expiresAt?: number, username?: string) => {
+        const current = get().settings;
+        if (!current) return;
+
+        const updatedSettings = {
+            ...current,
+            id: SETTINGS_ID,
+            metaAccessToken: token,
+            metaTokenExpiresAt: expiresAt,
+            metaUsername: username ?? current.metaUsername,
+        };
+
+        try {
+            await settingsRepository.save(updatedSettings);
+            await saveSettingAction(SETTINGS_ID, JSON.stringify(updatedSettings));
+            set({ settings: updatedSettings });
+        } catch (error) {
+            console.error('Failed to update Meta token:', error);
+        }
+    },
+
+    clearMetaToken: async () => {
+        const current = get().settings;
+        if (!current) return;
+
+        const updatedSettings = {
+            ...current,
+            id: SETTINGS_ID,
+            metaAccessToken: undefined,
+            metaTokenExpiresAt: undefined,
+            metaUsername: undefined,
+        };
+
+        try {
+            await settingsRepository.save(updatedSettings);
+            await saveSettingAction(SETTINGS_ID, JSON.stringify(updatedSettings));
+            set({ settings: updatedSettings });
+        } catch (error) {
+            console.error('Failed to clear Meta token:', error);
         }
     },
 }));
