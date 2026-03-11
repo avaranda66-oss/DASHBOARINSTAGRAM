@@ -123,10 +123,6 @@ export default function IntelligencePage() {
     const [scraperUrl, setScraperUrl] = useState('');
     const [scraperLoading, setScraperLoading] = useState(false);
     const [scraperResult, setScraperResult] = useState<ScrapeResult | null>(null);
-    // Instagram
-    const [igHandle, setIgHandle] = useState('');
-    const [igLoading, setIgLoading] = useState(false);
-    const [igResult, setIgResult] = useState<ScrapeResult | null>(null);
     // Maps
     const [mapsQuery, setMapsQuery] = useState('');
     const [mapsLoading, setMapsLoading] = useState(false);
@@ -138,7 +134,7 @@ export default function IntelligencePage() {
     const [editingReviews, setEditingReviews] = useState<string | null>(null);
     const [reviewInput, setReviewInput] = useState('');
     // Tabs
-    const [activeTab, setActiveTab] = useState<'scraper' | 'instagram' | 'maps'>('maps');
+    const [activeTab, setActiveTab] = useState<'scraper' | 'maps'>('maps');
     const [mapsSubTab, setMapsSubTab] = useState<'search' | 'saved' | 'vs'>('search');
     // VS Comparison
     const [vsSelection, setVsSelection] = useState<string[]>([]);
@@ -170,16 +166,7 @@ export default function IntelligencePage() {
         finally { setScraperLoading(false); }
     };
 
-    const handleInstagram = async () => {
-        if (!igHandle.trim()) { toast.error('Digite URL.'); return; }
-        setIgLoading(true); setIgResult(null);
-        try {
-            const result = await callFirecrawl(igHandle, 'instagram');
-            setIgResult(result);
-            result.success ? toast.success('Analisado!') : toast.error(result.error || 'Erro.');
-        } catch (e: any) { toast.error(e.message); }
-        finally { setIgLoading(false); }
-    };
+
 
     const handleMaps = async () => {
         if (!mapsQuery.trim()) { toast.error('Digite um negócio.'); return; }
@@ -301,9 +288,8 @@ export default function IntelligencePage() {
         !r ? 'text-muted-foreground' : r >= 4.5 ? 'text-green-500' : r >= 4.0 ? 'text-blue-500' : r >= 3.0 ? 'text-yellow-500' : 'text-red-500';
 
     const tabs = [
+        { id: 'maps' as const, label: 'Métricas Google Maps', icon: MapPin, color: 'text-green-500' },
         { id: 'scraper' as const, label: 'Scraper Universal', icon: Globe, color: 'text-blue-500' },
-        { id: 'instagram' as const, label: 'Concorrente IG', icon: Instagram, color: 'text-pink-500' },
-        { id: 'maps' as const, label: 'Google Maps Intel', icon: MapPin, color: 'text-green-500' },
     ];
 
     const vsBusinesses = savedBusinesses.filter(b => vsSelection.includes(b.id!));
@@ -314,10 +300,10 @@ export default function IntelligencePage() {
             <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                     <Radar className="h-6 w-6 text-orange-500" />
-                    Inteligência Competitiva
+                    Métricas Google Maps & Inteligência
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                    Análise de mercado powered by <Badge variant="outline" className="ml-1 text-orange-500 border-orange-500/30"><Flame className="h-3 w-3 mr-1" />Firecrawl</Badge>
+                    Ferramentas de extração competitiva via Playwright e <Badge variant="outline" className="ml-1 text-orange-500 border-orange-500/30"><Flame className="h-3 w-3 mr-1" />Firecrawl</Badge>
                 </p>
             </div>
 
@@ -371,45 +357,6 @@ export default function IntelligencePage() {
                 </div>
             )}
 
-            {/* ==================== INSTAGRAM ==================== */}
-            {activeTab === 'instagram' && (
-                <div className="space-y-4">
-                    <Card className="border-pink-500/20">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-lg"><Instagram className="h-5 w-5 text-pink-500" />Análise de Concorrente Instagram</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 mb-4">
-                                <div className="flex items-start gap-3">
-                                    <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-                                    <div className="text-sm">
-                                        <p className="font-medium text-amber-600 dark:text-amber-400">Limitação do Firecrawl</p>
-                                        <p className="text-muted-foreground mt-1">O Firecrawl <strong>não suporta Instagram</strong>. Use a aba <strong>Métricas</strong> (Apify) para análise de perfis.</p>
-                                        <p className="text-muted-foreground mt-1">Porém, você pode scrape de sites como <code>socialblade.com</code> ou <code>not-just-analytics.com</code>.</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <Input placeholder="https://socialblade.com/instagram/user/concorrente" value={igHandle} onChange={e => setIgHandle(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleInstagram()} className="flex-1" />
-                                <Button onClick={handleInstagram} disabled={igLoading} className="instagram-gradient border-0 text-white">
-                                    {igLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    {igResult && (
-                        <Card>
-                            <CardContent className="pt-6">
-                                {igResult.success ? (
-                                    <div className="max-h-[500px] overflow-y-auto rounded-lg bg-muted/50 p-4 text-sm font-mono whitespace-pre-wrap break-words">{igResult.data?.markdown || 'Sem conteúdo.'}</div>
-                                ) : (
-                                    <div className="flex items-center gap-2 text-destructive text-sm"><AlertCircle className="h-4 w-4" />{igResult.error}</div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-            )}
 
             {/* ==================== GOOGLE MAPS INTEL ==================== */}
             {activeTab === 'maps' && (
@@ -434,7 +381,7 @@ export default function IntelligencePage() {
                         <>
                             <Card className="border-green-500/20">
                                 <CardHeader className="pb-3">
-                                    <CardTitle className="flex items-center gap-2 text-lg"><MapPin className="h-5 w-5 text-green-500" />Google Maps Intelligence</CardTitle>
+                                    <CardTitle className="flex items-center gap-2 text-lg"><MapPin className="h-5 w-5 text-green-500" />Métricas Google Maps</CardTitle>
                                     <CardDescription>Pesquise um negócio e salve para comparar depois.</CardDescription>
                                 </CardHeader>
                                 <CardContent>

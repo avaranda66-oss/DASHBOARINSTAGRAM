@@ -17,7 +17,7 @@ export class InstagramService {
     /**
      * Inicia o navegador com a sessão salva de um usuário específico.
      */
-    private static async getContext(username?: string, headless: boolean = true): Promise<{ browser: any, context: BrowserContext }> {
+    private static async getContext(username?: string, headless: boolean = true, isDesktop: boolean = false): Promise<{ browser: any, context: BrowserContext }> {
         if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 
         const browser = await chromium.launch({
@@ -26,7 +26,10 @@ export class InstagramService {
             args: ['--disable-blink-features=AutomationControlled', '--disable-infobars', '--no-sandbox']
         });
 
-        const contextOptions: any = {
+        const contextOptions: any = isDesktop ? {
+            viewport: { width: 1280, height: 800 },
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        } : {
             viewport: { width: 412, height: 915 }, // Dimensões modernas do S24 Ultra
             hasTouch: true,
             isMobile: true,
@@ -51,7 +54,7 @@ export class InstagramService {
     static async getCurrentUserHandle(context: BrowserContext): Promise<string | null> {
         const page = context.pages().length > 0 ? context.pages()[0] : await context.newPage();
         try {
-            await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle' });
+            await page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => { });
             const profileLink = page.locator('a[href^="/"][href$="/"]').filter({ has: page.locator('img') }).first();
             const href = await profileLink.getAttribute('href');
             const handle = href ? href.replace(/\//g, '') : null;
@@ -78,7 +81,7 @@ export class InstagramService {
 
         // Se não estivermos no Instagram, vamos para a home
         if (!page.url().includes('instagram.com')) {
-            await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle' });
+            await page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => { });
         }
 
         const currentHandle = await this.getCurrentUserHandle(context);
@@ -508,6 +511,160 @@ export class InstagramService {
             await page.waitForTimeout(5000);
 
             // Salva a sessão atualizada após o sucesso
+            const sessionPath = path.join(SESSIONS_DIR, `${handle}.json`);
+            await context.storageState({ path: sessionPath });
+
+            return true;
+        } catch (error: any) {
+            console.error("Instagram Bot Error:", error.message);
+            throw error;
+        } finally {
+            await context.close();
+            await browser.close();
+        }
+    }
+
+    static async publishReel(username: string, videoUrl: string, caption: string, headless: boolean = false): Promise<boolean> {
+        const cleanUrl = videoUrl.startsWith('/') ? videoUrl.slice(1) : videoUrl;
+        const finalUrl = cleanUrl.includes('/') ? cleanUrl : `uploads/${cleanUrl}`;
+        const absolutePath = path.join(process.cwd(), 'public', finalUrl);
+
+        const { browser, context } = await this.getContext(username, headless, true);
+        const page = context.pages().length > 0 ? context.pages()[0] : await context.newPage();
+        const handle = this.normalizeHandle(username);
+
+        // Intercept file chooser requests directly for safety
+        page.on('filechooser', async (fileChooser) => {
+            console.log("[InstagramService] Filechooser disparado. Injetando:", absolutePath);
+            await fileChooser.setFiles(absolutePath).catch(() => {});
+        });
+
+        try {
+            await this.verifyAccountMatch(context, handle);
+
+            console.log('[InstagramService] Navegando direto para /create/select/ no modo Desktop para Reel...');
+            await page.goto('https://www.instagram.com/create/select/', { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => { });
+
+            const isLoginPage = await page.locator('input[name="username"], :text-is("Log in"), :text-is("Entrar"), :text-is("Usar outro perfil")').first().isVisible({ timeout: 3000 });
+            if (isLoginPage) {
+                console.log(`Aviso: Sessão expirada para @${username}. Tentando auto-login...`);
+
+                await context.close();
+                await browser.close();
+
+                const autoLoginSuccess = await this.attemptAutoLogin(username, headless);
+
+                if (!autoLoginSuccess) {
+                    throw new Error("Sessão expirada. (Auto-login falhou/sem senha). Por favor, contecte novamente.");
+                }
+
+                return await this.publishReel(username, videoUrl, caption, headless);
+            }
+
+            await page.waitForTimeout(2000);
+
+            console.log('[InstagramService] Upload do vídeo Reel...');
+            const fileInput = page.locator('input[type="file"]').first();
+            try {
+                await fileInput.waitFor({ state: 'attached', timeout: 5000 });
+                // Force video support overrides just in case
+                await fileInput.evaluate((el: HTMLInputElement) => {
+                    el.removeAttribute('accept');
+                    el.setAttribute('accept', 'video/mp4,video/quicktime,video/x-m4v,video/*,image/*');
+                });
+                await fileInput.setInputFiles(absolutePath);
+            } catch (e) {
+                console.log('[InstagramService] File input inicial não encontrado. Recarregando via /create/select/ e tentando novamente...');
+                await page.goto('https://www.instagram.com/create/select/', { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => { });
+                await page.waitForTimeout(3000);
+                
+                const retryInput = page.locator('input[type="file"]').first();
+                await retryInput.waitFor({ state: 'attached', timeout: 5000 });
+                await retryInput.evaluate((el: HTMLInputElement) => {
+                    el.removeAttribute('accept');
+                    el.setAttribute('accept', 'video/mp4,video/quicktime,video/x-m4v,video/*,image/*');
+                });
+                await retryInput.setInputFiles(absolutePath);
+            }
+            
+            await page.waitForTimeout(6000); // Vídeos grandes demoram pra bufferizar
+            console.log('[InstagramService] Arquivo(s) carregado(s). Avançando...');
+
+            console.log('[InstagramService] Avançando telas (Desktop)...');
+            const nextSelectors = ['text="Next"', 'text="Próximo"', 'text="Avançar"'];
+            for (let i = 0; i < 3; i++) {
+                await page.waitForTimeout(2000);
+                let clicked = false;
+                for (const sel of nextSelectors) {
+                    const btn = page.locator(sel).last();
+                    if (await btn.isVisible({ timeout: 1500 })) {
+                        await btn.click({ force: true });
+                        clicked = true;
+                        console.log(`[InstagramService] Clicou avançar via: ${sel}`);
+                        break;
+                    }
+                }
+                if (!clicked && i > 0) break;
+            }
+
+            console.log('[InstagramService] Escrevendo legenda...');
+            await page.waitForTimeout(2000);
+
+            if (caption && caption.trim() !== '') {
+                const captionSelectors = [
+                    'div[aria-label="Write a caption..."]',
+                    'div[aria-label="Escreva uma legenda..."]',
+                    'div[aria-label="Escribe un pie de foto..."]',
+                    'div[contenteditable="true"]',
+                    'textarea[aria-label="Write a caption..."]',
+                    'textarea[aria-label="Escreva uma legenda..."]',
+                ];
+
+                let captionClicked = false;
+                for (const sel of captionSelectors) {
+                    const el = page.locator(sel).first();
+                    if (await el.isVisible({ timeout: 2000 }).catch(() => false)) {
+                        await el.click();
+                        await page.waitForTimeout(500);
+                        captionClicked = true;
+                        break;
+                    }
+                }
+
+                if (!captionClicked) {
+                    console.warn("[InstagramService] Campo de legenda não encontrado por seletor. Tentando Tab...");
+                    await page.keyboard.press('Tab');
+                    await page.waitForTimeout(500);
+                }
+
+                await page.keyboard.type(caption, { delay: 5 });
+                console.log(`[InstagramService] Legenda inserida.`);
+            }
+
+            console.log('[InstagramService] Compartilhando Reel!');
+            const shareSelectors = ['text="Share"', 'text="Compartilhar"'];
+            let shared = false;
+            for (const sel of shareSelectors) {
+                const btn = page.locator(sel).last();
+                if (await btn.isVisible({ timeout: 2000 })) {
+                    await btn.click({ force: true });
+                    shared = true;
+                    console.log(`[InstagramService] Compartilhado via: ${sel}`);
+                    break;
+                }
+            }
+
+            if (!shared) {
+                await page.keyboard.press('Tab');
+                await page.waitForTimeout(500);
+                await page.keyboard.press('Tab');
+                await page.waitForTimeout(500);
+                await page.keyboard.press('Enter');
+            }
+
+            await page.waitForTimeout(8000);
+            console.log("[InstagramService] 🎉 Reel Publicado com sucesso!");
+
             const sessionPath = path.join(SESSIONS_DIR, `${handle}.json`);
             await context.storageState({ path: sessionPath });
 

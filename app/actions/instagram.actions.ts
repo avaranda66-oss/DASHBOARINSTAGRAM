@@ -67,11 +67,15 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
         // Chamar o bot baseando-se no tipo de conteúdo
         let success = false;
         const targetHandle = handle || content.accountId || "default";
+        const normalizedType = (content.type || 'post').toLowerCase();
 
-        if (content.type === 'story') {
+        if (normalizedType === 'story') {
             console.log(`[Action] Detectado tipo STORY para ${contentId}. Chamando publishStory...`);
             // publishStory espera apenas uma URL de imagem
             success = await InstagramService.publishStory(targetHandle, imageUrls[0]);
+        } else if (normalizedType === 'reel') {
+            console.log(`[Action] Detectado tipo REEL para ${contentId}. Chamando publishReel...`);
+            success = await InstagramService.publishReel(targetHandle, imageUrls[0], caption);
         } else {
             console.log(`[Action] Detectado tipo ${content.type} para ${contentId}. Chamando publishPost...`);
             success = await InstagramService.publishPost(targetHandle, imageUrls, caption);

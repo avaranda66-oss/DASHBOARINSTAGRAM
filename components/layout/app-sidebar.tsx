@@ -26,8 +26,8 @@ const NAV_ITEMS = [
     { href: '/dashboard/calendar', label: 'Calendário', icon: Calendar },
     { href: '/dashboard/collections', label: 'Coleções', icon: FolderOpen },
     { href: '/dashboard/accounts', label: 'Contas', icon: Users },
-    { href: '/dashboard/analytics', label: 'Métricas', icon: BarChart3 },
-    { href: '/dashboard/intelligence', label: 'Inteligência', icon: Radar },
+    { href: '/dashboard/analytics', label: 'Métricas Instagram', icon: BarChart3 },
+    { href: '/dashboard/intelligence', label: 'Métricas Google Maps', icon: Radar },
     { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
 ] as const;
 

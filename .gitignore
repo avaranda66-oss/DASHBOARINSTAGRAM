@@ -58,9 +58,12 @@ public/canvas_*
 
 # User uploaded media (personal images, AI-generated content)
 public/uploads/
+public/maps-screenshots/
+public/maps-debug-*
 
 # Session data (Playwright cookies, tokens)
 sessions/
+.chrome-session-maps/
 
 # Client-specific scripts (contain real data)
 scripts/test-varanda-*

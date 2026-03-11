@@ -126,6 +126,9 @@ export class SchedulerService {
 
                         if (normalizedType === 'story') {
                             success = await InstagramService.publishStory(handle, imageUrl, true);
+                        } else if (normalizedType === 'reel') {
+                            // Reels também com headful falso por enquanto
+                            success = await InstagramService.publishReel(handle, imageUrl, caption, false);
                         } else {
                             // Posts precisam rodar em modo headful (com janela) pois o Instagram
                             // não renderiza o modal de criação corretamente em modo headless
