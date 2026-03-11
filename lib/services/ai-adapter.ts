@@ -49,7 +49,7 @@ export const AI_MODELS: Record<AIProvider, { label: string; models: { id: string
 export async function resolveAIConfig(): Promise<AIConfig> {
     let geminiKey = process.env.GEMINI_API_KEY;
     let provider: AIProvider = 'gemini';
-    let model = 'gemini-2.0-flash';
+    let model = 'gemini-2.5-flash';
     let baseUrl = '';
     let antigravityKey = '';
 

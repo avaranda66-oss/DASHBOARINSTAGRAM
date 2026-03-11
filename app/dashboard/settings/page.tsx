@@ -35,7 +35,7 @@ export default function SettingsPage() {
     const [geminiKey, setGeminiKey] = useState('');
     const [firecrawlKey, setFirecrawlKey] = useState('');
     const [aiProvider, setAiProvider] = useState<'gemini' | 'antigravity'>('gemini');
-    const [aiModel, setAiModel] = useState('gemini-2.0-flash');
+    const [aiModel, setAiModel] = useState('gemini-2.5-flash');
     const [antigravityKey, setAntigravityKey] = useState('');
     const [antigravityBaseUrl, setAntigravityBaseUrl] = useState('');
 
@@ -49,7 +49,7 @@ export default function SettingsPage() {
             setGeminiKey(settingsStore.settings.geminiApiKey || '');
             setFirecrawlKey(settingsStore.settings.firecrawlApiKey || '');
             setAiProvider(settingsStore.settings.aiProvider || 'gemini');
-            setAiModel(settingsStore.settings.aiModel || 'gemini-2.0-flash');
+            setAiModel(settingsStore.settings.aiModel || 'gemini-2.5-flash');
             setAntigravityKey(settingsStore.settings.antigravityApiKey || '');
             setAntigravityBaseUrl(settingsStore.settings.antigravityBaseUrl || '');
         }
@@ -402,7 +402,7 @@ export default function SettingsPage() {
                                         <div className="flex gap-2">
                                             <button
                                                 type="button"
-                                                onClick={() => { setAiProvider('gemini'); setAiModel('gemini-2.0-flash'); }}
+                                                onClick={() => { setAiProvider('gemini'); setAiModel('gemini-2.5-flash'); }}
                                                 className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-all ${aiProvider === 'gemini' ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'border-border text-muted-foreground hover:border-muted-foreground/50'}`}
                                             >
                                                 Google Gemini
