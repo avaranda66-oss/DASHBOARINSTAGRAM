@@ -55,7 +55,7 @@ export async function scrapeUrl(url: string): Promise<FirecrawlScrapeResult> {
     const app = new FirecrawlApp({ apiKey });
 
     try {
-        const result: any = await (app as any).scrapeUrl(url, {
+        const result: any = await (app as any).scrape(url, {
             formats: ['markdown'],
         });
 
@@ -98,7 +98,7 @@ export async function crawlUrl(url: string, maxPages: number = 5): Promise<Firec
     const app = new FirecrawlApp({ apiKey });
 
     try {
-        const result: any = await (app as any).crawlUrl(url, {
+        const result: any = await (app as any).crawl(url, {
             limit: maxPages,
         });
 
@@ -139,27 +139,76 @@ export function parseGoogleMapsData(markdown: string): {
     rating?: number;
     totalReviews?: number;
     address?: string;
+    phone?: string;
     category?: string;
+    hours?: string;
+    website?: string;
     highlights: string[];
 } {
     const result: any = { highlights: [] };
 
-    // Try to extract rating (e.g., "4.5" or "4,5")
-    const ratingMatch = markdown.match(/(\d[,.]\d)\s*(?:estrelas?|stars?|★)/i)
-        || markdown.match(/(?:rating|avaliação|nota)[:\s]*(\d[,.]\d)/i);
-    if (ratingMatch) {
-        result.rating = parseFloat(ratingMatch[1].replace(',', '.'));
+    // Extract business name from markdown heading (# Name)
+    const nameMatch = markdown.match(/^#\s+(.+)$/m);
+    if (nameMatch) {
+        result.name = nameMatch[1].trim();
     }
 
-    // Try to extract total reviews
-    const reviewsMatch = markdown.match(/(\d[\d.,]*)\s*(?:reviews?|avaliações?|comentários?)/i);
+    // Extract rating — Maps format: "4.9" on its own line, or "4.9 stars", or after heading
+    // Pattern 1: standalone decimal number (1.0-5.0) on its own line
+    const ratingMatch = markdown.match(/\n(\d\.\d)\n/m)
+        || markdown.match(/^(\d\.\d)\s*$/m)
+        || markdown.match(/(\d[,.]\d)\s*(?:estrelas?|stars?|★)/i)
+        || markdown.match(/(?:rating|avaliação|nota)[:\s]*(\d[,.]\d)/i);
+    if (ratingMatch) {
+        const val = parseFloat(ratingMatch[1].replace(',', '.'));
+        if (val >= 1.0 && val <= 5.0) {
+            result.rating = val;
+        }
+    }
+
+    // Extract total reviews — "123 reviews", "1.234 avaliações", "(123)", etc.
+    const reviewsMatch = markdown.match(/(\d[\d.,]*)\s*(?:reviews?|avaliações?|comentários?|opiniões?)/i)
+        || markdown.match(/\((\d[\d.,]*)\)/);
     if (reviewsMatch) {
         result.totalReviews = parseInt(reviewsMatch[1].replace(/[.,]/g, ''), 10);
     }
 
-    // Extract first few lines as highlights
-    const lines = markdown.split('\n').filter(l => l.trim().length > 10).slice(0, 8);
-    result.highlights = lines;
+    // Extract category (usually right after rating: "Restaurant", "Restaurante", etc.)
+    const categoryMatch = markdown.match(/\n\d\.\d\n+(.+)\n/m);
+    if (categoryMatch && categoryMatch[1].trim().length < 50) {
+        result.category = categoryMatch[1].trim();
+    }
+
+    // Extract address — Brazilian format or general
+    const addressMatch = markdown.match(/((?:R\.|Rua|Av\.|Tv\.|Travessa|Alameda|Praça).+?(?:Brazil|Brasil|\d{5}-\d{3}))/i);
+    if (addressMatch) {
+        result.address = addressMatch[1].trim();
+    }
+
+    // Extract phone
+    const phoneMatch = markdown.match(/(\+?\d{2}\s?\d{2}\s?\d{4,5}[-\s]?\d{4})/);
+    if (phoneMatch) {
+        result.phone = phoneMatch[1].trim();
+    }
+
+    // Extract hours
+    const hoursMatch = markdown.match(/((?:Closed|Aberto|Fechado|Opens?|Abre)\s*[·\-–]\s*.+)/i);
+    if (hoursMatch) {
+        result.hours = hoursMatch[1].trim();
+    }
+
+    // Extract website
+    const websiteMatch = markdown.match(/\[.*?\]\((https?:\/\/(?!www\.google|accounts\.google|support\.google|lh3\.googleusercontent)[^\s)]+)\)/);
+    if (websiteMatch) {
+        result.website = websiteMatch[1];
+    }
+
+    // Extract meaningful highlights (skip UI junk)
+    const junkPatterns = /collapse|drag|zoom|sign in|google apps|map data|layers|transit|traffic|saved|recents|street view|map type|globe view|labels|default|satellite|wildfires|air quality|map tools|measure|travel time|200 ft|show your|learn more|unavailable|get app|see photos/i;
+    const lines = markdown.split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 8 && !l.startsWith('![') && !l.startsWith('[') && !l.startsWith('|') && !l.startsWith('-') && !l.startsWith('#') && !junkPatterns.test(l));
+    result.highlights = lines.slice(0, 10);
 
     return result;
 }

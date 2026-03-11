@@ -34,6 +34,10 @@ export default function SettingsPage() {
     const [apifyKey, setApifyKey] = useState('');
     const [geminiKey, setGeminiKey] = useState('');
     const [firecrawlKey, setFirecrawlKey] = useState('');
+    const [aiProvider, setAiProvider] = useState<'gemini' | 'antigravity'>('gemini');
+    const [aiModel, setAiModel] = useState('gemini-2.0-flash');
+    const [antigravityKey, setAntigravityKey] = useState('');
+    const [antigravityBaseUrl, setAntigravityBaseUrl] = useState('');
 
     useEffect(() => {
         settingsStore.loadSettings();
@@ -44,6 +48,10 @@ export default function SettingsPage() {
             setApifyKey(settingsStore.settings.apifyApiKey || '');
             setGeminiKey(settingsStore.settings.geminiApiKey || '');
             setFirecrawlKey(settingsStore.settings.firecrawlApiKey || '');
+            setAiProvider(settingsStore.settings.aiProvider || 'gemini');
+            setAiModel(settingsStore.settings.aiModel || 'gemini-2.0-flash');
+            setAntigravityKey(settingsStore.settings.antigravityApiKey || '');
+            setAntigravityBaseUrl(settingsStore.settings.antigravityBaseUrl || '');
         }
     }, [settingsStore.settings]);
 
@@ -51,9 +59,10 @@ export default function SettingsPage() {
         setIsCheckingIg(true);
         try {
             await settingsStore.updateApiKeys(apifyKey, geminiKey, firecrawlKey);
-            toast.success('Chaves de API salvas com sucesso localmente!');
+            await settingsStore.updateAISettings(aiProvider, aiModel, antigravityKey, antigravityBaseUrl);
+            toast.success('Configurações de IA e chaves salvas com sucesso!');
         } catch (e) {
-            toast.error('Erro ao salvar as chaves de API.');
+            toast.error('Erro ao salvar as configurações.');
         } finally {
             setIsCheckingIg(false);
         }
@@ -381,12 +390,91 @@ export default function SettingsPage() {
                                 />
                                 <p className="text-xs text-muted-foreground">Opcional. Alternativa gratuita ao Apify (500 páginas/mês). Obtenha em <a href="https://firecrawl.dev" target="_blank" rel="noopener noreferrer" className="text-primary underline">firecrawl.dev</a>.</p>
                             </div>
+
+                            {/* AI Provider & Model Selection */}
+                            <div className="border-t border-border pt-4 mt-4">
+                                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                    🧠 Provedor de IA para Análises
+                                </h4>
+                                <div className="space-y-3">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium text-muted-foreground">Provedor</label>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setAiProvider('gemini'); setAiModel('gemini-2.0-flash'); }}
+                                                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-all ${aiProvider === 'gemini' ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'border-border text-muted-foreground hover:border-muted-foreground/50'}`}
+                                            >
+                                                Google Gemini
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setAiProvider('antigravity'); setAiModel('claude-sonnet-4-20250514'); }}
+                                                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-all ${aiProvider === 'antigravity' ? 'border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-400' : 'border-border text-muted-foreground hover:border-muted-foreground/50'}`}
+                                            >
+                                                Antigravity
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium text-muted-foreground">Modelo</label>
+                                        <select
+                                            value={aiModel}
+                                            onChange={(e) => setAiModel(e.target.value)}
+                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                        >
+                                            {aiProvider === 'gemini' ? (
+                                                <>
+                                                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (Rápido)</option>
+                                                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                                                    <option value="gemini-2.5-flash-preview-05-20">Gemini 2.5 Flash (Inteligente)</option>
+                                                    <option value="gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro (Máximo)</option>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (Balanceado)</option>
+                                                    <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Rápido)</option>
+                                                    <option value="gpt-4o">GPT-4o (OpenAI)</option>
+                                                    <option value="gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro (Google)</option>
+                                                    <option value="o3">o3 (Raciocínio Avançado)</option>
+                                                </>
+                                            )}
+                                        </select>
+                                    </div>
+                                    {aiProvider === 'antigravity' && (
+                                        <>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-medium text-muted-foreground">Antigravity API Key</label>
+                                                <input
+                                                    type="password"
+                                                    placeholder="sk-ant-..."
+                                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                                    value={antigravityKey}
+                                                    onChange={(e) => setAntigravityKey(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-medium text-muted-foreground">Base URL (opcional)</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="https://api.antigravity.ai/v1"
+                                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                                    value={antigravityBaseUrl}
+                                                    onChange={(e) => setAntigravityBaseUrl(e.target.value)}
+                                                />
+                                                <p className="text-xs text-muted-foreground">Endpoint OpenAI-compatible. Deixe vazio para usar o padrão.</p>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
                             <Button
                                 onClick={handleSaveApiKeys}
                                 className="w-full sm:w-auto mt-2"
                                 disabled={isCheckingIg}
                             >
-                                Salvar Chaves de API
+                                Salvar Configurações
                             </Button>
                         </div>
                     </CardContent>

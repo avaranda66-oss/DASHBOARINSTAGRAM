@@ -10,6 +10,7 @@ interface SettingsState {
     isLoading: boolean;
     loadSettings: () => Promise<void>;
     updateApiKeys: (apifyKey?: string, geminiKey?: string, firecrawlKey?: string) => Promise<void>;
+    updateAISettings: (aiProvider: string, aiModel: string, antigravityApiKey?: string, antigravityBaseUrl?: string) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -74,6 +75,28 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             set({ settings: updatedSettings });
         } catch (error) {
             console.error('Failed to update API keys:', error);
+        }
+    },
+
+    updateAISettings: async (aiProvider: string, aiModel: string, antigravityApiKey?: string, antigravityBaseUrl?: string) => {
+        const current = get().settings;
+        if (!current) return;
+
+        const updatedSettings = {
+            ...current,
+            id: SETTINGS_ID,
+            aiProvider: aiProvider as 'gemini' | 'antigravity',
+            aiModel,
+            antigravityApiKey: antigravityApiKey ?? current.antigravityApiKey,
+            antigravityBaseUrl: antigravityBaseUrl ?? current.antigravityBaseUrl,
+        };
+
+        try {
+            await settingsRepository.save(updatedSettings);
+            await saveSettingAction(SETTINGS_ID, JSON.stringify(updatedSettings));
+            set({ settings: updatedSettings });
+        } catch (error) {
+            console.error('Failed to update AI settings:', error);
         }
     },
 }));

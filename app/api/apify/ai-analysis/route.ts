@@ -1,30 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
-import { getSettingAction } from '@/app/actions/settings.actions';
+import { generateAIContent, resolveAIConfig } from '@/lib/services/ai-adapter';
 
 export async function POST(req: NextRequest) {
-    let apiKey = process.env.GEMINI_API_KEY;
     try {
-        const settingStr = await getSettingAction('global-settings');
-        if (settingStr) {
-            const parsed = JSON.parse(settingStr);
-            if (parsed.geminiApiKey) apiKey = parsed.geminiApiKey;
-        }
-    } catch (e) { }
+        const config = await resolveAIConfig();
 
-    if (!apiKey) {
-        return NextResponse.json({ success: false, error: 'GEMINI_API_KEY não configurada' }, { status: 500 });
-    }
-
-    try {
         const body = await req.json();
         const { posts, summary, question } = body;
 
         if (!posts || !summary) {
             return NextResponse.json({ success: false, error: 'Posts e summary são obrigatórios' }, { status: 400 });
         }
-
-        const ai = new GoogleGenAI({ apiKey });
 
         // Build context from the data
         const dataContext = `
@@ -58,12 +44,7 @@ Instruções RIGOROSAS:
 3. Responda de forma direta, organizada com títulos e bullet points. Destaque os números mais relevantes em negrito.
 4. Máximo 700 palavras. Aja como um mentor exigente e analítico.`;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: prompt,
-        });
-
-        const text = response.text ?? 'Não foi possível gerar análise.';
+        const text = await generateAIContent(prompt, config);
 
         return NextResponse.json({ success: true, data: text });
     } catch (error) {

@@ -6,4 +6,9 @@ export interface UserSettings {
     apifyApiKey?: string;
     geminiApiKey?: string;
     firecrawlApiKey?: string;
+    // AI Adapter settings
+    aiProvider?: 'gemini' | 'antigravity';
+    aiModel?: string;
+    antigravityApiKey?: string;
+    antigravityBaseUrl?: string;
 }

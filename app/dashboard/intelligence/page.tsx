@@ -16,6 +16,12 @@ import {
     Copy,
     Flame,
     AlertCircle,
+    Clock,
+    Phone,
+    MapPinned,
+    Tag,
+    Link2,
+    Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,28 +41,65 @@ interface ScrapeResult {
 }
 
 interface MapsData {
+    name?: string;
     rating?: number;
     totalReviews?: number;
+    address?: string;
+    phone?: string;
+    category?: string;
+    hours?: string;
+    website?: string;
     highlights: string[];
 }
 
-// Helper to parse Maps data from markdown
+// Parse Maps data client-side from markdown
 function parseLocalMapsData(markdown: string): MapsData {
     const result: MapsData = { highlights: [] };
 
-    const ratingMatch = markdown.match(/(\d[,.]\d)\s*(?:estrelas?|stars?|★)/i)
-        || markdown.match(/(?:rating|avaliação|nota)[:\s]*(\d[,.]\d)/i);
+    // Name from heading
+    const nameMatch = markdown.match(/^#\s+(.+)$/m);
+    if (nameMatch) result.name = nameMatch[1].trim();
+
+    // Rating — standalone decimal on its own line
+    const ratingMatch = markdown.match(/\n(\d\.\d)\n/m)
+        || markdown.match(/^(\d\.\d)\s*$/m)
+        || markdown.match(/(\d[,.]\d)\s*(?:estrelas?|stars?|★)/i);
     if (ratingMatch) {
-        result.rating = parseFloat(ratingMatch[1].replace(',', '.'));
+        const val = parseFloat(ratingMatch[1].replace(',', '.'));
+        if (val >= 1.0 && val <= 5.0) result.rating = val;
     }
 
-    const reviewsMatch = markdown.match(/(\d[\d.,]*)\s*(?:reviews?|avaliações?|comentários?)/i);
-    if (reviewsMatch) {
-        result.totalReviews = parseInt(reviewsMatch[1].replace(/[.,]/g, ''), 10);
-    }
+    // Reviews count
+    const reviewsMatch = markdown.match(/(\d[\d.,]*)\s*(?:reviews?|avaliações?|comentários?|opiniões?)/i)
+        || markdown.match(/\((\d[\d.,]*)\)/);
+    if (reviewsMatch) result.totalReviews = parseInt(reviewsMatch[1].replace(/[.,]/g, ''), 10);
 
-    const lines = markdown.split('\n').filter(l => l.trim().length > 10).slice(0, 8);
-    result.highlights = lines;
+    // Category after rating
+    const categoryMatch = markdown.match(/\n\d\.\d\n+(.+)\n/m);
+    if (categoryMatch && categoryMatch[1].trim().length < 50) result.category = categoryMatch[1].trim();
+
+    // Address
+    const addressMatch = markdown.match(/((?:R\.|Rua|Av\.|Tv\.|Travessa|Alameda|Praça).+?(?:Brazil|Brasil|\d{5}-\d{3}))/i);
+    if (addressMatch) result.address = addressMatch[1].trim();
+
+    // Phone
+    const phoneMatch = markdown.match(/(\+?\d{2}\s?\d{2}\s?\d{4,5}[-\s]?\d{4})/);
+    if (phoneMatch) result.phone = phoneMatch[1].trim();
+
+    // Hours
+    const hoursMatch = markdown.match(/((?:Closed|Aberto|Fechado|Opens?|Abre)\s*[·\-–]\s*.+)/i);
+    if (hoursMatch) result.hours = hoursMatch[1].trim();
+
+    // Website (exclude Google URLs)
+    const websiteMatch = markdown.match(/\[.*?\]\((https?:\/\/(?!www\.google|accounts\.google|support\.google|lh3\.googleusercontent)[^\s)]+)\)/);
+    if (websiteMatch) result.website = websiteMatch[1];
+
+    // Highlights (filter UI junk)
+    const junkPatterns = /collapse|drag|zoom|sign in|google apps|map data|layers|transit|traffic|saved|recents|street view|map type|globe view|labels|default|satellite|wildfires|air quality|map tools|measure|travel time|200 ft|show your|learn more|unavailable|get app|see photos|suggest|about this data|write a review|add photos|get the most|limited view/i;
+    const lines = markdown.split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 8 && !l.startsWith('![') && !l.startsWith('[') && !l.startsWith('|') && !l.startsWith('-') && !l.startsWith('#') && !junkPatterns.test(l));
+    result.highlights = lines.slice(0, 10);
 
     return result;
 }
@@ -216,6 +259,10 @@ export default function IntelligencePage() {
                                     <span className="ml-2 hidden sm:inline">Extrair</span>
                                 </Button>
                             </div>
+                            <p className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1">
+                                <Info className="h-3 w-3" />
+                                Funciona com blogs, notícias, sites de receitas, e-commerces, etc. Não suporta Instagram, Facebook ou sites que exigem login.
+                            </p>
                         </CardContent>
                     </Card>
 
@@ -260,16 +307,31 @@ export default function IntelligencePage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <Instagram className="h-5 w-5 text-pink-500" />
-                                Análise de Concorrente
+                                Análise de Concorrente Instagram
                             </CardTitle>
                             <CardDescription>
-                                Cole um @handle ou URL de perfil público do Instagram. Extrai bio, posts recentes e informações visíveis publicamente.
+                                Cole um @handle ou URL de perfil público do Instagram.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
+                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 mb-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                                    <div className="text-sm">
+                                        <p className="font-medium text-amber-600 dark:text-amber-400">Limitação do Firecrawl</p>
+                                        <p className="text-muted-foreground mt-1">
+                                            O Firecrawl <strong>não suporta scraping do Instagram</strong> — o Instagram bloqueia crawlers web.
+                                            Para análise de perfis do Instagram com métricas reais (likes, comments, views), use a aba <strong>Métricas</strong> que utiliza o Apify.
+                                        </p>
+                                        <p className="text-muted-foreground mt-2">
+                                            Porém, você pode tentar scrape de <strong>sites de terceiros</strong> que mostram dados públicos, como <code>socialblade.com</code>, <code>ninjalitics.com</code> ou <code>not-just-analytics.com</code>.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                             <div className="flex gap-2">
                                 <Input
-                                    placeholder="@concorrente ou https://instagram.com/concorrente"
+                                    placeholder="https://socialblade.com/instagram/user/concorrente"
                                     value={igHandle}
                                     onChange={(e) => setIgHandle(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleInstagram()}
@@ -287,13 +349,12 @@ export default function IntelligencePage() {
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
                                 <CardTitle className="text-sm font-medium">
-                                    {igResult.success ? '📊 Dados do Perfil' : '❌ Erro'}
+                                    {igResult.success ? '📊 Dados Extraídos' : '❌ Erro'}
                                 </CardTitle>
                                 {igResult.success && igResult.data?.markdown && (
                                     <div className="flex gap-2">
                                         <Badge variant="secondary" className="text-xs">
-                                            <Instagram className="h-3 w-3 mr-1" />
-                                            {igHandle}
+                                            {igResult.data.markdown.length.toLocaleString()} chars
                                         </Badge>
                                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(igResult.data?.markdown || '')}>
                                             <Copy className="h-3.5 w-3.5" />
@@ -304,7 +365,7 @@ export default function IntelligencePage() {
                             <CardContent>
                                 {igResult.success ? (
                                     <div className="max-h-[500px] overflow-y-auto rounded-lg bg-muted/50 p-4 text-sm font-mono whitespace-pre-wrap break-words">
-                                        {igResult.data?.markdown || 'Sem conteúdo. O perfil pode ser privado.'}
+                                        {igResult.data?.markdown || 'Sem conteúdo.'}
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-2 text-destructive text-sm">
@@ -328,13 +389,13 @@ export default function IntelligencePage() {
                                 Google Maps Intelligence
                             </CardTitle>
                             <CardDescription>
-                                Pesquise um negócio ou cole uma URL do Google Maps. Extrai estrelas, quantidade de reviews e informações públicas do estabelecimento.
+                                Pesquise um negócio ou cole uma URL do Google Maps. Extrai estrelas, reviews e informações públicas.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="flex gap-2">
                                 <Input
-                                    placeholder="Nome do negócio ou URL do Google Maps"
+                                    placeholder="A Varanda Itamaraju"
                                     value={mapsQuery}
                                     onChange={(e) => setMapsQuery(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleMaps()}
@@ -347,6 +408,52 @@ export default function IntelligencePage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Maps Business Card */}
+                    {mapsData && mapsData.name && (
+                        <Card className="bg-gradient-to-br from-green-500/5 to-emerald-500/5 border-green-500/20">
+                            <CardContent className="pt-6">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div>
+                                        <h2 className="text-xl font-bold">{mapsData.name}</h2>
+                                        {mapsData.category && (
+                                            <Badge variant="secondary" className="mt-1">
+                                                <Tag className="h-3 w-3 mr-1" />
+                                                {mapsData.category}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    {mapsData.website && (
+                                        <a href={mapsData.website} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-xs flex items-center gap-1">
+                                            <Link2 className="h-3 w-3" />
+                                            Site
+                                        </a>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                    {mapsData.address && (
+                                        <div className="flex items-start gap-2 text-muted-foreground">
+                                            <MapPinned className="h-4 w-4 shrink-0 mt-0.5" />
+                                            <span>{mapsData.address}</span>
+                                        </div>
+                                    )}
+                                    {mapsData.phone && (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Phone className="h-4 w-4 shrink-0" />
+                                            <span>{mapsData.phone}</span>
+                                        </div>
+                                    )}
+                                    {mapsData.hours && (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Clock className="h-4 w-4 shrink-0" />
+                                            <span>{mapsData.hours}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Maps KPI Cards */}
                     {mapsData && (
