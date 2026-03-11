@@ -36,6 +36,8 @@ interface MapsData {
     category?: string | null;
     hours?: string | null;
     website?: string | null;
+    photoUrl?: string | null;
+    screenshotPath?: string | null;
     highlights: string[];
     scrapedAt?: Date | string;
 }
@@ -173,17 +175,19 @@ export default function IntelligencePage() {
         if (!mapsQuery.trim()) { toast.error('Digite um negócio.'); return; }
         setMapsLoading(true); setMapsResult(null); setMapsData(null);
         try {
-            const result = await callFirecrawl(mapsQuery, 'maps');
+            // Use Playwright-based scraper for rich data
+            const res = await fetch('/api/maps-scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: mapsQuery }),
+            });
+            const result = await res.json();
             setMapsResult(result);
-            if (result.success && result.data?.markdown) {
-                const parsed = parseLocalMapsData(result.data.markdown);
-                // Log for debugging review count
-                console.log('[Maps Debug] Markdown length:', result.data.markdown.length);
-                console.log('[Maps Debug] Parsed:', JSON.stringify(parsed, null, 2));
-                setMapsData(parsed);
-                toast.success('Dados extraídos!');
+            if (result.success && result.data) {
+                setMapsData({ ...result.data, highlights: result.data.highlights || [] });
+                toast.success('Dados extraídos via Playwright!');
             } else {
-                toast.error(result.error || 'Erro.');
+                toast.error(result.error || 'Erro ao buscar dados.');
             }
         } catch (e: any) { toast.error(e.message); }
         finally { setMapsLoading(false); }
@@ -401,9 +405,14 @@ export default function IntelligencePage() {
                                 <Card className="bg-gradient-to-br from-green-500/5 to-emerald-500/5 border-green-500/20">
                                     <CardContent className="pt-6">
                                         <div className="flex items-start justify-between mb-4">
-                                            <div>
-                                                <h2 className="text-xl font-bold">{mapsData.name}</h2>
-                                                {mapsData.category && <Badge variant="secondary" className="mt-1"><Tag className="h-3 w-3 mr-1" />{mapsData.category}</Badge>}
+                                            <div className="flex items-start gap-3">
+                                                {mapsData.photoUrl && (
+                                                    <img src={mapsData.photoUrl} alt={mapsData.name} className="h-16 w-16 rounded-lg object-cover border border-border shadow-sm" />
+                                                )}
+                                                <div>
+                                                    <h2 className="text-xl font-bold">{mapsData.name}</h2>
+                                                    {mapsData.category && <Badge variant="secondary" className="mt-1"><Tag className="h-3 w-3 mr-1" />{mapsData.category}</Badge>}
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {mapsData.website && (
@@ -473,12 +482,16 @@ export default function IntelligencePage() {
                                 </div>
                             )}
 
-                            {/* Raw markdown */}
-                            {mapsResult?.success && (
-                                <details className="group">
-                                    <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors">📍 Ver markdown bruto do Maps</summary>
-                                    <div className="mt-2 max-h-[300px] overflow-y-auto rounded-lg bg-muted/50 p-4 text-xs font-mono whitespace-pre-wrap break-words">{mapsResult.data?.markdown || ''}</div>
-                                </details>
+                            {/* Screenshot */}
+                            {mapsData?.screenshotPath && (
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm flex items-center gap-2">📸 Screenshot do Maps</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <img src={mapsData.screenshotPath} alt="Maps Screenshot" className="w-full rounded-lg border border-border shadow-sm" />
+                                    </CardContent>
+                                </Card>
                             )}
                         </>
                     )}
