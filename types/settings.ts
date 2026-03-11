@@ -6,7 +6,7 @@ export interface UserSettings {
     apifyApiKey?: string;
     geminiApiKey?: string;
     firecrawlApiKey?: string;
-    // AI Adapter settings
+    // AI Adapter settings (gemini = Google Gemini, antigravity = OpenRouter / Custom OpenAI-compatible)
     aiProvider?: 'gemini' | 'antigravity';
     aiModel?: string;
     antigravityApiKey?: string;

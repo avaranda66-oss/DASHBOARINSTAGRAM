@@ -25,18 +25,19 @@ export const AI_MODELS: Record<AIProvider, { label: string; models: { id: string
         label: 'Google Gemini',
         models: [
             { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Rápido)' },
-            { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite (Lite)' },
-            { id: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash (Mais Inteligente)' },
-            { id: 'gemini-2.5-pro-preview-05-06', label: 'Gemini 2.5 Pro (Máximo)' },
+            { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Balanceado)' },
+            { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Avançado)' },
+            { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (Novo)' },
+            { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview (Máximo)' },
         ],
     },
     antigravity: {
-        label: 'Antigravity (Multi-modelo)',
+        label: 'OpenRouter / Custom (Multi-modelo)',
         models: [
             { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (Balanceado)' },
             { id: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet (Rápido)' },
             { id: 'gpt-4o', label: 'GPT-4o (OpenAI)' },
-            { id: 'gemini-2.5-pro-preview-05-06', label: 'Gemini 2.5 Pro (Google)' },
+            { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Google)' },
             { id: 'o3', label: 'o3 (Raciocínio Avançado)' },
         ],
     },
@@ -66,7 +67,7 @@ export async function resolveAIConfig(): Promise<AIConfig> {
 
     if (provider === 'antigravity') {
         if (!antigravityKey) {
-            throw new Error('Antigravity API Key não configurada. Vá em Configurações → Chaves de API.');
+            throw new Error('API Key do provedor custom não configurada. Vá em Configurações → Chaves de API.');
         }
         return { provider, model, apiKey: antigravityKey, baseUrl: baseUrl || 'https://api.antigravity.ai/v1' };
     }
@@ -149,7 +150,7 @@ export async function generateAIContentWithSystem(
 
         if (!response.ok) {
             const errBody = await response.text().catch(() => 'Unknown error');
-            throw new Error(`Antigravity API error (${response.status}): ${errBody}`);
+            throw new Error(`Custom provider API error (${response.status}): ${errBody}`);
         }
 
         const data = await response.json();
@@ -193,7 +194,7 @@ async function generateWithOpenAICompatible(prompt: string, cfg: AIConfig): Prom
 
     if (!response.ok) {
         const errBody = await response.text().catch(() => 'Unknown error');
-        throw new Error(`Antigravity API error (${response.status}): ${errBody}`);
+        throw new Error(`Custom provider API error (${response.status}): ${errBody}`);
     }
 
     const data = await response.json();

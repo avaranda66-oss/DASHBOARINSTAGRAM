@@ -412,7 +412,7 @@ export default function SettingsPage() {
                                                 onClick={() => { setAiProvider('antigravity'); setAiModel('claude-sonnet-4-20250514'); }}
                                                 className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-all ${aiProvider === 'antigravity' ? 'border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-400' : 'border-border text-muted-foreground hover:border-muted-foreground/50'}`}
                                             >
-                                                Antigravity
+                                                OpenRouter / Custom
                                             </button>
                                         </div>
                                     </div>
@@ -426,16 +426,17 @@ export default function SettingsPage() {
                                             {aiProvider === 'gemini' ? (
                                                 <>
                                                     <option value="gemini-2.0-flash">Gemini 2.0 Flash (Rápido)</option>
-                                                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
-                                                    <option value="gemini-2.5-flash-preview-05-20">Gemini 2.5 Flash (Inteligente)</option>
-                                                    <option value="gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro (Máximo)</option>
+                                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Balanceado)</option>
+                                                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Avançado)</option>
+                                                    <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Novo)</option>
+                                                    <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview (Máximo)</option>
                                                 </>
                                             ) : (
                                                 <>
                                                     <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (Balanceado)</option>
                                                     <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Rápido)</option>
                                                     <option value="gpt-4o">GPT-4o (OpenAI)</option>
-                                                    <option value="gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro (Google)</option>
+                                                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
                                                     <option value="o3">o3 (Raciocínio Avançado)</option>
                                                 </>
                                             )}
@@ -444,7 +445,7 @@ export default function SettingsPage() {
                                     {aiProvider === 'antigravity' && (
                                         <>
                                             <div className="space-y-2">
-                                                <label className="text-xs font-medium text-muted-foreground">Antigravity API Key</label>
+                                                <label className="text-xs font-medium text-muted-foreground">API Key do Provedor</label>
                                                 <input
                                                     type="password"
                                                     placeholder="sk-ant-..."
