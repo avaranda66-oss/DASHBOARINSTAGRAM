@@ -607,7 +607,7 @@ export default function AnalyticsPage() {
                                 </motion.div>
                             )}
 
-                            {summary && <motion.div variants={item}><KpiCards summary={summary} /></motion.div>}
+                            {summary && <motion.div variants={item}><KpiCards summary={summary} posts={posts} /></motion.div>}
 
                             {
                                 summary?.bestPost && (

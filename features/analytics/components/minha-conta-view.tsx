@@ -183,24 +183,24 @@ export function MinhaContaView({ token, username }: Props) {
     return (
         <motion.div className="space-y-5" variants={container} initial="hidden" animate="show">
             {/* Header */}
-            <motion.div variants={item} className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+            <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                            <Zap className="h-4 w-4 text-blue-400" />
-                            <span className="font-semibold text-sm">
+                            <Zap className="h-4 w-4 text-[var(--v2-accent)]" />
+                            <span className="font-semibold text-sm text-[var(--v2-text-primary)]">
                                 {username ? `@${username}` : 'Sua Conta'}
                             </span>
-                            <span className="inline-flex items-center rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-[10px] font-bold text-blue-400">
+                            <span className="inline-flex items-center rounded-full bg-[var(--v2-accent)]/10 border border-[var(--v2-accent)]/20 px-2 py-0.5 text-[10px] font-bold text-[var(--v2-accent)]">
                                 META API
                             </span>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-[var(--v2-text-secondary)]">
                                 Dados privados exclusivos: alcance real, saves e compartilhamentos.
                             </p>
                             {fetchedAt && (
-                                <span className="text-[10px] text-muted-foreground/60">
+                                <span className="text-[10px] text-[var(--v2-text-tertiary)]">
                                     {isFromCache ? '💾 Cache de' : '🔄 Atualizado em'}{' '}
                                     {format(parseISO(fetchedAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
                                 </span>
@@ -211,7 +211,7 @@ export function MinhaContaView({ token, username }: Props) {
                         onClick={handleFetch}
                         disabled={isLoading}
                         size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                        className="bg-[var(--v2-accent)] hover:bg-[var(--v2-accent-hover)] text-white shrink-0"
                     >
                         {isLoading ? (
                             <><RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> Buscando...</>
@@ -226,7 +226,7 @@ export function MinhaContaView({ token, username }: Props) {
 
             {/* Error */}
             {error && (
-                <motion.div variants={item} className="flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+                <motion.div variants={item} className="flex items-start gap-2 rounded-xl border border-[var(--v2-danger)]/20 bg-[var(--v2-danger)]/5 p-4">
                     <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                     <p className="text-sm text-destructive">{error}</p>
                 </motion.div>
@@ -234,17 +234,17 @@ export function MinhaContaView({ token, username }: Props) {
 
             {/* Loading cache */}
             {!hasFetched && !isLoading && !error && isLoadingCache && (
-                <motion.div variants={item} className="rounded-xl border border-dashed border-border p-10 text-center">
-                    <RefreshCw className="h-6 w-6 text-muted-foreground/30 mx-auto mb-3 animate-spin" />
+                <motion.div variants={item} className="rounded-xl v2-glass border border-dashed border-[var(--v2-border)] p-10 text-center">
+                    <RefreshCw className="h-6 w-6 text-[var(--v2-text-tertiary)] mx-auto mb-3 animate-spin" />
                     <p className="text-sm text-muted-foreground">Verificando dados salvos...</p>
                 </motion.div>
             )}
 
             {/* Empty state (nenhum cache encontrado) */}
             {!hasFetched && !isLoading && !error && !isLoadingCache && (
-                <motion.div variants={item} className="rounded-xl border border-dashed border-border p-12 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10">
-                        <Zap className="h-7 w-7 text-blue-400" />
+                <motion.div variants={item} className="rounded-xl v2-glass border border-dashed border-[var(--v2-border)] p-12 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--v2-accent)]/10">
+                        <Zap className="h-7 w-7 text-[var(--v2-accent)]" />
                     </div>
                     <h3 className="mt-4 text-lg font-semibold">Dados Privados da Sua Conta</h3>
                     <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">
@@ -257,14 +257,14 @@ export function MinhaContaView({ token, username }: Props) {
             {hasFetched && summary && (
                 <>
                     {/* Tab bar */}
-                    <motion.div variants={item} className="flex rounded-xl border border-border overflow-hidden w-fit">
+                    <motion.div variants={item} className="flex rounded-xl v2-glass overflow-hidden w-fit">
                         {INTERNAL_TABS.map((t) => (
                             <button
                                 key={t.key}
                                 onClick={() => setActiveTab(t.key)}
                                 className={`px-3 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${activeTab === t.key
-                                    ? 'bg-accent text-foreground'
-                                    : 'text-muted-foreground hover:text-foreground'
+                                    ? 'bg-[var(--v2-accent)]/15 text-[var(--v2-text-primary)]'
+                                    : 'text-[var(--v2-text-tertiary)] hover:text-[var(--v2-text-primary)]'
                                     }`}
                             >
                                 <t.icon className={`h-3.5 w-3.5 ${activeTab === t.key && t.key === 'strategy' ? 'text-purple-400' : ''}`} />
@@ -290,14 +290,14 @@ export function MinhaContaView({ token, username }: Props) {
                                         { label: 'Tx. Eng. Real', value: `${summary.avgEngagementRate}%`, sub: 'baseado em alcance', icon: TrendingUp, color: 'text-purple-400', bg: 'bg-purple-500/10' },
                                         { label: 'Comentários', value: fmt(summary.totalComments), sub: `~${fmt(Math.round(summary.totalComments / summary.totalPosts))} por post`, icon: Users, color: 'text-orange-400', bg: 'bg-orange-500/10' },
                                     ].map((kpi) => (
-                                        <div key={kpi.label} className="rounded-xl border border-border bg-card p-3 space-y-2">
+                                        <div key={kpi.label} className="rounded-xl v2-glass v2-glass-hover p-3 space-y-2">
                                             <div className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${kpi.bg}`}>
                                                 <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
                                             </div>
                                             <div>
-                                                <p className="text-xl font-bold">{kpi.value}</p>
-                                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider leading-tight">{kpi.label}</p>
-                                                <p className="text-[10px] text-muted-foreground/60">{kpi.sub}</p>
+                                                <p className="text-xl font-bold v2-number">{kpi.value}</p>
+                                                <p className="text-[10px] font-medium text-[var(--v2-text-secondary)] uppercase tracking-wider leading-tight v2-label">{kpi.label}</p>
+                                                <p className="text-[10px] text-[var(--v2-text-tertiary)]">{kpi.sub}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -311,7 +311,7 @@ export function MinhaContaView({ token, username }: Props) {
                                     { label: 'Alcance Médio — Vídeo', value: fmt(summary.avgReachVideo), count: summary.videoCount, color: 'text-purple-400', icon: Video },
                                     { label: 'Alcance Médio — Carrossel', value: fmt(summary.avgReachCarousel), count: summary.carouselCount, color: 'text-blue-400', icon: Layers },
                                 ].map((row) => (
-                                    <div key={row.label} className="rounded-xl border border-border bg-card p-3 flex items-center gap-3">
+                                    <div key={row.label} className="rounded-xl v2-glass v2-glass-hover p-3 flex items-center gap-3">
                                         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/50 shrink-0">
                                             <row.icon className={`h-4 w-4 ${row.color}`} />
                                         </div>
@@ -328,7 +328,7 @@ export function MinhaContaView({ token, username }: Props) {
                             {(summary.bestPostByReach || summary.bestPostByLikes) && (
                                 <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {summary.bestPostByReach && (
-                                        <div className="rounded-xl border border-blue-500/20 bg-gradient-to-r from-blue-500/10 to-purple-500/5 p-3">
+                                        <div className="rounded-xl border border-blue-500/20 bg-gradient-to-r from-blue-500/10 to-purple-500/5 backdrop-blur-sm p-3">
                                             <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 mb-1.5">
                                                 <Eye className="h-3.5 w-3.5" /> Maior Alcance
                                             </div>
@@ -348,7 +348,7 @@ export function MinhaContaView({ token, username }: Props) {
                                         </div>
                                     )}
                                     {summary.bestPostByLikes && (
-                                        <div className="rounded-xl border border-pink-500/20 bg-gradient-to-r from-pink-500/10 to-orange-500/5 p-3">
+                                        <div className="rounded-xl border border-pink-500/20 bg-gradient-to-r from-pink-500/10 to-orange-500/5 backdrop-blur-sm p-3">
                                             <div className="flex items-center gap-2 text-xs font-semibold text-pink-400 mb-1.5">
                                                 <Heart className="h-3.5 w-3.5" /> Mais Curtido
                                             </div>
@@ -392,11 +392,11 @@ export function MinhaContaView({ token, username }: Props) {
                                         ))}
                                     </div>
                                 </div>
-                                <div className="rounded-xl border border-border overflow-hidden">
+                                <div className="rounded-xl v2-glass overflow-hidden">
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-xs">
                                             <thead>
-                                                <tr className="border-b border-border bg-muted/50">
+                                                <tr className="border-b border-[var(--v2-border)] bg-[var(--v2-bg-surface)]">
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground w-8">#</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground">Post</th>
                                                     <th className="text-left px-3 py-2 font-medium text-muted-foreground">Data</th>
@@ -415,7 +415,7 @@ export function MinhaContaView({ token, username }: Props) {
                                                         ? ((post.likesCount + post.commentsCount) / post.reach!) * 100
                                                         : 0;
                                                     return (
-                                                        <tr key={post.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                                                        <tr key={post.id} className="border-b border-[var(--v2-border)]/50 hover:bg-[var(--v2-accent)]/5 transition-colors">
                                                             <td className="px-3 py-2.5 text-muted-foreground/50 font-mono">{idx + 1}</td>
                                                             <td className="px-3 py-2.5 max-w-[200px]">
                                                                 <div className="flex items-center gap-2">
@@ -459,23 +459,23 @@ export function MinhaContaView({ token, username }: Props) {
                     {/* ── TAB: Gráficos ── */}
                     {activeTab === 'charts' && (
                         <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-                            <motion.div variants={item} className="rounded-xl border border-border bg-card p-4">
-                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+                            <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
+                                <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
                                     Alcance + Saves + Shares ao longo do tempo
                                 </h4>
                                 <MetaTimelineChart posts={posts} />
                             </motion.div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <motion.div variants={item} className="rounded-xl border border-border bg-card p-4">
-                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+                                <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
+                                    <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
                                         Desempenho por Tipo de Conteúdo
                                     </h4>
                                     <MetaContentTypeChart posts={posts} />
                                 </motion.div>
 
-                                <motion.div variants={item} className="rounded-xl border border-border bg-card p-4">
-                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+                                <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
+                                    <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
                                         Alcance Médio por Dia da Semana
                                     </h4>
                                     <MetaPostingDayChart posts={posts} />
@@ -487,7 +487,7 @@ export function MinhaContaView({ token, username }: Props) {
                     {/* ── TAB: Melhores Posts ── */}
                     {activeTab === 'posts' && (
                         <motion.div variants={item}>
-                            <div className="rounded-xl border border-border bg-card p-4">
+                            <div className="rounded-xl v2-glass v2-glass-hover p-4">
                                 <MetaTopPosts posts={posts} />
                             </div>
                         </motion.div>
@@ -496,7 +496,7 @@ export function MinhaContaView({ token, username }: Props) {
                     {/* ── TAB: Hashtags ── */}
                     {activeTab === 'hashtags' && (
                         <motion.div variants={item}>
-                            <div className="rounded-xl border border-border bg-card p-4">
+                            <div className="rounded-xl v2-glass v2-glass-hover p-4">
                                 <MetaHashtagAnalysis posts={posts} />
                             </div>
                         </motion.div>

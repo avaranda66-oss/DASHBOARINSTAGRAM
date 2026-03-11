@@ -1,0 +1,33 @@
+/* Obsidian & Ember - Paleta de Cores Premium para Analytics Dashboard */
+
+:root[class~="dark"] {
+  /* BACKGROUNDS: Profundos, abissais, com um micro-tint frio de Onyx (#0A0A0C) */
+  --bg-primary: #0A0A0C; 
+  --bg-secondary: #121216; /* Ligeiro levante para sidebars e painéis */
+  --bg-surface: rgba(225, 215, 210, 0.03); /* O twist do glassmorphism: um pó-de-osso/terracota hiper translúcido */
+
+  /* BORDERS: A elegância mora no que quase não se vê */
+  --border-subtle: rgba(255, 115, 80, 0.04); /* Reflete luz como um vidro de luxo */
+  --border-accent: rgba(255, 115, 80, 0.25);
+
+  /* TEXT: Hierarquia brutalista e clara */
+  --text-primary: #F2F0F5; /* Off-white com minúscula gota de magenta/quente */
+  --text-secondary: #9E9AA6; /* Cinza slate elegante, para subtítulos e dados passivos */
+  --text-tertiary: #6B6873; /* Eixos de gráficos, labels diminutos */
+  --text-muted: #45434D; /* Texto desativado ou placeholders */
+
+  /* ACCENTS: O INESPERADO (Radiant Apricot & Muted Mauve) */
+  --accent-primary: #FF7350; /* A Estrela: Um Damasco/Terracota radiante. Inesperado, chique, premium. */
+  --accent-primary-hover: #FFA88C; /* Estado de hover brilhante e expansivo */
+  --accent-secondary: #746C7E; /* Um Mauve Slate silenciado. Paira lindamente com o Apricot */
+
+  /* SEMÂNTICA: Cores com vibe de "filme granulado", dessaturadas e maduras */
+  --success: #6B8E70; /* Sage Green: Frio, elegante, indica crescimento sem gritar */
+  --warning: #B38654; /* Ochre/Camel: Cuidado, mas com cheiro de couro premium */
+  --danger: #A35252; /* Brick/Dusty Rose: Erro ou queda, suave mas assertivo */
+
+  /* GRADIENTS: Para momentos de glória (headers, orbs, gráficos hero) */
+  --gradient-primary: linear-gradient(135deg, #FF7350 0%, #D94838 100%);
+  --gradient-ambient: radial-gradient(circle at top right, rgba(255, 115, 80, 0.12), transparent 45%), 
+                      radial-gradient(circle at bottom left, rgba(116, 108, 126, 0.08), transparent 45%);
+}

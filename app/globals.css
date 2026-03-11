@@ -203,3 +203,127 @@
 .insights-content .sentiment-neg {
   background: oklch(0.6 0.15 25);
 }
+
+/* =============================================================================
+   V2 DESIGN TOKENS & UTILITY CLASSES
+   Premium dark-first aesthetic with warm accent palette
+   ============================================================================= */
+
+/* V2 Design Tokens — Light mode (root) */
+:root {
+  --v2-bg-deep: oklch(0.97 0.005 270);
+  --v2-bg-surface: oklch(1 0 0 / 70%);
+  --v2-accent: oklch(0.55 0.12 55);
+  --v2-accent-hover: oklch(0.5 0.14 55);
+  --v2-accent-secondary: oklch(0.45 0.1 190);
+  --v2-border: oklch(0 0 0 / 8%);
+  --v2-border-accent: oklch(0.55 0.12 55 / 15%);
+  --v2-text-primary: oklch(0.15 0 0);
+  --v2-text-secondary: oklch(0.4 0 0);
+  --v2-text-tertiary: oklch(0.55 0 0);
+  --v2-success: oklch(0.5 0.12 155);
+  --v2-warning: oklch(0.55 0.12 80);
+  --v2-danger: oklch(0.5 0.12 25);
+  --v2-gradient-primary: linear-gradient(135deg, oklch(0.55 0.12 55), oklch(0.45 0.1 190));
+  --v2-gradient-ambient-1: radial-gradient(ellipse at 20% 50%, oklch(0.55 0.12 55 / 5%), transparent 70%);
+  --v2-gradient-ambient-2: radial-gradient(ellipse at 80% 20%, oklch(0.45 0.1 190 / 4%), transparent 70%);
+}
+
+/* V2 Design Tokens — Dark mode */
+.dark {
+  --v2-bg-deep: oklch(0.11 0.015 270);
+  --v2-bg-surface: oklch(0.14 0.01 270 / 60%);
+  --v2-accent: oklch(0.75 0.15 55);
+  --v2-accent-hover: oklch(0.8 0.17 55);
+  --v2-accent-secondary: oklch(0.65 0.12 190);
+  --v2-border: oklch(1 0 0 / 6%);
+  --v2-border-accent: oklch(0.75 0.15 55 / 15%);
+  --v2-text-primary: oklch(0.95 0 0);
+  --v2-text-secondary: oklch(0.7 0 0);
+  --v2-text-tertiary: oklch(0.5 0 0);
+  --v2-success: oklch(0.65 0.15 155);
+  --v2-warning: oklch(0.7 0.15 80);
+  --v2-danger: oklch(0.6 0.15 25);
+  --v2-gradient-primary: linear-gradient(135deg, oklch(0.75 0.15 55), oklch(0.65 0.12 190));
+  --v2-gradient-ambient-1: radial-gradient(ellipse at 20% 50%, oklch(0.75 0.15 55 / 8%), transparent 70%);
+  --v2-gradient-ambient-2: radial-gradient(ellipse at 80% 20%, oklch(0.65 0.12 190 / 6%), transparent 70%);
+}
+
+/* V2 Utility: Glass surface */
+.v2-glass {
+  background: var(--v2-bg-surface);
+  backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid var(--v2-border);
+}
+
+/* V2 Utility: Glass hover effect */
+.v2-glass-hover:hover {
+  border-color: var(--v2-border-accent);
+  box-shadow: 0 0 30px oklch(0.75 0.15 55 / 5%);
+}
+
+/* V2 Utility: Grain texture overlay */
+.v2-grain {
+  position: relative;
+}
+
+.v2-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  opacity: 0.03;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* V2 Utility: Ambient gradient orbs */
+.v2-ambient {
+  position: relative;
+}
+
+.v2-ambient::before,
+.v2-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.v2-ambient::before {
+  background: var(--v2-gradient-ambient-1);
+}
+
+.v2-ambient::after {
+  background: var(--v2-gradient-ambient-2);
+}
+
+/* V2 Utility: Tabular numbers */
+.v2-number {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* V2 Utility: Label style */
+.v2-label {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.65rem;
+  color: var(--v2-text-tertiary);
+}
+
+/* V2 Utility: Accent glow */
+.v2-glow {
+  box-shadow: 0 0 40px -10px oklch(0.75 0.15 55 / 15%);
+}
+
+/* V2 Utility: Gradient text */
+.v2-gradient-text {
+  background: var(--v2-gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

@@ -29,14 +29,14 @@ function extractHashtags(caption?: string): string[] {
 function PerformanceBadge({ level }: { level: 'high' | 'medium' | 'low' }) {
     if (level === 'high') {
         return (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--v2-success)]/10 border border-[var(--v2-success)]/20 px-2 py-0.5 text-[10px] font-bold text-[var(--v2-success)]">
                 <Flame className="h-2.5 w-2.5" /> Alta
             </span>
         );
     }
     if (level === 'medium') {
         return (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--v2-warning)]/10 border border-[var(--v2-warning)]/20 px-2 py-0.5 text-[10px] font-bold text-[var(--v2-warning)]">
                 <Zap className="h-2.5 w-2.5" /> Média
             </span>
         );
@@ -112,9 +112,9 @@ export function MetaHashtagAnalysis({ posts }: Props) {
         <div className="space-y-4">
             {/* Insight highlight */}
             {topInsight && (
-                <div className="flex items-start gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
-                    <TrendingUp className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-emerald-300">{topInsight}</p>
+                <div className="flex items-start gap-2 rounded-lg border border-[var(--v2-success)]/20 bg-[var(--v2-success)]/5 px-3 py-2.5">
+                    <TrendingUp className="h-4 w-4 text-[var(--v2-success)] shrink-0 mt-0.5" />
+                    <p className="text-xs text-[var(--v2-success)]">{topInsight}</p>
                 </div>
             )}
 
@@ -126,11 +126,11 @@ export function MetaHashtagAnalysis({ posts }: Props) {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-border overflow-hidden">
+            <div className="rounded-xl v2-glass overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                         <thead>
-                            <tr className="border-b border-border bg-muted/50">
+                            <tr className="border-b border-border bg-[var(--v2-bg-surface)]">
                                 <th className="text-left px-3 py-2 font-medium text-muted-foreground w-7">#</th>
                                 <th className="text-left px-3 py-2 font-medium text-muted-foreground">Hashtag</th>
                                 <th className="text-right px-3 py-2 font-medium text-muted-foreground">Posts</th>
@@ -144,7 +144,7 @@ export function MetaHashtagAnalysis({ posts }: Props) {
                             {rows.map((row, idx) => (
                                 <tr
                                     key={row.tag}
-                                    className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                                    className="border-b border-border/50 hover:bg-[var(--v2-accent)]/5 transition-colors"
                                 >
                                     <td className="px-3 py-2.5 text-muted-foreground/40 font-mono">{idx + 1}</td>
                                     <td className="px-3 py-2.5">

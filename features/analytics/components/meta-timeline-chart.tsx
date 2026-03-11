@@ -35,12 +35,12 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
     if (!active || !payload?.length) return null;
     return (
-        <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-lg text-xs space-y-1 max-w-[220px]">
-            <p className="font-medium text-foreground mb-1.5">{label}</p>
+        <div className="rounded-lg bg-[var(--v2-bg-surface)] backdrop-blur-xl border border-[var(--v2-border)] shadow-[0_8px_30px_rgba(0,0,0,0.3)] px-3 py-2 text-xs space-y-1 max-w-[220px]">
+            <p className="text-[var(--v2-text-tertiary)] text-[10px] font-medium uppercase tracking-widest mb-1.5">{label}</p>
             {payload.map((entry) => (
                 <div key={entry.name} className="flex items-center justify-between gap-4">
                     <span style={{ color: entry.color }} className="font-medium">{entry.name}</span>
-                    <span className="font-bold">{fmt(entry.value)}</span>
+                    <span className="text-[var(--v2-text-primary)] font-mono font-bold">{fmt(entry.value)}</span>
                 </div>
             ))}
         </div>
@@ -72,47 +72,41 @@ export function MetaTimelineChart({ posts }: Props) {
             <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                 <defs>
                     <linearGradient id="colorReach" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#FF7350" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="#FF7350" stopOpacity={0.02} />
                     </linearGradient>
                     <linearGradient id="colorSaves" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
                     </linearGradient>
                     <linearGradient id="colorShares" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
                     </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.03)" vertical={false} />
                 <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 10, fill: '#9ca3af' }}
+                    tick={{ fontSize: 10, fill: '#6B6873', fontFamily: 'monospace' }}
                     tickLine={false}
                     axisLine={false}
                     interval="preserveStartEnd"
                 />
-                <YAxis
-                    tick={{ fontSize: 10, fill: '#9ca3af' }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={fmt}
-                    width={42}
-                />
+                <YAxis hide />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend
-                    wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
+                    wrapperStyle={{ fontSize: '10px', paddingTop: '8px', color: 'var(--v2-text-tertiary)' }}
                     iconType="circle"
-                    iconSize={8}
+                    iconSize={7}
                 />
                 <Area
                     type="monotone"
                     dataKey="Alcance"
-                    stroke="#3b82f6"
+                    stroke="#FF7350"
                     strokeWidth={2}
                     fill="url(#colorReach)"
                     dot={false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 4, stroke: '#0A0A0C', strokeWidth: 2, fill: '#FF7350' }}
                 />
                 <Area
                     type="monotone"
@@ -121,7 +115,7 @@ export function MetaTimelineChart({ posts }: Props) {
                     strokeWidth={2}
                     fill="url(#colorSaves)"
                     dot={false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 4, stroke: '#0A0A0C', strokeWidth: 2, fill: '#f59e0b' }}
                 />
                 <Area
                     type="monotone"
@@ -130,7 +124,7 @@ export function MetaTimelineChart({ posts }: Props) {
                     strokeWidth={2}
                     fill="url(#colorShares)"
                     dot={false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 4, stroke: '#0A0A0C', strokeWidth: 2, fill: '#10b981' }}
                 />
             </AreaChart>
         </ResponsiveContainer>

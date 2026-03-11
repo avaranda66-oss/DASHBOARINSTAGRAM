@@ -59,8 +59,8 @@ function PostCard({
 }) {
     const value = (post as any)[metricKey] ?? 0;
     return (
-        <div className="flex items-start gap-3 rounded-lg border border-border bg-card/50 p-3 hover:bg-card transition-colors">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+        <div className="flex items-start gap-3 rounded-lg v2-glass v2-glass-hover p-3 transition-colors">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--v2-bg-surface)] text-xs font-bold text-muted-foreground">
                 {rank}
             </div>
             {post.displayUrl && (
@@ -124,14 +124,14 @@ export function MetaTopPosts({ posts }: Props) {
     return (
         <div className="space-y-4">
             {/* Tabs */}
-            <div className="flex rounded-lg border border-border overflow-hidden w-fit">
+            <div className="flex v2-glass rounded-xl overflow-hidden w-fit">
                 {TABS.map((t) => (
                     <button
                         key={t.key}
                         onClick={() => setActiveTab(t.key)}
                         className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${activeTab === t.key
-                            ? 'bg-accent text-foreground'
-                            : 'text-muted-foreground hover:text-foreground'
+                            ? 'bg-[var(--v2-accent)]/15 text-[var(--v2-text-primary)]'
+                            : 'text-[var(--v2-text-tertiary)] hover:text-[var(--v2-text-primary)]'
                             }`}
                     >
                         <t.icon className={`h-3 w-3 ${activeTab === t.key ? t.color : ''}`} />
@@ -142,7 +142,7 @@ export function MetaTopPosts({ posts }: Props) {
 
             {/* Top 5 */}
             <div className="space-y-2">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <h4 className="v2-label">
                     Top 5 — Maior {tab.label}
                 </h4>
                 {top5.map((post, idx) => (
@@ -188,8 +188,8 @@ export function MetaTopPosts({ posts }: Props) {
 
             {/* Posts sem dados de insight (anteriores à conversão para conta Business) */}
             {postsWithoutData.length > 0 && (
-                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-300/80">
-                    <span className="font-semibold text-amber-300">⚠ {postsWithoutData.length} post{postsWithoutData.length > 1 ? 's' : ''} sem dados de {tab.label.toLowerCase()}.</span>{' '}
+                <div className="rounded-lg border-[var(--v2-warning)]/20 bg-[var(--v2-warning)]/5 border px-3 py-2.5 text-xs text-[var(--v2-warning)]/80">
+                    <span className="font-semibold text-[var(--v2-warning)]">⚠ {postsWithoutData.length} post{postsWithoutData.length > 1 ? 's' : ''} sem dados de {tab.label.toLowerCase()}.</span>{' '}
                     Isso ocorre porque a Meta API só armazena insights para posts publicados <em>após</em> a conta ser convertida para Comercial ou Criador. Posts anteriores à conversão não têm histórico disponível.
                 </div>
             )}

@@ -38,12 +38,12 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
     if (!active || !payload?.length) return null;
     return (
-        <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-lg text-xs space-y-1">
-            <p className="font-medium text-foreground mb-1">{label}</p>
+        <div className="rounded-lg bg-[var(--v2-bg-surface)] backdrop-blur-xl border border-[var(--v2-border)] shadow-[0_8px_30px_rgba(0,0,0,0.3)] px-3 py-2 text-xs space-y-1">
+            <p className="text-[var(--v2-text-tertiary)] text-[10px] font-medium uppercase tracking-widest mb-1">{label}</p>
             {payload.map((entry) => (
                 <div key={entry.name} className="flex items-center justify-between gap-4">
                     <span style={{ color: entry.color }}>{entry.name}</span>
-                    <span className="font-bold">{fmt(entry.value)}</span>
+                    <span className="text-[var(--v2-text-primary)] font-mono font-bold">{fmt(entry.value)}</span>
                 </div>
             ))}
         </div>
@@ -84,15 +84,33 @@ export function MetaContentTypeChart({ posts }: Props) {
     return (
         <ResponsiveContainer width="100%" height={220}>
             <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <defs>
+                    <linearGradient id="gradReach" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#FF7350" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#FF7350" stopOpacity={0.6} />
+                    </linearGradient>
+                    <linearGradient id="gradSaves" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.6} />
+                    </linearGradient>
+                    <linearGradient id="gradShares" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.6} />
+                    </linearGradient>
+                    <linearGradient id="gradLikes" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#746C7E" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#746C7E" stopOpacity={0.6} />
+                    </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.03)" vertical={false} />
                 <XAxis
                     dataKey="tipo"
-                    tick={{ fontSize: 11, fill: '#9ca3af' }}
+                    tick={{ fontSize: 11, fill: '#6B6873', fontFamily: 'monospace' }}
                     tickLine={false}
                     axisLine={false}
                 />
                 <YAxis
-                    tick={{ fontSize: 10, fill: '#9ca3af' }}
+                    tick={{ fontSize: 10, fill: '#6B6873', fontFamily: 'monospace' }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={fmt}
@@ -100,14 +118,14 @@ export function MetaContentTypeChart({ posts }: Props) {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend
-                    wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
+                    wrapperStyle={{ fontSize: '10px', paddingTop: '8px', color: 'var(--v2-text-tertiary)' }}
                     iconType="circle"
-                    iconSize={8}
+                    iconSize={7}
                 />
-                <Bar dataKey="Alcance" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                <Bar dataKey="Saves" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                <Bar dataKey="Shares" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                <Bar dataKey="Likes" fill="#ec4899" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Alcance" fill="url(#gradReach)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Saves" fill="url(#gradSaves)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Shares" fill="url(#gradShares)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Likes" fill="url(#gradLikes)" radius={[6, 6, 0, 0]} maxBarSize={40} />
             </BarChart>
         </ResponsiveContainer>
     );

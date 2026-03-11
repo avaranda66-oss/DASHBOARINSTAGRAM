@@ -30,9 +30,9 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
     if (!active || !payload?.length) return null;
     return (
-        <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-lg text-xs">
-            <p className="font-medium text-foreground">{label}</p>
-            <p className="text-blue-400 font-bold mt-0.5">Alcance médio: {fmt(payload[0].value)}</p>
+        <div className="rounded-lg bg-[var(--v2-bg-surface)] backdrop-blur-xl border border-[var(--v2-border)] shadow-[0_8px_30px_rgba(0,0,0,0.3)] px-3 py-2 text-xs">
+            <p className="text-[var(--v2-text-tertiary)] text-[10px] font-medium uppercase tracking-widest">{label}</p>
+            <p className="text-[#FF7350] font-mono font-bold mt-0.5">Alcance médio: {fmt(payload[0].value)}</p>
         </div>
     );
 }
@@ -60,38 +60,38 @@ export function MetaPostingDayChart({ posts }: Props) {
         <div className="space-y-2">
             <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.03)" vertical={false} />
                     <XAxis
                         dataKey="dia"
-                        tick={{ fontSize: 11, fill: '#9ca3af' }}
+                        tick={{ fontSize: 11, fill: '#6B6873', fontFamily: 'monospace' }}
                         tickLine={false}
                         axisLine={false}
                     />
                     <YAxis
-                        tick={{ fontSize: 10, fill: '#9ca3af' }}
+                        tick={{ fontSize: 10, fill: '#6B6873', fontFamily: 'monospace' }}
                         tickLine={false}
                         axisLine={false}
                         tickFormatter={fmt}
                         width={42}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="Alcance médio" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                    <Bar dataKey="Alcance médio" radius={[6, 6, 0, 0]} maxBarSize={48}>
                         {data.map((entry) => (
                             <Cell
                                 key={entry.dia}
-                                fill={entry['Alcance médio'] === maxValue && maxValue > 0 ? '#3b82f6' : '#3b82f630'}
+                                fill={entry['Alcance médio'] === maxValue && maxValue > 0 ? '#FF7350' : 'rgba(255,115,80,0.15)'}
                             />
                         ))}
                     </Bar>
                 </BarChart>
             </ResponsiveContainer>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground px-1">
+            <div className="flex items-center gap-4 text-xs text-[var(--v2-text-tertiary)] px-1">
                 <div className="flex items-center gap-1.5">
-                    <div className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                    <div className="h-2.5 w-2.5 rounded-full bg-[#FF7350]" />
                     <span>Melhor dia</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    <div className="h-2.5 w-2.5 rounded-full bg-blue-500/20" />
+                    <div className="h-2.5 w-2.5 rounded-full bg-[#FF7350]/15" />
                     <span>Outros dias</span>
                 </div>
                 <span className="ml-auto text-[10px]">
