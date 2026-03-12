@@ -537,3 +537,43 @@ export async function deleteComment(token: string, commentId: string): Promise<{
         return { success: false, error: err.message };
     }
 }
+
+export async function getInstagramUserId(token: string): Promise<string | null> {
+    try {
+        const url = `${GRAPH_BASE}/${GRAPH_VERSION}/me?fields=id&access_token=${token}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        return data.id || null;
+    } catch {
+        return null;
+    }
+}
+
+export async function publishImage(token: string, userId: string, imageUrl: string, caption: string): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+        const createUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media?image_url=${encodeURIComponent(imageUrl)}&caption=${encodeURIComponent(caption)}&access_token=${token}`;
+        const createRes = await fetch(createUrl, { method: 'POST' });
+        const createData = await createRes.json();
+        
+        if (createData.error) {
+            console.error('[Meta API Publish Create]', createData.error);
+            return { success: false, error: createData.error.message };
+        }
+        
+        const containerId = createData.id;
+        if (!containerId) return { success: false, error: 'Container não criado.' };
+
+        const pubUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media_publish?creation_id=${containerId}&access_token=${token}`;
+        const pubRes = await fetch(pubUrl, { method: 'POST' });
+        const pubData = await pubRes.json();
+        
+        if (pubData.error) {
+            console.error('[Meta API Publish Error]', pubData.error);
+            return { success: false, error: pubData.error.message };
+        }
+        
+        return { success: true, id: pubData.id };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}

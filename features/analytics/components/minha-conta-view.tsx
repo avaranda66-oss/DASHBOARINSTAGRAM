@@ -24,6 +24,8 @@ import { MetaFollowerGrowth } from './meta-follower-growth';
 import { MetaAudienceDemographics } from './meta-audience-demographics';
 import { MetaBestHourChart } from './meta-best-hour-chart';
 import { MetaReelsChart } from './meta-reels-chart';
+import { MetaPublishForm } from './meta-publish-form';
+import { Rocket } from 'lucide-react';
 
 interface MetaPost extends InstagramPostMetrics {
     reach?: number;
@@ -108,7 +110,7 @@ function TypeIcon({ type }: { type: string }) {
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } };
 
-type InternalTab = 'overview' | 'charts' | 'posts' | 'hashtags' | 'strategy' | 'audience';
+type InternalTab = 'overview' | 'charts' | 'posts' | 'hashtags' | 'strategy' | 'audience' | 'publish';
 
 const INTERNAL_TABS: { key: InternalTab; label: string; icon: React.ElementType }[] = [
     { key: 'overview', label: 'Visão Geral', icon: TrendingUp },
@@ -117,6 +119,7 @@ const INTERNAL_TABS: { key: InternalTab; label: string; icon: React.ElementType 
     { key: 'hashtags', label: 'Hashtags', icon: Hash },
     { key: 'strategy', label: 'Estratégia IA', icon: Sparkles },
     { key: 'audience', label: 'Audiência', icon: Users },
+    { key: 'publish', label: 'Publicar', icon: Rocket },
 ];
 
 interface Props {

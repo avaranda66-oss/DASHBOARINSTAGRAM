@@ -11,7 +11,7 @@ export async function GET() {
         );
     }
 
-    const scope = 'instagram_business_basic,instagram_business_manage_insights';
+    const scope = 'instagram_business_basic,instagram_business_manage_insights,instagram_business_manage_comments,instagram_business_manage_messages,instagram_business_content_publish';
 
     const authUrl =
         `https://www.instagram.com/oauth/authorize` +
