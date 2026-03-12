@@ -64,6 +64,25 @@ export async function deleteAccountAction(id: string) {
     }
 }
 
+export async function updateAccountMetaProfileAction(username: string, data: { followersCount?: number; name?: string }) {
+    try {
+        const handle = username.replace('@', '').toLowerCase();
+        const updateData: any = {};
+        if (data.followersCount != null) updateData.followers_count = data.followersCount;
+        if (data.name) updateData.name = data.name;
+        if (Object.keys(updateData).length === 0) return { success: true };
+
+        await db.account.update({
+            where: { providerAccountId: handle },
+            data: updateData,
+        });
+        return { success: true };
+    } catch (e: any) {
+        console.error("Erro ao atualizar perfil Meta no Prisma:", e);
+        return { success: false, error: e.message };
+    }
+}
+
 export async function getAccountByUsernameAction(username: string) {
     try {
         const handle = username.replace('@', '').toLowerCase();

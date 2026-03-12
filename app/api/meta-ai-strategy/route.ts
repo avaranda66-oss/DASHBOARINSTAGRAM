@@ -67,15 +67,19 @@ export async function POST(req: NextRequest) {
             .sort((a, b) => b.avgReach - a.avgReach);
 
         let extraData = '';
-        if (demographics && demographics.cities && demographics.ageGenders) {
-            const topCity = demographics.cities[0];
-            const topAge = demographics.ageGenders[0];
-            extraData += `
+        if (demographics && demographics.followers) {
+            const topCity = demographics.followers.city?.[0];
+            const topAge = demographics.followers.age?.[0];
+            const topGender = demographics.followers.gender?.[0];
+            if (topCity || topAge) {
+                extraData += `
 === DADOS DE AUDIÊNCIA ===
 - Principal Cidade: ${topCity ? `${topCity.name} (${topCity.percentage}%)` : 'N/A'}
-- Principal Faixa Etária/Gênero: ${topAge ? `${topAge.name} (${topAge.percentage}%)` : 'N/A'}
-- Seguidores (resumo local): ${demographics.cities.length > 0 ? 'Mapeados' : 'N/A'}
+- Principal Faixa Etária: ${topAge ? `${topAge.name} (${topAge.percentage}%)` : 'N/A'}
+- Principal Gênero: ${topGender ? `${topGender.name} (${topGender.percentage}%)` : 'N/A'}
+- Seguidores mapeados por cidade: ${(demographics.followers.city?.length ?? 0) > 0 ? 'Sim' : 'N/A'}
 `;
+            }
         }
 
         if (accountInsights && accountInsights.length > 0) {

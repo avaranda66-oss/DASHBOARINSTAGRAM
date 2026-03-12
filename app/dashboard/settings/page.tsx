@@ -365,7 +365,7 @@ export default function SettingsPage() {
                                         <div className="flex items-center gap-3">
                                             <div className="h-10 w-10 rounded-full border border-border overflow-hidden bg-muted flex items-center justify-center shrink-0">
                                                 {acc.avatarUrl ? (
-                                                    <img src={acc.avatarUrl} alt={acc.name} className="h-full w-full object-cover" />
+                                                    <img src={`/api/image-proxy?url=${encodeURIComponent(acc.avatarUrl)}`} alt={acc.name} className="h-full w-full object-cover" />
                                                 ) : (
                                                     <Instagram className="h-5 w-5 text-muted-foreground/50" />
                                                 )}

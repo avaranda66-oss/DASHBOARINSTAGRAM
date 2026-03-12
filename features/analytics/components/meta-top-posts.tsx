@@ -65,7 +65,7 @@ function PostCard({
             </div>
             {post.displayUrl && (
                 <div className="h-12 w-12 shrink-0 rounded overflow-hidden bg-muted">
-                    <img src={post.displayUrl} alt="" className="h-full w-full object-cover" />
+                    <img src={`/api/image-proxy?url=${encodeURIComponent(post.displayUrl)}`} alt="" className="h-full w-full object-cover" />
                 </div>
             )}
             <div className="flex-1 min-w-0">

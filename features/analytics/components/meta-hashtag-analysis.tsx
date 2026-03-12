@@ -58,7 +58,7 @@ export function MetaHashtagAnalysis({ posts }: Props) {
                 if (!map[tag]) map[tag] = { reach: [], saves: [], likes: [] };
                 map[tag].reach.push(p.reach ?? 0);
                 map[tag].saves.push(p.saved ?? 0);
-                map[tag].likes.push(p.likesCount);
+                map[tag].likes.push(p.likesCount ?? 0);
             });
         });
 

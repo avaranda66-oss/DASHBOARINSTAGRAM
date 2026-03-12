@@ -44,10 +44,10 @@ export function MetaDiscoveryCard({ profile, posts, fetchedAt }: Props) {
   const avgLikes = posts.length > 0 ? Math.round(totalLikes / posts.length) : 0;
   const avgComments = posts.length > 0 ? Math.round(totalComments / posts.length) : 0;
   
-  // Approx engagement rate relative to follower count (since reach is not available for competitors)
-  const engRate = profile.followersCount > 0 
-    ? (((avgLikes + avgComments) / profile.followersCount) * 100).toFixed(2) 
-    : '0';
+  // Taxa de engajamento por seguidores — apenas se disponível
+  const engRate = profile.followersCount > 0
+    ? (((avgLikes + avgComments) / profile.followersCount) * 100).toFixed(2)
+    : null;
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm overflow-hidden">
@@ -57,7 +57,8 @@ export function MetaDiscoveryCard({ profile, posts, fetchedAt }: Props) {
           <div className="flex items-center gap-4">
             <div className="h-16 w-16 rounded-full overflow-hidden bg-zinc-800 border border-zinc-700 flex-shrink-0">
               {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={profile.handle} className="h-full w-full object-cover" />
+                // BUG FIX: usar image-proxy para evitar bloqueio CORS do CDN do Instagram
+                <img src={`/api/image-proxy?url=${encodeURIComponent(profile.avatarUrl)}`} alt={profile.handle} className="h-full w-full object-cover" />
               ) : (
                 <div className="h-full w-full flex items-center justify-center instagram-gradient opacity-20" />
               )}
@@ -65,15 +66,14 @@ export function MetaDiscoveryCard({ profile, posts, fetchedAt }: Props) {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-bold">@{profile.handle}</h3>
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-[10px] font-bold text-blue-400">
-                  <ShieldCheck className="h-3 w-3" /> Meta API
+                <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 text-[10px] font-bold text-orange-400">
+                  <ShieldCheck className="h-3 w-3" /> Apify
                 </span>
               </div>
               <p className="text-sm text-zinc-400">{profile.name}</p>
               <div className="flex gap-4 mt-1 text-xs text-zinc-500">
-                <span><strong className="text-zinc-300">{fmt(profile.followersCount)}</strong> seg</span>
-                <span><strong className="text-zinc-300">{fmt(profile.followsCount)}</strong> seg</span>
-                <span><strong className="text-zinc-300">{fmt(profile.mediaCount)}</strong> posts</span>
+                <span><strong className="text-zinc-300">{profile.followersCount > 0 ? fmt(profile.followersCount) : 'N/D'}</strong> seguidores</span>
+                <span><strong className="text-zinc-300">{profile.mediaCount > 0 ? fmt(profile.mediaCount) : '?'}</strong> posts buscados</span>
               </div>
             </div>
           </div>
@@ -116,9 +116,9 @@ export function MetaDiscoveryCard({ profile, posts, fetchedAt }: Props) {
         <div className="p-4 text-center">
             <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider mb-1">Eng. Rate (Seguid.)</p>
             <p className="text-xl font-bold font-mono text-purple-400 flex items-center justify-center gap-1.5">
-                <Users className="h-4 w-4" /> {engRate}%
+                <Users className="h-4 w-4" /> {engRate !== null ? `${engRate}%` : 'N/D'}
             </p>
-            <p className="text-[10px] text-zinc-500 mt-0.5">Est. {posts.length} posts</p>
+            <p className="text-[10px] text-zinc-500 mt-0.5">{engRate === null ? 'Seguidores não disponíveis' : `Est. ${posts.length} posts`}</p>
         </div>
       </div>
 

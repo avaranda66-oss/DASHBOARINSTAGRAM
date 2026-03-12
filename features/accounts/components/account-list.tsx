@@ -81,7 +81,7 @@ export function AccountList() {
                                 <div className="p-6 flex flex-col items-center text-center">
                                     <div className="h-20 w-20 rounded-full border-2 border-border/50 overflow-hidden mb-4 bg-muted flex items-center justify-center shadow-sm">
                                         {account.avatarUrl ? (
-                                            <img src={account.avatarUrl} alt={account.name} className="h-full w-full object-cover" />
+                                            <img src={`/api/image-proxy?url=${encodeURIComponent(account.avatarUrl)}`} alt={account.name} className="h-full w-full object-cover" />
                                         ) : (
                                             <span className="text-xl font-bold text-muted-foreground">
                                                 {getInitials(account.name)}

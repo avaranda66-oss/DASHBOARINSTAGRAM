@@ -11,6 +11,7 @@ import { nanoid } from 'nanoid';
 import { useAnalytics } from '@/features/analytics/hooks/use-analytics';
 import { AnalyticsSearch } from '@/features/analytics/components/analytics-search';
 import { MetaKpiCards } from '@/features/analytics/components/kpi-cards';
+import { ApifyStatsPanel } from '@/features/analytics/components/apify-stats-panel';
 import { PostCards } from '@/features/analytics/components/post-cards';
 import { AnalyticsSkeleton } from '@/features/analytics/components/analytics-skeleton';
 import { InsightsPanel } from '@/features/analytics/components/insights-panel';
@@ -18,18 +19,25 @@ import { TopEngagers } from '@/features/analytics/components/top-engagers';
 import { ComparisonView, computeSummary } from '@/features/analytics/components/comparison-view';
 import type { ProfileData } from '@/features/analytics/components/comparison-view';
 import { CommentsAnalysis } from '@/features/analytics/components/comments-analysis';
+import { EngagementHeatmap } from '@/features/analytics/components/engagement-heatmap';
+import { AlertAnomalyPanel } from '@/features/analytics/components/alert-anomaly-panel';
+import { ContentCalendar } from '@/features/analytics/components/content-calendar';
+import { BuyingIntentFeed } from '@/features/analytics/components/buying-intent-feed';
+import { IntelligencePanel } from '@/features/analytics/components/intelligence-panel';
+import { FunnelChart } from '@/features/analytics/components/funnel-chart';
+import { CarouselSlideAnalysis } from '@/features/analytics/components/carousel-slide-analysis';
+import { ExportReport } from '@/features/analytics/components/export-report';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Button } from '@/components/ui/button';
-import { useAccountStore, useSettingsStore } from '@/stores';
+import { useAccountStore, useSettingsStore, useAnalyticsStore } from '@/stores';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getCompetitorsAction, saveCompetitorAction, deleteCompetitorAction } from '@/app/actions/competitor.actions';
-import { getAnalyticsAction } from '@/app/actions/analytics.actions';
-import { useAnalyticsStore } from '@/stores';
+import { getAnalyticsAction, getMetaAnalyticsAction, saveMetaAnalyticsAction } from '@/app/actions/analytics.actions';
 import type { CompetitorProfile } from '@/types/competitor';
 import { MinhaContaView } from '@/features/analytics/components/minha-conta-view';
 import { MetaDiscoveryCard } from '@/features/analytics/components/meta-discovery-card';
 
-type DataSource = 'apify' | 'meta';
 type ViewMode = 'individual' | 'vs' | 'minha-conta';
 
 const container = {
@@ -43,7 +51,7 @@ const item = {
 
 export default function AnalyticsPage() {
     const {
-        posts, summary, isLoading, error, hasData, isEmpty,
+        posts, filteredPosts, summary, isLoading, error, hasData, isEmpty,
         lastFetchedAt, profileUrl, fetchMetrics, fetchAndMerge, clearMetrics, loadFromCache,
         filterPeriod, setFilterPeriod, avatarUrl: currentAvatarUrl,
         customDateRange, setCustomDateRange
@@ -59,9 +67,9 @@ export default function AnalyticsPage() {
     const [isLoadingFixed, setIsLoadingFixed] = useState(false);
 
     // Meta API state
-    const [dataSource, setDataSource] = useState<DataSource>('apify');
     const [isLoadingMeta, setIsLoadingMeta] = useState(false);
     const [metaError, setMetaError] = useState<string | null>(null);
+    const [metaProfile, setMetaProfile] = useState<{ followersCount?: number; name?: string } | null>(null);
     const analyticsStore = useAnalyticsStore();
 
     // VS Mode state
@@ -89,6 +97,30 @@ export default function AnalyticsPage() {
     const metaConnected = !!settingsStore.settings?.metaAccessToken;
     const metaUsername = settingsStore.settings?.metaUsername;
 
+    // Carrega dados Meta do DB para não resetar no F5
+    // + Limpa dados contaminados que foram salvos erroneamente com type='account'
+    useEffect(() => {
+        if (!metaUsername) return;
+        // Carregar perfil (followers/nome)
+        import('@/app/actions/account.actions').then(({ getAccountByUsernameAction }) => {
+            getAccountByUsernameAction(metaUsername).then((acc) => {
+                if (acc?.followersCount) {
+                    setMetaProfile(prev => prev ?? { followersCount: acc.followersCount, name: acc.name });
+                }
+            }).catch(() => {});
+        });
+        // Carregar posts Meta do cache (type='meta') para o store — sobrevive ao F5
+        getMetaAnalyticsAction(metaUsername).then((cached) => {
+            if (cached && cached.posts.length > 0) {
+                analyticsStore.setPostsFromMeta(cached.posts as any[], metaUsername);
+            }
+        }).catch(() => {});
+        // Limpar dados contaminados
+        import('@/app/actions/analytics.actions').then(({ cleanupMetaContaminationAction }) => {
+            cleanupMetaContaminationAction(metaUsername).catch(() => {});
+        });
+    }, [metaUsername]);
+
     const handleFetchMeta = async () => {
         const token = settingsStore.settings?.metaAccessToken;
         if (!token) {
@@ -108,8 +140,23 @@ export default function AnalyticsPage() {
                 setMetaError(json.error ?? 'Erro ao buscar dados Meta API.');
                 return;
             }
-            // Alimentar o store de analytics com os dados normalizados
-            analyticsStore.setPostsFromMeta(json.data, json.username ?? metaUsername ?? 'meta');
+            // Exibir dados Meta no Individual mode (in-memory, sem contaminar cache Apify)
+            const metaUser = json.username ?? metaUsername ?? 'meta';
+            analyticsStore.setPostsFromMeta(json.data, metaUser);
+            // Persistir no cache Meta separado (type='meta'), sem tocar no cache Apify (type='account')
+            saveMetaAnalyticsAction(metaUser, json.data).catch(console.error);
+            // Salvar followers/nome no perfil da conta
+            if (json.followersCount != null || json.name) {
+                setMetaProfile({ followersCount: json.followersCount, name: json.name });
+                if (metaUser) {
+                    import('@/app/actions/account.actions').then(({ updateAccountMetaProfileAction }) => {
+                        updateAccountMetaProfileAction(metaUser, {
+                            followersCount: json.followersCount,
+                            name: json.name,
+                        }).catch(console.error);
+                    });
+                }
+            }
         } catch (err: any) {
             setMetaError(err.message ?? 'Erro de rede ao chamar Meta API.');
         } finally {
@@ -628,7 +675,8 @@ export default function AnalyticsPage() {
                                 <div className="flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-full border border-border overflow-hidden bg-muted flex-shrink-0">
                                         {(currentAvatarUrl || currentComp?.avatarUrl) ? (
-                                            <img src={currentAvatarUrl || currentComp?.avatarUrl!} alt="Perfil" className="h-full w-full object-cover" />
+                                            // BUG FIX: usar image-proxy para evitar CORS do CDN do Instagram
+                                            <img src={`/api/image-proxy?url=${encodeURIComponent(currentAvatarUrl || currentComp?.avatarUrl!)}`} alt="Perfil" className="h-full w-full object-cover" />
                                         ) : (
                                             <div className="h-full w-full flex items-center justify-center instagram-gradient opacity-20" />
                                         )}
@@ -702,50 +750,155 @@ export default function AnalyticsPage() {
                                 </motion.div>
                             )}
 
-                            {summary && <motion.div variants={item}><MetaKpiCards posts={posts as any[]} /></motion.div>}
+                            {/* Botão Meta API — APENAS para a própria conta do usuário, nunca para concorrentes */}
+                            {metaConnected && summary && metaUsername &&
+                             posts[0]?.ownerUsername?.toLowerCase() === metaUsername.toLowerCase() && (
+                                <motion.div variants={item} className="flex items-center gap-3 rounded-xl border border-[var(--v2-accent)]/20 bg-[var(--v2-accent)]/5 px-4 py-3">
+                                    <Zap className="h-4 w-4 text-[var(--v2-accent)] shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium text-[var(--v2-text-primary)]">Métricas Privadas (Meta API)</p>
+                                        <p className="text-[10px] text-muted-foreground">Alcance real, saves e shares — dados exclusivos da Meta</p>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        disabled={isLoadingMeta}
+                                        onClick={handleFetchMeta}
+                                        className="shrink-0 bg-[var(--v2-accent)] hover:bg-[var(--v2-accent-hover)] text-white text-xs"
+                                    >
+                                        {isLoadingMeta ? <><RefreshCw className="mr-1.5 h-3 w-3 animate-spin" /> Buscando...</> : <><Zap className="mr-1.5 h-3 w-3" /> Enriquecer</>}
+                                    </Button>
+                                </motion.div>
+                            )}
+                            {metaError && <p className="text-xs text-destructive px-1">{metaError}</p>}
 
-                            {
-                                summary?.bestPost && (
-                                    <motion.div variants={item}>
-                                        <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/5 p-3">
-                                            <div className="flex items-center gap-2 text-sm font-medium text-amber-400">
-                                                <span>🏆</span><span>Melhor Post</span>
-                                            </div>
-                                            <p className="mt-1 text-sm truncate">{summary.bestPost.caption || '(sem legenda)'}</p>
-                                            <p className="mt-0.5 text-xs text-muted-foreground">
-                                                {summary.bestPost.likesCount.toLocaleString('pt-BR')} likes · {summary.bestPost.commentsCount.toLocaleString('pt-BR')} comentários
-                                            </p>
-                                        </div>
-                                    </motion.div>
-                                )
-                            }
+                            {summary && (
+                                <motion.div variants={item}>
+                                    {filteredPosts.length > 0 && filteredPosts[0]?.source === 'meta' ? (
+                                        <MetaKpiCards
+                                            posts={filteredPosts as any[]}
+                                            accountProfile={
+                                                metaProfile && metaUsername &&
+                                                filteredPosts[0]?.ownerUsername?.toLowerCase() === metaUsername.toLowerCase()
+                                                    ? metaProfile
+                                                    : undefined
+                                            }
+                                        />
+                                    ) : (
+                                        <ApifyStatsPanel posts={filteredPosts} />
+                                    )}
+                                </motion.div>
+                            )}
+
+                            {/* Alertas & Anomalias */}
+                            {filteredPosts.length >= 5 && (
+                                <motion.div variants={item}>
+                                    <ErrorBoundary>
+                                        <AlertAnomalyPanel posts={filteredPosts} />
+                                    </ErrorBoundary>
+                                </motion.div>
+                            )}
+
+                            {/* Painel de Inteligência (Hormozi, Cialdini, Lindstrom) */}
+                            {filteredPosts.length >= 3 && (
+                                <motion.div variants={item}>
+                                    <ErrorBoundary>
+                                        <IntelligencePanel
+                                            posts={filteredPosts}
+                                            isMeta={filteredPosts.length > 0 && filteredPosts[0]?.source === 'meta'}
+                                        />
+                                    </ErrorBoundary>
+                                </motion.div>
+                            )}
+
+                            {/* Funil de Engajamento (Meta only) */}
+                            {filteredPosts.length > 0 && filteredPosts[0]?.source === 'meta' && (
+                                <motion.div variants={item}>
+                                    <ErrorBoundary>
+                                        <FunnelChart posts={filteredPosts as any[]} />
+                                    </ErrorBoundary>
+                                </motion.div>
+                            )}
+
+                            {/* Heatmap de Engajamento */}
+                            {filteredPosts.length >= 5 && (
+                                <motion.div variants={item}>
+                                    <ErrorBoundary>
+                                        <EngagementHeatmap posts={filteredPosts} />
+                                    </ErrorBoundary>
+                                </motion.div>
+                            )}
 
                             {
                                 summary && (
                                     <motion.div variants={item}>
                                         <h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wider">Insights & Análise</h3>
-                                        <InsightsPanel posts={posts} summary={summary}
-                                            fixedInsights={fixedInsights} isLoadingFixed={isLoadingFixed}
-                                            onLoadFixed={loadFixedInsights} />
+                                        <ErrorBoundary>
+                                            <InsightsPanel posts={filteredPosts} summary={summary}
+                                                fixedInsights={fixedInsights} isLoadingFixed={isLoadingFixed}
+                                                onLoadFixed={loadFixedInsights} />
+                                        </ErrorBoundary>
                                     </motion.div>
                                 )
                             }
 
+                            {/* Intenção de Compra */}
+                            {filteredPosts.length > 0 && (
+                                <motion.div variants={item}>
+                                    <ErrorBoundary>
+                                        <BuyingIntentFeed posts={filteredPosts} />
+                                    </ErrorBoundary>
+                                </motion.div>
+                            )}
+
                             <motion.div variants={item}>
                                 <h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wider">Top Engajadores</h3>
-                                <TopEngagers posts={posts} />
+                                <ErrorBoundary>
+                                    <TopEngagers posts={filteredPosts} />
+                                </ErrorBoundary>
                             </motion.div>
 
                             <motion.div variants={item}>
-                                <CommentsAnalysis posts={posts} metaToken={settingsStore.settings?.metaAccessToken ?? undefined} />
+                                <ErrorBoundary>
+                                    <CommentsAnalysis posts={filteredPosts} metaToken={settingsStore.settings?.metaAccessToken ?? undefined} />
+                                </ErrorBoundary>
                             </motion.div>
+
+                            {/* Análise de Carrosséis (Meta only) */}
+                            {filteredPosts.some(p => p.type === 'Sidecar') && (
+                                <motion.div variants={item}>
+                                    <ErrorBoundary>
+                                        <CarouselSlideAnalysis
+                                            posts={filteredPosts}
+                                            metaToken={settingsStore.settings?.metaAccessToken}
+                                        />
+                                    </ErrorBoundary>
+                                </motion.div>
+                            )}
+
+                            {/* Calendário de Conteúdo */}
+                            {filteredPosts.length >= 5 && (
+                                <motion.div variants={item}>
+                                    <ErrorBoundary>
+                                        <ContentCalendar posts={filteredPosts} />
+                                    </ErrorBoundary>
+                                </motion.div>
+                            )}
 
                             <motion.div variants={item}>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Análise por Post</h3>
-                                    <span className="text-[10px] text-muted-foreground/50">ⓘ Visualizações disponíveis apenas para Reels/Vídeos</span>
+                                    <div className="flex items-center gap-3">
+                                        <ExportReport
+                                            posts={filteredPosts}
+                                            summary={summary}
+                                            accountHandle={profileUrl.split('/').filter(Boolean).pop()}
+                                        />
+                                        <span className="text-[10px] text-muted-foreground/50">ⓘ Visualizações disponíveis apenas para Reels/Vídeos</span>
+                                    </div>
                                 </div>
-                                <PostCards posts={posts} />
+                                <ErrorBoundary>
+                                    <PostCards posts={filteredPosts} />
+                                </ErrorBoundary>
                             </motion.div>
                         </>
                     )}

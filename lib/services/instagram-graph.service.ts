@@ -1,4 +1,4 @@
-import type { InstagramPostMetrics, PostComment } from '@/types/analytics';
+import type { InstagramPostMetrics, MetaPostMetrics, PostComment } from '@/types/analytics';
 
 const GRAPH_BASE = 'https://graph.instagram.com';
 const GRAPH_VERSION = 'v25.0';
@@ -11,9 +11,11 @@ const mediaTypeMap: Record<string, InstagramPostMetrics['type']> = {
     CAROUSEL_ALBUM: 'Sidecar',
 };
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 function extractShortCode(permalink: string): string {
-    // "https://www.instagram.com/p/CxYZ123abc/" → "CxYZ123abc"
-    const match = permalink.match(/\/p\/([^/]+)/);
+    // Cobre /p/, /reel/, /reels/, /tv/ — corrige bug de Reels retornando ''
+    const match = permalink.match(/\/(?:p|reel|reels|tv)\/([^/?]+)/);
     return match?.[1] ?? '';
 }
 
@@ -21,6 +23,101 @@ function extractHashtags(caption: string): string[] {
     const matches = caption.match(/#[\w\u00C0-\u024F\u1E00-\u1EFF]+/g);
     return matches ?? [];
 }
+
+/** Headers de autenticação para Meta API — token no header, não na URL */
+function metaHeaders(token: string, extra?: Record<string, string>): Record<string, string> {
+    return { 'Authorization': `Bearer ${token}`, ...extra };
+}
+
+/** Pausa entre chamadas de API para respeitar rate limits */
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ─── Circuit Breaker ─────────────────────────────────────────────────────────
+
+const circuitBreaker = {
+    failures: 0,
+    lastFailure: 0,
+    isOpen: false,
+    threshold: 5,
+    resetTimeout: 60000, // 1 minuto
+};
+
+function checkCircuitBreaker(): boolean {
+    if (!circuitBreaker.isOpen) return true;
+    if (Date.now() - circuitBreaker.lastFailure > circuitBreaker.resetTimeout) {
+        circuitBreaker.isOpen = false;
+        circuitBreaker.failures = 0;
+        return true;
+    }
+    return false;
+}
+
+function recordFailure(): void {
+    circuitBreaker.failures++;
+    circuitBreaker.lastFailure = Date.now();
+    if (circuitBreaker.failures >= circuitBreaker.threshold) {
+        circuitBreaker.isOpen = true;
+    }
+}
+
+function recordSuccess(): void {
+    circuitBreaker.failures = Math.max(0, circuitBreaker.failures - 1);
+}
+
+// ─── Cache Layer ─────────────────────────────────────────────────────────────
+
+const apiCache = new Map<string, { data: unknown; timestamp: number }>();
+const CACHE_TTL_SHORT = 5 * 60 * 1000; // 5 min para insights de posts
+const CACHE_TTL_LONG = 60 * 60 * 1000; // 1h para demographics e online_followers
+
+function getCached<T>(key: string, ttl: number): T | null {
+    const entry = apiCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > ttl) {
+        apiCache.delete(key);
+        return null;
+    }
+    return entry.data as T;
+}
+
+function setCache(key: string, data: unknown): void {
+    apiCache.set(key, { data, timestamp: Date.now() });
+    // Evict old entries if cache grows too large
+    if (apiCache.size > 200) {
+        const oldest = [...apiCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+        for (let i = 0; i < 50; i++) apiCache.delete(oldest[i][0]);
+    }
+}
+
+/** Fetch com retry, backoff exponencial e circuit breaker */
+async function fetchWithRetry(
+    url: string,
+    init: RequestInit,
+    maxRetries = 2,
+): Promise<Response> {
+    if (!checkCircuitBreaker()) {
+        throw new Error('Circuit breaker aberto — Meta API temporariamente indisponível. Aguarde 1 minuto.');
+    }
+
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const res = await fetch(url, init);
+        if (res.status !== 429) {
+            recordSuccess();
+            return res;
+        }
+        // Rate limited — esperar com backoff exponencial
+        const waitMs = Math.min(1000 * 2 ** attempt, 10000);
+        lastError = new Error(`Rate limited após ${maxRetries + 1} tentativas`);
+        await sleep(waitMs);
+    }
+    recordFailure();
+    throw lastError!;
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface RawMediaItem {
     id: string;
@@ -42,19 +139,20 @@ interface InsightValue {
     value?: number;
 }
 
+// ─── Media Insights ──────────────────────────────────────────────────────────
+
 /**
  * Busca os posts e insights privados (reach, saves, shares) via Meta Graph API.
  * Requer token com escopo: instagram_business_basic, instagram_business_manage_insights
  */
-export async function fetchInstagramInsights(token: string, limit = 50): Promise<InstagramPostMetrics[]> {
+export async function fetchInstagramInsights(token: string, limit = 50): Promise<MetaPostMetrics[]> {
     // 1. Buscar lista de posts
     const mediaUrl =
         `${GRAPH_BASE}/${GRAPH_VERSION}/me/media` +
         `?fields=id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,username` +
-        `&limit=${limit}` +
-        `&access_token=${token}`;
+        `&limit=${limit}`;
 
-    const mediaRes = await fetch(mediaUrl);
+    const mediaRes = await fetchWithRetry(mediaUrl, { headers: metaHeaders(token) });
     const mediaData = await mediaRes.json();
 
     if (mediaData.error) {
@@ -66,12 +164,17 @@ export async function fetchInstagramInsights(token: string, limit = 50): Promise
     }
 
     const items: RawMediaItem[] = mediaData.data;
-    const posts: InstagramPostMetrics[] = [];
+    const posts: MetaPostMetrics[] = [];
 
     // 2. Para cada post, buscar insights privados
-    for (const item of items) {
-        // Métricas base (sempre disponíveis)
-        const basePost: InstagramPostMetrics = {
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
+        // Determinar tipo de conteúdo
+        const productType = item.media_product_type || (item.media_type === 'VIDEO' ? 'REELS' : 'FEED');
+
+        // Métricas base com tipo correto — sem (as any)
+        const post: MetaPostMetrics = {
             id: item.id,
             shortCode: extractShortCode(item.permalink),
             url: item.permalink,
@@ -87,13 +190,19 @@ export async function fetchInstagramInsights(token: string, limit = 50): Promise
             ownerUsername: item.username ?? '',
             ownerProfilePicUrl: undefined,
             latestComments: [],
+            // Campos MetaPostMetrics — defaults seguros
+            reach: 0,
+            saved: 0,
+            shares: 0,
+            totalInteractions: 0,
+            source: 'meta',
+            media_product_type: productType,
         };
 
         // 3. Buscar insights avançados (reach, saves, shares, views)
         try {
             // CRÍTICO: se UMA métrica inválida for pedida, a API falha o request INTEIRO
             // plays foi deprecado na v22 — removido para corrigir regressão de 16 posts sem dados
-            const productType = item.media_product_type || (item.media_type === 'VIDEO' ? 'REELS' : 'FEED');
             let metricsParam: string;
 
             if (productType === 'STORY') {
@@ -107,10 +216,9 @@ export async function fetchInstagramInsights(token: string, limit = 50): Promise
 
             const insightsUrl =
                 `${GRAPH_BASE}/${GRAPH_VERSION}/${item.id}/insights` +
-                `?metric=${metricsParam}` +
-                `&access_token=${token}`;
+                `?metric=${metricsParam}`;
 
-            const insightsRes = await fetch(insightsUrl);
+            const insightsRes = await fetchWithRetry(insightsUrl, { headers: metaHeaders(token) });
             const insightsData = await insightsRes.json();
 
             if (insightsData.data && Array.isArray(insightsData.data)) {
@@ -122,16 +230,19 @@ export async function fetchInstagramInsights(token: string, limit = 50): Promise
                     insightMap[insight.name] = typeof val === 'number' ? val : 0;
                 });
 
-                // Adicionar campos privados como propriedades extras
-                (basePost as any).reach = insightMap['reach'] ?? 0;
-                (basePost as any).saved = insightMap['saved'] ?? 0;
-                (basePost as any).shares = insightMap['shares'] ?? 0;
-                (basePost as any).totalInteractions = insightMap['total_interactions'] ?? 0;
-                (basePost as any).source = 'meta';
+                post.reach = insightMap['reach'] ?? 0;
+                post.saved = insightMap['saved'] ?? 0;
+                post.shares = insightMap['shares'] ?? 0;
+                post.totalInteractions = insightMap['total_interactions'] ?? 0;
 
                 // Views para vídeos/reels
                 if (insightMap['views'] != null) {
-                    basePost.videoViewCount = insightMap['views'];
+                    post.videoViewCount = insightMap['views'];
+                }
+
+                // Watch time de Reels (API retorna em milissegundos)
+                if (insightMap['ig_reels_avg_watch_time'] != null) {
+                    post.ig_reels_avg_watch_time = insightMap['ig_reels_avg_watch_time'];
                 }
             }
         } catch (insightErr) {
@@ -139,18 +250,24 @@ export async function fetchInstagramInsights(token: string, limit = 50): Promise
             // Continua sem insights avançados — post ainda é incluído
         }
 
-        // Calcular engagement rate (likes + comments) / reach * 100
-        const reach = (basePost as any).reach ?? 0;
-        if (reach > 0) {
-            basePost.engagementRate =
-                ((basePost.likesCount + basePost.commentsCount) / reach) * 100;
+        // Calcular engagement rate incluindo saves e shares (fórmula completa)
+        if (post.reach > 0) {
+            post.engagementRate =
+                ((post.likesCount + post.commentsCount + post.saved + post.shares) / post.reach) * 100;
         }
 
-        posts.push(basePost);
+        posts.push(post);
+
+        // Rate limiting: pausar 100ms entre chamadas de insight para não estourar quota
+        if (i < items.length - 1) {
+            await sleep(100);
+        }
     }
 
     return posts;
 }
+
+// ─── Comments ────────────────────────────────────────────────────────────────
 
 interface RawComment {
     id: string;
@@ -176,11 +293,11 @@ export async function fetchPostComments(
     // 1. Buscar lista de mídia com IDs do Meta (necessários para buscar comentários)
     const mediaItems: { id: string; shortCode: string }[] = [];
     let nextUrl: string | null =
-        `${GRAPH_BASE}/${GRAPH_VERSION}/me/media?fields=id,permalink&limit=50&access_token=${token}`;
+        `${GRAPH_BASE}/${GRAPH_VERSION}/me/media?fields=id,permalink&limit=50`;
     let pages = 0;
 
     while (nextUrl && pages < 5) {
-        const mediaPageRes: Response = await fetch(nextUrl);
+        const mediaPageRes: Response = await fetch(nextUrl, { headers: metaHeaders(token) });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data: any = await mediaPageRes.json();
         if (data.error) throw new Error(`Meta API: ${data.error.message} (código ${data.error.code})`);
@@ -210,16 +327,14 @@ export async function fetchPostComments(
 
     for (const media of mediaItems) {
         try {
-            // Usando `since` o Meta API já filtra apenas comentários após aquele momento.
-            // Paginar até 3 páginas (150 comentários recentes) é suficiente com esse filtro.
             const allComments: PostComment[] = [];
             let commentNextUrl: string | null =
                 `${GRAPH_BASE}/${GRAPH_VERSION}/${media.id}/comments` +
-                `?fields=id,text,username,timestamp,like_count&limit=50${sinceParam}&access_token=${token}`;
+                `?fields=id,text,username,timestamp,like_count&limit=50${sinceParam}`;
             let commentPages = 0;
 
             while (commentNextUrl && commentPages < 3) {
-                const commentRes: Response = await fetch(commentNextUrl);
+                const commentRes: Response = await fetch(commentNextUrl, { headers: metaHeaders(token) });
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const commentData: any = await commentRes.json();
 
@@ -252,17 +367,20 @@ export async function fetchPostComments(
     return results;
 }
 
+// ─── Token Management ────────────────────────────────────────────────────────
+
 /**
  * Verifica se um token Meta está válido fazendo uma requisição leve.
  */
-export async function verifyMetaToken(token: string): Promise<{ valid: boolean; username?: string }> {
+export async function verifyMetaToken(token: string): Promise<{ valid: boolean; username?: string; followersCount?: number; name?: string }> {
     try {
         const res = await fetch(
-            `${GRAPH_BASE}/${GRAPH_VERSION}/me?fields=username&access_token=${token}`
+            `${GRAPH_BASE}/${GRAPH_VERSION}/me?fields=username,followers_count,name`,
+            { headers: metaHeaders(token) }
         );
         const data = await res.json();
         if (data.error) return { valid: false };
-        return { valid: true, username: data.username };
+        return { valid: true, username: data.username, followersCount: data.followers_count, name: data.name };
     } catch {
         return { valid: false };
     }
@@ -271,18 +389,19 @@ export async function verifyMetaToken(token: string): Promise<{ valid: boolean; 
 /**
  * Renova o token de longa duração da Meta API.
  * Deve ser chamado quando o token estiver a menos de 7 dias da expiração.
+ * NOTA: OAuth refresh endpoint requer token como query param per spec.
  */
 export async function refreshMetaToken(token: string): Promise<{ access_token: string; expires_in: number } | null> {
     try {
         const url = `${GRAPH_BASE}/refresh_access_token?grant_type=ig_refresh_token&access_token=${token}`;
         const res = await fetch(url);
         const data = await res.json();
-        
+
         if (data.error || !data.access_token) {
             console.error('[Meta Token Refresh] Falha ao renovar token:', data.error);
             return null;
         }
-        
+
         return {
             access_token: data.access_token,
             expires_in: data.expires_in
@@ -292,6 +411,8 @@ export async function refreshMetaToken(token: string): Promise<{ access_token: s
         return null;
     }
 }
+
+// ─── Account Insights ────────────────────────────────────────────────────────
 
 export interface AccountDailyMetric {
     date: string;
@@ -332,9 +453,9 @@ export async function fetchAccountInsights(token: string, userId: string, days =
     const unixSince = Math.floor((Date.now() - days * 86400000) / 1000);
     const metrics = 'reach,views,accounts_engaged,total_interactions,likes,comments,saves,shares,follows_and_unfollows,profile_links_taps';
 
-    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/insights?metric=${metrics}&period=day&since=${unixSince}&until=${unixNow}&access_token=${token}`;
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/insights?metric=${metrics}&period=day&since=${unixSince}&until=${unixNow}`;
 
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: metaHeaders(token) });
     const data = await res.json();
 
     if (data.error) {
@@ -351,8 +472,6 @@ export async function fetchAccountInsights(token: string, userId: string, days =
     data.data.forEach((metricGroup: any) => {
         const metricName = metricGroup.name; // ex: 'reach'
         metricGroup.values?.forEach((val: any) => {
-            // val.end_time é formato ISO, ex: 2026-03-01T08:00:00+0000
-            // Usaremos a porsão da data para agrupar (YYYY-MM-DD)
             const dateOnly = val.end_time.substring(0, 10);
             if (!dailyMap[dateOnly]) {
                 dailyMap[dateOnly] = {
@@ -381,7 +500,15 @@ export async function fetchAccountInsights(token: string, userId: string, days =
                 case 'comments': dailyMap[dateOnly].comments = value; break;
                 case 'saves': dailyMap[dateOnly].saves = value; break;
                 case 'shares': dailyMap[dateOnly].shares = value; break;
-                case 'follows_and_unfollows': dailyMap[dateOnly].followsNet = value; break; // pode ter breakdown no futuro, se não, usamos value
+                case 'follows_and_unfollows': {
+                    // Meta API v25+ pode retornar objeto { FOLLOW: N, UNFOLLOW: N } em vez de número
+                    if (typeof value === 'object' && value !== null) {
+                        dailyMap[dateOnly].followsNet = (value.FOLLOW ?? 0) - (value.UNFOLLOW ?? 0);
+                    } else {
+                        dailyMap[dateOnly].followsNet = value;
+                    }
+                    break;
+                }
                 case 'profile_links_taps': dailyMap[dateOnly].profileLinksTaps = value; break;
             }
         });
@@ -391,24 +518,27 @@ export async function fetchAccountInsights(token: string, userId: string, days =
     return result;
 }
 
+// ─── Demographics ────────────────────────────────────────────────────────────
+
 async function fetchDemographicBreakdown(token: string, userId: string, metric: string, breakdown: string): Promise<DemographicEntry[]> {
-    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/insights?metric=${metric}&period=lifetime&timeframe=last_30_days&breakdown=${breakdown}&access_token=${token}`;
-    
+    // BUG FIX: metric_type=total_value é obrigatório na v25+ para demográficos com breakdown
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/insights?metric=${metric}&period=lifetime&timeframe=last_30_days&breakdown=${breakdown}&metric_type=total_value`;
+
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, { headers: metaHeaders(token) });
         const data = await res.json();
-        
+
         if (data.error || !data.data || data.data.length === 0) {
             return [];
         }
-        
+
         const metricData = data.data[0];
         const breakdowns = metricData.total_value?.breakdowns;
         if (!breakdowns || breakdowns.length === 0) return [];
-        
+
         const results = breakdowns[0].results;
         if (!results || !Array.isArray(results)) return [];
-        
+
         return results.map((r: any) => ({
             label: r.dimension_values?.join(', ') ?? 'Desconhecido',
             count: r.value ?? 0
@@ -450,6 +580,8 @@ export async function fetchAudienceDemographics(token: string, userId: string): 
     }
 }
 
+// ─── Business Discovery ──────────────────────────────────────────────────────
+
 export interface BusinessDiscoveryResult {
     username: string;
     name?: string;
@@ -463,20 +595,21 @@ export interface BusinessDiscoveryResult {
 
 export async function fetchBusinessDiscovery(token: string, userId: string, targetUsername: string): Promise<BusinessDiscoveryResult | null> {
     const fields = 'username,name,biography,followers_count,follows_count,media_count,profile_picture_url,media.limit(25){id,caption,media_type,like_count,comments_count,timestamp,permalink,media_url}';
-    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}?fields=business_discovery.username(${targetUsername}){${fields}}&access_token=${token}`;
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}?fields=business_discovery.username(${targetUsername}){${fields}}`;
 
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, { headers: metaHeaders(token) });
         const data = await res.json();
-        
+
         if (data.error) {
+            const errMsg = data.error.message ?? JSON.stringify(data.error);
             console.error('[Meta API Business Discovery] Erro:', data.error);
-            return null;
+            throw new Error(errMsg);
         }
-        
+
         const bd = data.business_discovery;
         if (!bd) return null;
-        
+
         return {
             username: bd.username,
             name: bd.name,
@@ -487,27 +620,29 @@ export async function fetchBusinessDiscovery(token: string, userId: string, targ
             profilePictureUrl: bd.profile_picture_url,
             posts: bd.media?.data || []
         };
-    } catch (err) {
-        console.error('[Meta API Business Discovery] Erro de rede:', err);
-        return null;
+    } catch (err: any) {
+        console.error('[Meta API Business Discovery] Erro:', err);
+        throw err; // propaga para o route handler mostrar o erro real
     }
 }
 
+// ─── Comment Management ──────────────────────────────────────────────────────
+
 export async function replyToComment(token: string, commentId: string, message: string): Promise<{ success: boolean; id?: string; error?: string }> {
-    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${commentId}/replies?access_token=${token}`;
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${commentId}/replies`;
     try {
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: metaHeaders(token, { 'Content-Type': 'application/json' }),
             body: JSON.stringify({ message })
         });
         const data = await res.json();
-        
+
         if (data.error) {
             console.error('[Meta API] Erro ao responder comentário:', data.error);
             return { success: false, error: data.error.message };
         }
-        
+
         return { success: true, id: data.id };
     } catch (err: any) {
         return { success: false, error: err.message };
@@ -515,9 +650,9 @@ export async function replyToComment(token: string, commentId: string, message: 
 }
 
 export async function hideComment(token: string, commentId: string): Promise<{ success: boolean; error?: string }> {
-    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${commentId}?hide=true&access_token=${token}`;
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${commentId}?hide=true`;
     try {
-        const res = await fetch(url, { method: 'POST' });
+        const res = await fetch(url, { method: 'POST', headers: metaHeaders(token) });
         const data = await res.json();
         if (data.error) return { success: false, error: data.error.message };
         return { success: true };
@@ -527,9 +662,9 @@ export async function hideComment(token: string, commentId: string): Promise<{ s
 }
 
 export async function deleteComment(token: string, commentId: string): Promise<{ success: boolean; error?: string }> {
-    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${commentId}?access_token=${token}`;
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${commentId}`;
     try {
-        const res = await fetch(url, { method: 'DELETE' });
+        const res = await fetch(url, { method: 'DELETE', headers: metaHeaders(token) });
         const data = await res.json();
         if (data.error) return { success: false, error: data.error.message };
         return { success: true };
@@ -538,10 +673,12 @@ export async function deleteComment(token: string, commentId: string): Promise<{
     }
 }
 
+// ─── Utilities ───────────────────────────────────────────────────────────────
+
 export async function getInstagramUserId(token: string): Promise<string | null> {
     try {
-        const url = `${GRAPH_BASE}/${GRAPH_VERSION}/me?fields=id&access_token=${token}`;
-        const res = await fetch(url);
+        const url = `${GRAPH_BASE}/${GRAPH_VERSION}/me?fields=id`;
+        const res = await fetch(url, { headers: metaHeaders(token) });
         const data = await res.json();
         return data.id || null;
     } catch {
@@ -549,31 +686,205 @@ export async function getInstagramUserId(token: string): Promise<string | null> 
     }
 }
 
+// ─── Content Publishing ──────────────────────────────────────────────────────
+
 export async function publishImage(token: string, userId: string, imageUrl: string, caption: string): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-        const createUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media?image_url=${encodeURIComponent(imageUrl)}&caption=${encodeURIComponent(caption)}&access_token=${token}`;
-        const createRes = await fetch(createUrl, { method: 'POST' });
+        const createUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media?image_url=${encodeURIComponent(imageUrl)}&caption=${encodeURIComponent(caption)}`;
+        const createRes = await fetch(createUrl, { method: 'POST', headers: metaHeaders(token) });
         const createData = await createRes.json();
-        
+
         if (createData.error) {
             console.error('[Meta API Publish Create]', createData.error);
             return { success: false, error: createData.error.message };
         }
-        
+
         const containerId = createData.id;
         if (!containerId) return { success: false, error: 'Container não criado.' };
 
-        const pubUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media_publish?creation_id=${containerId}&access_token=${token}`;
-        const pubRes = await fetch(pubUrl, { method: 'POST' });
+        const pubUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media_publish?creation_id=${containerId}`;
+        const pubRes = await fetch(pubUrl, { method: 'POST', headers: metaHeaders(token) });
         const pubData = await pubRes.json();
-        
+
         if (pubData.error) {
             console.error('[Meta API Publish Error]', pubData.error);
             return { success: false, error: pubData.error.message };
         }
-        
+
         return { success: true, id: pubData.id };
     } catch (err: any) {
         return { success: false, error: err.message };
     }
+}
+
+// ─── Carousel Children ──────────────────────────────────────────────────────
+
+export interface CarouselChild {
+    id: string;
+    media_type: string;
+    media_url?: string;
+    timestamp?: string;
+}
+
+/**
+ * Busca os itens individuais de um carousel (children).
+ * Permite analisar performance per-slide.
+ */
+export async function fetchCarouselChildren(
+    token: string,
+    mediaId: string
+): Promise<CarouselChild[]> {
+    const cacheKey = `children:${mediaId}`;
+    const cached = getCached<CarouselChild[]>(cacheKey, CACHE_TTL_LONG);
+    if (cached) return cached;
+
+    try {
+        const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${mediaId}/children?fields=id,media_type,media_url,timestamp`;
+        const res = await fetchWithRetry(url, { headers: metaHeaders(token) });
+        const data = await res.json();
+
+        if (data.error || !data.data) return [];
+
+        const children: CarouselChild[] = data.data;
+        setCache(cacheKey, children);
+        return children;
+    } catch {
+        return [];
+    }
+}
+
+// ─── Online Followers ────────────────────────────────────────────────────────
+
+export interface OnlineFollowersData {
+    hourlyBreakdown: { hour: number; count: number }[];
+    peakHour: number;
+    peakCount: number;
+}
+
+/**
+ * Busca os horarios em que os seguidores estao mais ativos.
+ * Disponivel apenas para contas business/creator com 100+ seguidores.
+ */
+export async function fetchOnlineFollowers(
+    token: string,
+    userId: string
+): Promise<OnlineFollowersData | null> {
+    const cacheKey = `online_followers:${userId}`;
+    const cached = getCached<OnlineFollowersData>(cacheKey, CACHE_TTL_LONG);
+    if (cached) return cached;
+
+    try {
+        const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/insights?metric=online_followers&period=lifetime`;
+        const res = await fetchWithRetry(url, { headers: metaHeaders(token) });
+        const data = await res.json();
+
+        if (data.error || !data.data || data.data.length === 0) return null;
+
+        const values = data.data[0]?.values?.[0]?.value;
+        if (!values || typeof values !== 'object') return null;
+
+        const hourlyBreakdown: { hour: number; count: number }[] = [];
+        let peakHour = 0;
+        let peakCount = 0;
+
+        for (const [hourStr, count] of Object.entries(values)) {
+            const hour = parseInt(hourStr);
+            const c = typeof count === 'number' ? count : 0;
+            hourlyBreakdown.push({ hour, count: c });
+            if (c > peakCount) {
+                peakCount = c;
+                peakHour = hour;
+            }
+        }
+
+        hourlyBreakdown.sort((a, b) => a.hour - b.hour);
+
+        const result: OnlineFollowersData = { hourlyBreakdown, peakHour, peakCount };
+        setCache(cacheKey, result);
+        return result;
+    } catch {
+        return null;
+    }
+}
+
+// ─── Tagged Media (UGC) ─────────────────────────────────────────────────────
+
+export interface TaggedMedia {
+    id: string;
+    caption?: string;
+    media_type: string;
+    permalink: string;
+    timestamp: string;
+    username?: string;
+}
+
+/**
+ * Busca posts onde a conta foi taggeada (User Generated Content).
+ */
+export async function fetchTaggedMedia(
+    token: string,
+    userId: string,
+    limit = 25
+): Promise<TaggedMedia[]> {
+    const cacheKey = `tagged:${userId}`;
+    const cached = getCached<TaggedMedia[]>(cacheKey, CACHE_TTL_SHORT);
+    if (cached) return cached;
+
+    try {
+        const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/tags?fields=id,caption,media_type,permalink,timestamp,username&limit=${limit}`;
+        const res = await fetchWithRetry(url, { headers: metaHeaders(token) });
+        const data = await res.json();
+
+        if (data.error || !data.data) return [];
+
+        const result: TaggedMedia[] = data.data;
+        setCache(cacheKey, result);
+        return result;
+    } catch {
+        return [];
+    }
+}
+
+// ─── Stories ─────────────────────────────────────────────────────────────────
+
+export interface StoryMedia {
+    id: string;
+    media_type: string;
+    media_url?: string;
+    timestamp: string;
+    permalink?: string;
+}
+
+/**
+ * Busca stories ativas (apenas as das ultimas 24h).
+ */
+export async function fetchActiveStories(
+    token: string,
+    userId: string
+): Promise<StoryMedia[]> {
+    try {
+        const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/stories?fields=id,media_type,media_url,timestamp,permalink`;
+        const res = await fetchWithRetry(url, { headers: metaHeaders(token) });
+        const data = await res.json();
+
+        if (data.error || !data.data) return [];
+        return data.data;
+    } catch {
+        return [];
+    }
+}
+
+// ─── Cache Management ────────────────────────────────────────────────────────
+
+/** Limpa todo o cache da API */
+export function clearApiCache(): void {
+    apiCache.clear();
+}
+
+/** Retorna estatisticas do cache */
+export function getApiCacheStats(): { size: number; entries: string[] } {
+    return {
+        size: apiCache.size,
+        entries: [...apiCache.keys()],
+    };
 }

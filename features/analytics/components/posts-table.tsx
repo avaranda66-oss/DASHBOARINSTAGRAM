@@ -134,7 +134,7 @@ export function PostsTable({ posts }: PostsTableProps) {
                                     <div className="flex items-center gap-3">
                                         {post.displayUrl ? (
                                             <img
-                                                src={post.displayUrl}
+                                                src={`/api/image-proxy?url=${encodeURIComponent(post.displayUrl)}`}
                                                 alt=""
                                                 className="h-10 w-10 shrink-0 rounded-lg object-cover border border-border"
                                             />

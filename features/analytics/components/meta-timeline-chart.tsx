@@ -5,6 +5,7 @@ import {
     AreaChart, Area, XAxis, YAxis, Tooltip,
     ResponsiveContainer, CartesianGrid, Legend, ComposedChart, Line, Dot
 } from 'recharts';
+// Dual Y-axis: left=Alcance, right=Saves+Shares (escalas muito diferentes)
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -105,7 +106,7 @@ export function MetaTimelineChart({ posts }: Props) {
             </div>
 
             <ResponsiveContainer width="100%" height={260}>
-                <ComposedChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <ComposedChart data={data} margin={{ top: 10, right: 35, left: -20, bottom: 0 }}>
                     <defs>
                         <linearGradient id="colorReach" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#FF7350" stopOpacity={0.35} />
@@ -124,10 +125,20 @@ export function MetaTimelineChart({ posts }: Props) {
                         axisLine={false}
                     />
                     <YAxis
+                        yAxisId="left"
                         tick={{ fontSize: 10, fill: 'var(--v2-text-tertiary)' }}
                         tickLine={false}
                         axisLine={false}
                         tickFormatter={fmt}
+                    />
+                    <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        tick={{ fontSize: 9, fill: 'var(--v2-text-tertiary)' }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={fmt}
+                        width={30}
                     />
                     <Tooltip 
                         contentStyle={{
@@ -146,6 +157,7 @@ export function MetaTimelineChart({ posts }: Props) {
                     {view === 'reach' ? (
                         <>
                             <Area
+                                yAxisId="left"
                                 type="monotone"
                                 name="Alcance"
                                 dataKey="Alcance"
@@ -155,21 +167,23 @@ export function MetaTimelineChart({ posts }: Props) {
                                 dot={renderDot}
                                 activeDot={{ r: 5 }}
                             />
-                            <Line 
-                                type="monotone" 
-                                name="Tendência (Alcance)" 
-                                dataKey="Alcance_Trend" 
-                                stroke="#FF7350" 
-                                strokeDasharray="5 5" 
-                                strokeWidth={2} 
-                                dot={false} 
+                            <Line
+                                yAxisId="left"
+                                type="monotone"
+                                name="Tendência (Alcance)"
+                                dataKey="Alcance_Trend"
+                                stroke="#FF7350"
+                                strokeDasharray="5 5"
+                                strokeWidth={2}
+                                dot={false}
                             />
-                            <Line type="monotone" name="Saves" dataKey="Saves" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                            <Line type="monotone" name="Shares" dataKey="Shares" stroke="#10b981" strokeWidth={2} dot={false} />
+                            <Line yAxisId="right" type="monotone" name="Saves" dataKey="Saves" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                            <Line yAxisId="right" type="monotone" name="Shares" dataKey="Shares" stroke="#10b981" strokeWidth={2} dot={false} />
                         </>
                     ) : (
                         <>
                             <Area
+                                yAxisId="left"
                                 type="monotone"
                                 name="Likes"
                                 dataKey="Likes"
@@ -179,16 +193,17 @@ export function MetaTimelineChart({ posts }: Props) {
                                 dot={renderDot}
                                 activeDot={{ r: 5 }}
                             />
-                            <Line 
-                                type="monotone" 
-                                name="Tendência (Likes)" 
-                                dataKey="Likes_Trend" 
-                                stroke="#ec4899" 
-                                strokeDasharray="5 5" 
-                                strokeWidth={2} 
-                                dot={false} 
+                            <Line
+                                yAxisId="left"
+                                type="monotone"
+                                name="Tendência (Likes)"
+                                dataKey="Likes_Trend"
+                                stroke="#ec4899"
+                                strokeDasharray="5 5"
+                                strokeWidth={2}
+                                dot={false}
                             />
-                            <Line type="monotone" name="Comentários" dataKey="Comments" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                            <Line yAxisId="right" type="monotone" name="Comentários" dataKey="Comments" stroke="#8b5cf6" strokeWidth={2} dot={false} />
                         </>
                     )}
                 </ComposedChart>

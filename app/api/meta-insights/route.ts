@@ -61,6 +61,8 @@ export async function POST(req: NextRequest) {
             success: true,
             data: posts,
             username: verification.username,
+            followersCount: verification.followersCount,
+            name: verification.name,
             source: 'meta',
             fetchedAt: new Date().toISOString(),
         });

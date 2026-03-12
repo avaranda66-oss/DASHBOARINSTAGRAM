@@ -42,11 +42,12 @@ export async function POST(req: NextRequest) {
         }
 
         const cleanUsername = targetUsername.replace('@', '').trim();
+        // fetchBusinessDiscovery agora lança exceção com o erro real da Meta API
         const discovery = await fetchBusinessDiscovery(token, userId, cleanUsername);
 
         if (!discovery) {
             return NextResponse.json(
-                { success: false, error: `Perfil não encontrado, ou a conta não é Business/Creator.` },
+                { success: false, error: `Perfil @${cleanUsername} não encontrado. Verifique se a conta é do tipo Business ou Creator e está pública.` },
                 { status: 404 }
             );
         }

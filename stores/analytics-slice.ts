@@ -58,11 +58,11 @@ function computeSummary(posts: InstagramPostMetrics[], period: 'all' | '7d' | '3
         // Let's rely on standard parsing
         const start = new Date(customRange.start).getTime();
         const end = new Date(customRange.end).getTime() + 86399999; // add 1 day minus 1ms
-        filteredPosts = posts.filter(p => !p.timestamp || (new Date(p.timestamp).getTime() >= start && new Date(p.timestamp).getTime() <= end));
+        filteredPosts = posts.filter(p => p.timestamp && (new Date(p.timestamp).getTime() >= start && new Date(p.timestamp).getTime() <= end));
     } else if (period !== 'all' && period !== 'custom') {
         const days = parseInt(period);
         const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-        filteredPosts = posts.filter(p => !p.timestamp || new Date(p.timestamp).getTime() >= cutoff);
+        filteredPosts = posts.filter(p => p.timestamp && new Date(p.timestamp).getTime() >= cutoff);
     }
 
     const totalPosts = filteredPosts.length;
@@ -81,18 +81,26 @@ function computeSummary(posts: InstagramPostMetrics[], period: 'all' | '7d' | '3
     const avgLikesVideo = videos.length > 0 ? Math.round(videos.reduce((s, p) => s + p.likesCount, 0) / videos.length) : 0;
     const avgLikesCarousel = carousels.length > 0 ? Math.round(carousels.reduce((s, p) => s + p.likesCount, 0) / carousels.length) : 0;
 
-    const postsWithViews = filteredPosts.filter(
+    // Engagement Rate: weighted average — (total interactions / total reach) * 100
+    // Para posts Meta com reach, usa reach. Para posts Apify, fallback para videoViewCount.
+    let engReachSum = 0;
+    let engInteractionSum = 0;
+    filteredPosts.forEach((p) => {
+        const reach = (p as any).reach ?? p.videoViewCount ?? 0;
+        if (reach > 0) {
+            const saves = (p as any).saved ?? 0;
+            const shares = (p as any).shares ?? 0;
+            engReachSum += reach;
+            engInteractionSum += p.likesCount + p.commentsCount + saves + shares;
+        }
+    });
+    const avgEngagementRate = engReachSum > 0
+        ? Math.round((engInteractionSum / engReachSum) * 10000) / 100
+        : 0;
+
+    const videosWithViews = filteredPosts.filter(
         (p) => p.videoViewCount != null && p.videoViewCount > 0,
-    );
-    const avgEngagementRate =
-        postsWithViews.length > 0
-            ? Math.round(
-                (postsWithViews.reduce((sum, p) => {
-                    const rate = ((p.likesCount + p.commentsCount) / p.videoViewCount!) * 100;
-                    return sum + rate;
-                }, 0) / postsWithViews.length) * 100,
-            ) / 100
-            : 0;
+    ).length;
 
     const bestPost =
         filteredPosts.length > 0
@@ -118,7 +126,7 @@ function computeSummary(posts: InstagramPostMetrics[], period: 'all' | '7d' | '3
         imageCount: images.length,
         videoCount: videos.length,
         carouselCount: carousels.length,
-        videosWithViews: postsWithViews.length,
+        videosWithViews,
         avgLikesImage,
         avgLikesVideo,
         avgLikesCarousel,
@@ -208,7 +216,7 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
             const json = await res.json();
             if (!json.success) throw new Error(json.error ?? 'Erro ao buscar métricas');
 
-            const newPosts: InstagramPostMetrics[] = json.data;
+            const newPosts: InstagramPostMetrics[] = json.data.map((p: InstagramPostMetrics) => ({ ...p, source: 'apify' as const }));
             const postMap = new Map<string, InstagramPostMetrics>();
             for (const p of existingPosts) postMap.set(p.shortCode, p);
             for (const p of newPosts) postMap.set(p.shortCode, p);
@@ -300,9 +308,13 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
 
     setPostsFromMeta: (posts: InstagramPostMetrics[], username: string) => {
         const { filterPeriod, customDateRange } = get();
-        const summary = computeSummary(posts, filterPeriod, customDateRange);
+        // Dedup por id para evitar duplicacao em chamadas repetidas
+        const postMap = new Map<string, InstagramPostMetrics>();
+        for (const p of posts) postMap.set(p.id, p);
+        const dedupedPosts = Array.from(postMap.values());
+        const summary = computeSummary(dedupedPosts, filterPeriod, customDateRange);
         set({
-            posts,
+            posts: dedupedPosts,
             summary,
             lastFetchedAt: new Date().toISOString(),
             profileUrl: `https://www.instagram.com/${username}/`,

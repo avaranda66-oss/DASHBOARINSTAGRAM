@@ -32,7 +32,7 @@ export function AccountFilter() {
                         ) : selectedAccount ? (
                             <div className="flex items-center gap-2">
                                 {selectedAccount.avatarUrl ? (
-                                    <img src={selectedAccount.avatarUrl} className="h-4 w-4 rounded-full object-cover" alt="" />
+                                    <img src={`/api/image-proxy?url=${encodeURIComponent(selectedAccount.avatarUrl)}`} className="h-4 w-4 rounded-full object-cover" alt="" />
                                 ) : (
                                     <Instagram className="h-4 w-4 text-pink-500" />
                                 )}
@@ -55,7 +55,7 @@ export function AccountFilter() {
                             <div className="flex items-center gap-2">
                                 {acc.avatarUrl ? (
                                     <img
-                                        src={acc.avatarUrl}
+                                        src={`/api/image-proxy?url=${encodeURIComponent(acc.avatarUrl)}`}
                                         className="h-4 w-4 rounded-full object-cover"
                                         alt=""
                                     />

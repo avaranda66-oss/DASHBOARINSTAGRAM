@@ -53,6 +53,26 @@ export async function saveMetaAnalyticsAction(username: string, posts: CachedAna
     });
 }
 
+/** Remove dados Meta que foram salvos erroneamente com type='account' */
+export async function cleanupMetaContaminationAction(username: string): Promise<boolean> {
+    try {
+        const handle = username.toLowerCase().trim();
+        const analytics = await prisma.analytics.findUnique({
+            where: { targetId_type: { targetId: handle, type: 'account' } }
+        });
+        if (!analytics) return false;
+        const posts = JSON.parse(analytics.data);
+        const isContaminated = Array.isArray(posts) && posts.some((p: any) => p.source === 'meta' || p.reach !== undefined);
+        if (isContaminated) {
+            await prisma.analytics.delete({
+                where: { targetId_type: { targetId: handle, type: 'account' } }
+            });
+            return true;
+        }
+        return false;
+    } catch { return false; }
+}
+
 export async function saveAnalyticsAction(analytics: CachedAnalytics, type: 'account' | 'competitor'): Promise<void> {
     const cleanHandle = analytics.accountHandle.toLowerCase().trim();
     await prisma.analytics.upsert({

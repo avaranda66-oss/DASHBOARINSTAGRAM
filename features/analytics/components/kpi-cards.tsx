@@ -2,9 +2,9 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Eye, TrendingUp, Users, Bookmark, Share2, Clock, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
-import type { InstagramPostMetrics } from '@/types/analytics';
-import { linearTrend } from '@/lib/utils/statistics';
+import { Heart, MessageCircle, Eye, TrendingUp, Users, Bookmark, Share2, Clock, ArrowUpRight, ArrowDownRight, Minus, Zap, Target } from 'lucide-react';
+import type { InstagramPostMetrics, MetaPostMetrics } from '@/types/analytics';
+import { linearTrend, engagementScore } from '@/lib/utils/statistics';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 export interface MetaPost extends InstagramPostMetrics {
@@ -13,6 +13,7 @@ export interface MetaPost extends InstagramPostMetrics {
     shares?: number;
     totalInteractions?: number;
     ig_reels_avg_watch_time?: number;
+    media_product_type?: string;
     source?: 'meta';
 }
 
@@ -103,14 +104,54 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                 engRateHistory.push((eng / reach) * 100);
             }
 
-            if ((post.type === 'Video' || (post as any).mediaProductType === 'REELS') && (post as any).ig_reels_avg_watch_time != null) {
-                reelsWatchTimeSum += (post as any).ig_reels_avg_watch_time;
+            if ((post.type === 'Video' || post.media_product_type === 'REELS') && post.ig_reels_avg_watch_time != null) {
+                // Meta API retorna ig_reels_avg_watch_time em milissegundos — converter para segundos
+                reelsWatchTimeSum += post.ig_reels_avg_watch_time / 1000;
                 reelsCount++;
             }
         });
 
         const avgEngRate = reachSumForEng > 0 ? (engSumForEng / reachSumForEng) * 100 : 0;
         const avgWatchTime = reelsCount > 0 ? reelsWatchTimeSum / reelsCount : null;
+
+        // Meta-exclusive: Save Rate, Share Rate, Depth Score
+        const saveRateHistory: number[] = [];
+        const shareRateHistory: number[] = [];
+        sortedPosts.forEach((post) => {
+            const reach = post.reach ?? 0;
+            const saves = post.saved ?? 0;
+            const shares = post.shares ?? 0;
+            if (reach > 0) {
+                saveRateHistory.push((saves / reach) * 100);
+                shareRateHistory.push((shares / reach) * 100);
+            }
+        });
+
+        const saveRate = totalReach > 0 ? (totalSaves / totalReach) * 100 : 0;
+        const shareRate = totalReach > 0 ? (totalShares / totalReach) * 100 : 0;
+
+        // Engagement Depth Score (0-100) using full Meta weights
+        const depthScores = sortedPosts.map(post => engagementScore({
+            likes: post.likesCount ?? 0,
+            comments: post.commentsCount ?? 0,
+            views: post.videoViewCount ?? 0,
+            saves: post.saved ?? 0,
+            shares: post.shares ?? 0,
+        }));
+        const avgDepthScore = depthScores.length > 0 ? depthScores.reduce((a, b) => a + b, 0) / depthScores.length : 0;
+
+        // Best content type by reach
+        const typeReach: Record<string, { sum: number; count: number }> = {};
+        sortedPosts.forEach(post => {
+            const reach = post.reach ?? 0;
+            const type = post.type === 'Video' ? 'Reels' : post.type === 'Sidecar' ? 'Carrossel' : 'Imagem';
+            if (!typeReach[type]) typeReach[type] = { sum: 0, count: 0 };
+            typeReach[type].sum += reach;
+            typeReach[type].count++;
+        });
+        const bestType = Object.entries(typeReach)
+            .map(([type, d]) => ({ type, avgReach: d.count > 0 ? d.sum / d.count : 0 }))
+            .sort((a, b) => b.avgReach - a.avgReach)[0] ?? null;
 
         return {
             totalReach, reachHistory,
@@ -119,7 +160,11 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             totalShares, sharesHistory,
             totalComments, commentsHistory,
             avgEngRate, engRateHistory,
-            avgWatchTime
+            avgWatchTime,
+            saveRate, saveRateHistory,
+            shareRate, shareRateHistory,
+            avgDepthScore, depthScores,
+            bestType,
         };
     }, [posts]);
 
@@ -192,6 +237,43 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             icon: Clock,
             accentColor: '#ef4444', // red
         },
+        // Meta-exclusive cards (only when reach data exists)
+        ...(kpis.totalReach > 0 ? [
+            {
+                label: 'Save Rate',
+                value: `${kpis.saveRate.toFixed(2)}%`,
+                sub: 'Saves / Alcance',
+                icon: Bookmark,
+                accentColor: '#14b8a6', // teal
+                sparkData: kpis.saveRateHistory,
+                trend: linearTrend(kpis.saveRateHistory),
+            },
+            {
+                label: 'Share Rate',
+                value: `${kpis.shareRate.toFixed(2)}%`,
+                sub: 'Shares / Alcance',
+                icon: Share2,
+                accentColor: '#06b6d4', // cyan
+                sparkData: kpis.shareRateHistory,
+                trend: linearTrend(kpis.shareRateHistory),
+            },
+            {
+                label: 'Depth Score',
+                value: `${kpis.avgDepthScore.toFixed(0)}/100`,
+                sub: 'Score ponderado (saves>shares>comments>likes)',
+                icon: Zap,
+                accentColor: '#f43f5e', // rose
+                sparkData: kpis.depthScores,
+                trend: linearTrend(kpis.depthScores),
+            },
+            ...(kpis.bestType ? [{
+                label: 'Melhor Tipo',
+                value: kpis.bestType.type,
+                sub: `${formatNumber(Math.round(kpis.bestType.avgReach))} alcance médio`,
+                icon: Target,
+                accentColor: '#8b5cf6', // violet
+            }] : []),
+        ] : []),
     ];
 
     return (
