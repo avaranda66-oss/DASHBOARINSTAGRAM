@@ -231,7 +231,7 @@ export class InstagramService {
                     }
                 });
             });
-        } catch (e) {
+        } catch (e: any) {
             console.error("Erro na rotina de attemptAutoLogin:", e);
             return false;
         }
@@ -248,50 +248,38 @@ export class InstagramService {
         const page = context.pages().length > 0 ? context.pages()[0] : await context.newPage();
         const handle = this.normalizeHandle(username);
 
-        // Suplemento para evitar que diálogos de sistema (file picker) apareçam e travem em modo headful
+        // Intercept file chooser
         page.on('filechooser', async (fileChooser) => {
-            console.log("Instagram Service: Interceptando diálogo de seleção de arquivo...");
-            await fileChooser.setFiles(absoluteImagePaths);
+            console.log("[InstagramService] Interceptando diálogo de seleção de arquivo...");
+            await fileChooser.setFiles([absoluteImagePaths[0]]);
         });
 
         try {
             await this.verifyAccountMatch(context, handle);
 
-            // Navega direto para a tela de criação (pula homepage redundante + busca de botão que nunca acha)
             console.log('[InstagramService] Navegando direto para /create/select/...');
             await page.goto('https://www.instagram.com/create/select/', { waitUntil: 'networkidle' });
 
-            // Checa se caiu na tela de login (sessão expirada)
             const isLoginPage = await page.locator('input[name="username"], :text-is("Log in"), :text-is("Entrar"), :text-is("Usar outro perfil")').first().isVisible({ timeout: 3000 });
             if (isLoginPage) {
                 console.log(`Aviso: Sessão expirada para @${username}. Tentando auto-login...`);
-
                 await context.close();
                 await browser.close();
-
                 const autoLoginSuccess = await this.attemptAutoLogin(username);
-
                 if (!autoLoginSuccess) {
                     throw new Error("Sessão expirada. (Auto-login falhou/sem senha). Por favor, vá em Configurações > Contas e reconecte o Instagram manualmente.");
                 }
-
                 return await this.publishPost(username, imageUrls, caption, headless);
             }
 
             await page.waitForTimeout(2000);
 
-            // Tenta selecionar "Post" no menu de tipo
-            try {
-                const postMenuOption = page.locator('span:has-text("Post"), span:has-text("Publicação")').first();
-                if (await postMenuOption.isVisible({ timeout: 2000 })) await postMenuOption.click({ force: true });
-            } catch (e) { }
-
-            // Upload do arquivo
+            // Upload do arquivo (Primeira imagem)
             const fileInput = page.locator('input[type="file"]').first();
             try {
                 await fileInput.waitFor({ state: 'attached', timeout: 5000 });
                 await fileInput.evaluate((el: HTMLInputElement) => el.multiple = true);
-                await fileInput.setInputFiles(absoluteImagePaths);
+                await fileInput.setInputFiles([absoluteImagePaths[0]]);
             } catch (e) {
                 console.log('[InstagramService] File input não encontrado, tentando via /create/select/');
                 await page.goto('https://www.instagram.com/create/select/', { waitUntil: 'networkidle' });
@@ -299,218 +287,150 @@ export class InstagramService {
                 const retryInput = page.locator('input[type="file"]').first();
                 await retryInput.waitFor({ state: 'attached', timeout: 5000 });
                 await retryInput.evaluate((el: HTMLInputElement) => el.multiple = true);
-                await retryInput.setInputFiles(absoluteImagePaths);
+                await retryInput.setInputFiles([absoluteImagePaths[0]]);
             }
             await page.waitForTimeout(3000);
-            console.log('[InstagramService] Arquivo(s) carregado(s). Avançando etapas...');
-
-            // Expandir
+            console.log('[InstagramService] 1º Arquivo carregado. Tela de Crop ativa...');
+            
+            // Expandir a foto base
             try {
                 const expandBtn = page.locator('button:has-text("Expandir"), button:has-text("Expand")').first();
                 if (await expandBtn.isVisible({ timeout: 2000 })) await expandBtn.click({ force: true });
                 else await page.mouse.click(28, 440);
+                await page.waitForTimeout(1000);
             } catch (e) { }
 
-            // Next steps — clica "Próximo/Next" até chegar na tela de legenda
+            // Lógica CARROSSEL: Inserir as imagens adicionais se existirem
+            if (absoluteImagePaths.length > 1) {
+                console.log(`[InstagramService] Carrossel detectado (${absoluteImagePaths.length} imagens). Abrindo galeria de mídia...`);
+                
+                const gallerySelectors = [
+                    'button[aria-label="Open Media Gallery"]',
+                    'button[aria-label="Abrir galeria de mídia"]',
+                    'button[aria-label="Select multiple"]', 
+                    'button[aria-label="Selecionar vários"]',
+                    'svg[aria-label="Select Multiple"]',
+                    'svg[aria-label="Selecionar vários"]',
+                    'div[role="button"]:has(svg[aria-label="Selecionar vários"])'
+                ];
+                
+                let galleryBtn = null;
+                for (const sel of gallerySelectors) {
+                    try {
+                        const btn = page.locator(sel).first();
+                        if (await btn.isVisible({ timeout: 3000 })) {
+                            galleryBtn = btn;
+                            break;
+                        }
+                    } catch (e) { }
+                }
+
+                if (galleryBtn) {
+                    await galleryBtn.click({ force: true });
+                    await page.waitForTimeout(2000);
+                    
+                    const addSelectors = [
+                        'button[aria-label="Add"]',
+                        'button[aria-label="Adicionar"]',
+                        'svg[aria-label="Plus icon"]',
+                        'svg[aria-label="Adicionar mídia"]'
+                    ];
+                    
+                    let addBtn = null;
+                    for (const sel of addSelectors) {
+                        const btn = page.locator(sel).first();
+                        if (await btn.isVisible({ timeout: 3000 })) {
+                            addBtn = btn;
+                            break;
+                        }
+                    }
+
+                    if (addBtn) {
+                        console.log('[InstagramService] Clicando no botão + para adicionar mídias restantes...');
+                        const [multiFileChooser] = await Promise.all([
+                            page.waitForEvent('filechooser'),
+                            addBtn.click({ force: true })
+                        ]);
+                        await multiFileChooser.setFiles(absoluteImagePaths.slice(1));
+                        await page.waitForTimeout(3000);
+                    } else {
+                        console.warn('[InstagramService] Botão "+" não localizado na galeria do Carrossel.');
+                    }
+                } else {
+                    console.warn('[InstagramService] Aviso: Ícone de Galeria (Carrossel) não encontrado na tela.');
+                }
+            }
+
+            // Next steps
             let nextClicked = 0;
             for (let i = 0; i < 5; i++) {
                 await page.waitForTimeout(2500);
-
-                // Verifica se já chegamos na tela de legenda
                 const captionCheck = page.locator('div[aria-label*="caption"], div[aria-label*="Legenda"], div[aria-label*="Write a caption"], div[aria-label*="Escreva uma legenda"]').first();
-                try {
-                    if (await captionCheck.isVisible({ timeout: 1000 })) {
-                        console.log(`[InstagramService] Tela de legenda detectada após ${nextClicked} cliques em Next.`);
-                        break;
-                    }
-                } catch (e) { }
+                if (await captionCheck.isVisible({ timeout: 1000 })) break;
 
-                // Tenta clicar em Next/Próximo/Avançar
                 const nextSelectors = [
                     'div[role="dialog"] button:has-text("Next")',
                     'div[role="dialog"] button:has-text("Próximo")',
                     'div[role="dialog"] button:has-text("Avançar")',
-                    'text="Next"',
-                    'text="Próximo"',
-                    'text="Avançar"',
+                    'button:has-text("Next")',
+                    'button:has-text("Próximo")',
+                    'button:has-text("Avançar")'
                 ];
                 let foundNext = false;
                 for (const sel of nextSelectors) {
-                    try {
-                        const nextBtn = page.locator(sel).last();
-                        if (await nextBtn.isVisible({ timeout: 1500 })) {
-                            await nextBtn.click({ force: true });
-                            nextClicked++;
-                            foundNext = true;
-                            console.log(`[InstagramService] Clicou Next (${nextClicked}x) via: ${sel}`);
-                            break;
-                        }
-                    } catch (e) { }
+                    const nextBtn = page.locator(sel).last();
+                    if (await nextBtn.isVisible({ timeout: 1500 })) {
+                        await nextBtn.click({ force: true });
+                        nextClicked++;
+                        foundNext = true;
+                        break;
+                    }
                 }
-                if (!foundNext && nextClicked > 0) {
-                    console.log('[InstagramService] Nenhum botão Next encontrado, assumindo que chegamos ao final.');
-                    break;
-                }
+                if (!foundNext && nextClicked > 0) break;
             }
 
-            // Caption - O Instagram PT-BR não expõe o campo de legenda com seletores padrão.
-            // A área de legenda fica entre o avatar do perfil e a miniatura da imagem no topo.
-            // Estratégia: clicar na área onde o campo está e depois digitar.
-
-            // Primeiro, tenta seletores padrão rapidamente
+            // Inserir a legenda
             const captionSelectors = [
                 'div[aria-label*="Write a caption"]',
                 'div[aria-label*="Escreva uma legenda"]',
-                'div[aria-label*="caption"]',
-                'div[aria-label*="legenda"]',
                 'div[role="textbox"]',
-                'div[contenteditable="true"]',
+                'div[contenteditable="true"]'
             ];
 
             let captionField = null;
             for (const sel of captionSelectors) {
-                try {
-                    const el = page.locator(sel).first();
-                    if (await el.isVisible({ timeout: 1500 })) {
-                        captionField = el;
-                        console.log(`[InstagramService] Campo de legenda encontrado via seletor: ${sel}`);
-                        break;
-                    }
-                } catch (e) { }
-            }
-
-            // Se nenhum seletor funcionou, usa Tab + clique para ativar o campo
-            if (!captionField) {
-                console.log('[InstagramService] Seletores falharam. Tentando ativar campo via Tab/clique...');
-
-                // Estratégia 1: Tab para navegar até o campo de legenda
-                // No Instagram, após carregar a tela de detalhes, o campo de legenda
-                // é um dos primeiros elementos focáveis
-                for (let tabAttempt = 0; tabAttempt < 8; tabAttempt++) {
-                    await page.keyboard.press('Tab');
-                    await page.waitForTimeout(300);
-
-                    // Verifica se o elemento ativo agora é editável
-                    const isEditable = await page.evaluate(() => {
-                        const active = document.activeElement;
-                        if (!active) return false;
-                        return active.getAttribute('contenteditable') === 'true'
-                            || active.getAttribute('role') === 'textbox'
-                            || active.tagName === 'TEXTAREA';
-                    });
-
-                    if (isEditable) {
-                        console.log(`[InstagramService] Campo editável focado após ${tabAttempt + 1} Tab(s)`);
-                        // Tenta pegar o locator do elemento focado
-                        try {
-                            const focused = page.locator(':focus').first();
-                            if (await focused.isVisible({ timeout: 1000 })) {
-                                captionField = focused;
-                            }
-                        } catch (e) { }
-                        break;
-                    }
-                }
-
-                // Estratégia 2: Clique por coordenadas se Tab não funcionou
-                if (!captionField) {
-                    console.log('[InstagramService] Tab não encontrou campo editável. Tentando clique por coordenadas...');
-                    const viewport = page.viewportSize() || { width: 412, height: 915 };
-
-                    // Tenta múltiplas posições Y na área de legenda
-                    for (const tryY of [130, 110, 150, 100]) {
-                        const clickX = viewport.width * 0.35;
-                        await page.mouse.click(clickX, tryY);
-                        await page.waitForTimeout(800);
-
-                        // Verifica se ativou um campo editável
-                        const activated = await page.evaluate(() => {
-                            const active = document.activeElement;
-                            if (!active) return false;
-                            return active.getAttribute('contenteditable') === 'true'
-                                || active.getAttribute('role') === 'textbox'
-                                || active.tagName === 'TEXTAREA';
-                        });
-
-                        if (activated) {
-                            console.log(`[InstagramService] Campo ativado via clique em y=${tryY}`);
-                            try {
-                                const focused = page.locator(':focus').first();
-                                if (await focused.isVisible({ timeout: 1000 })) {
-                                    captionField = focused;
-                                }
-                            } catch (e) { }
-                            break;
-                        }
-                    }
+                const el = page.locator(sel).first();
+                if (await el.isVisible({ timeout: 2000 })) {
+                    captionField = el;
+                    break;
                 }
             }
 
-            // Inserir a legenda
             if (captionField) {
-                console.log('[InstagramService] Campo de legenda localizado. Inserindo texto...');
-                try {
-                    await captionField.click({ timeout: 3000 });
-                } catch (e) {
-                    try { await captionField.evaluate((el: HTMLElement) => { el.focus(); }); } catch (e2) { }
-                }
-                await page.waitForTimeout(300);
-
-                // Usa type() que simula teclas reais (mais confiável que insertText)
-                await page.keyboard.type(caption, { delay: 5 });
-                console.log('[InstagramService] Legenda digitada via type().');
+                await captionField.click({ timeout: 3000 });
+                await page.keyboard.type(caption, { delay: 10 });
             } else {
-                // Último recurso: digita direto no que estiver focado
-                console.log('[InstagramService] Campo não identificado. Usando Tab+type como último recurso...');
-                // Pressiona Tab uma vez para tentar focar o campo
                 await page.keyboard.press('Tab');
                 await page.waitForTimeout(500);
-                await page.keyboard.type(caption, { delay: 5 });
+                await page.keyboard.type(caption, { delay: 10 });
             }
 
-            console.log('[InstagramService] Legenda inserida com sucesso.');
             await page.waitForTimeout(1000);
 
-            // Share / Compartilhar
-            let shareClicked = false;
-            for (const shareSel of ['text="Compartilhar"', 'text="Share"']) {
-                try {
-                    const btn = page.locator(shareSel).last();
-                    if (await btn.isVisible({ timeout: 3000 })) {
-                        await btn.click({ force: true });
-                        shareClicked = true;
-                        console.log(`[InstagramService] Botão compartilhar clicado via: ${shareSel}`);
-                        break;
-                    }
-                } catch (e) { }
-            }
-            if (!shareClicked) {
-                // Fallback: procura pelo xpath de botão azul no topo
-                console.log('[InstagramService] Botão compartilhar não encontrado via texto. Tentando seletores alternativos...');
-                const altShareSelectors = [
-                    'div[role="button"]:has-text("Compartilhar")',
-                    'div[role="button"]:has-text("Share")',
-                    'button:has-text("Compartilhar")',
-                    'button:has-text("Share")',
-                ];
-                for (const sel of altShareSelectors) {
-                    try {
-                        const btn = page.locator(sel).last();
-                        if (await btn.isVisible({ timeout: 2000 })) {
-                            await btn.click({ force: true });
-                            shareClicked = true;
-                            console.log(`[InstagramService] Compartilhar clicado via: ${sel}`);
-                            break;
-                        }
-                    } catch (e) { }
+            // Compartilhar
+            let shared = false;
+            const shareSelectors = ['text="Compartilhar"', 'text="Share"', 'button:has-text("Compartilhar")', 'button:has-text("Share")'];
+            for (const sel of shareSelectors) {
+                const btn = page.locator(sel).last();
+                if (await btn.isVisible({ timeout: 3000 })) {
+                    await btn.click({ force: true });
+                    shared = true;
+                    break;
                 }
             }
-            if (!shareClicked) {
-                throw new Error('Botão Compartilhar/Share não encontrado.');
-            }
-            await page.waitForTimeout(5000);
+            if (!shared) throw new Error('Botão Compartilhar não encontrado.');
 
-            // Salva a sessão atualizada após o sucesso
+            await page.waitForTimeout(5000);
             const sessionPath = path.join(SESSIONS_DIR, `${handle}.json`);
             await context.storageState({ path: sessionPath });
 

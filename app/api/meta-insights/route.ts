@@ -7,6 +7,8 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const token: string | undefined = body.token;
         const limit: number = body.limit ?? 50;
+        // verifyOnly: true → apenas verifica validade do token sem buscar posts (mais rápido)
+        const verifyOnly: boolean = body.verifyOnly === true;
 
         if (!token || token.trim() === '') {
             return NextResponse.json(
@@ -55,6 +57,16 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // verifyOnly: retorna apenas os dados da verificação sem buscar posts
+        if (verifyOnly) {
+            return NextResponse.json({
+                success: true,
+                username: verification.username,
+                followersCount: verification.followersCount,
+                name: verification.name,
+            });
+        }
+
         const posts = await fetchInstagramInsights(currentToken, limit);
 
         return NextResponse.json({
@@ -75,16 +87,13 @@ export async function POST(req: NextRequest) {
     }
 }
 
-export async function GET(req: NextRequest) {
-    const token = req.nextUrl.searchParams.get('token');
-
-    if (!token) {
-        return NextResponse.json(
-            { success: false, error: 'Parâmetro token ausente.' },
-            { status: 400 }
-        );
-    }
-
-    const result = await verifyMetaToken(token);
-    return NextResponse.json({ success: result.valid, username: result.username });
+// NOTA DE SEGURANÇA: O endpoint GET foi removido.
+// Tokens NUNCA devem ser enviados como parâmetros de URL (ficam expostos em logs de servidor,
+// histórico do browser e proxies intermediários).
+// Use o endpoint POST para verificar tokens, enviando o token no corpo da requisição JSON.
+export async function GET() {
+    return NextResponse.json(
+        { success: false, error: 'Use o método POST para verificar tokens. Tokens não devem ser enviados via URL.' },
+        { status: 405 }
+    );
 }

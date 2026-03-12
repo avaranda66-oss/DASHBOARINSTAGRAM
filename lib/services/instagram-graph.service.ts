@@ -702,6 +702,23 @@ export async function publishImage(token: string, userId: string, imageUrl: stri
         const containerId = createData.id;
         if (!containerId) return { success: false, error: 'Container não criado.' };
 
+        // 2. Aguardar processamento (Status Check)
+        console.log(`[Meta API Publish] Aguardando processamento do container ${containerId}...`);
+        let ready = false;
+        let attempts = 0;
+        while (!ready && attempts < 10) {
+            attempts++;
+            await sleep(3000); 
+            const statusRes = await fetch(`${GRAPH_BASE}/${GRAPH_VERSION}/${containerId}?fields=status_code`, { headers: metaHeaders(token) });
+            const statusData = await statusRes.json();
+            
+            if (statusData.status_code === 'FINISHED') {
+                ready = true;
+            } else if (statusData.status_code === 'ERROR') {
+                return { success: false, error: 'Erro no processamento da imagem pela Meta.' };
+            }
+        }
+
         const pubUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media_publish?creation_id=${containerId}`;
         const pubRes = await fetch(pubUrl, { method: 'POST', headers: metaHeaders(token) });
         const pubData = await pubRes.json();
@@ -713,6 +730,245 @@ export async function publishImage(token: string, userId: string, imageUrl: stri
 
         return { success: true, id: pubData.id };
     } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * Publica um Vídeo/Reel via Meta API.
+ */
+export async function publishVideo(
+    token: string, 
+    userId: string, 
+    videoUrl: string, 
+    caption: string,
+    isReel: boolean = false
+): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+        const mediaType = isReel ? 'REELS' : 'VIDEO';
+        console.log(`[Meta API Video] Criando container para ${mediaType}: ${videoUrl}...`);
+        
+        const createUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media?video_url=${encodeURIComponent(videoUrl)}&media_type=${mediaType}&caption=${encodeURIComponent(caption)}`;
+        const createRes = await fetch(createUrl, { method: 'POST', headers: metaHeaders(token) });
+        const createData = await createRes.json();
+
+        if (createData.error) {
+            console.error('[Meta API Video Create]', createData.error);
+            return { success: false, error: createData.error.message };
+        }
+
+        const containerId = createData.id;
+        if (!containerId) return { success: false, error: 'Container não criado.' };
+
+        // 2. Aguardar processamento (Polling obrigatório para vídeos - costumam demorar)
+        console.log(`[Meta API Video] Aguardando processamento do vídeo ${containerId}...`);
+        let ready = false;
+        let attempts = 0;
+        const maxAttempts = 20; // Vídeos demoram mais (até 1 minuto aqui)
+        
+        while (!ready && attempts < maxAttempts) {
+            attempts++;
+            await sleep(15000); // 15 segundos entre checagens — evita rate limit da Meta API
+
+            const statusRes = await fetch(`${GRAPH_BASE}/${GRAPH_VERSION}/${containerId}?fields=status_code,error_message`, { headers: metaHeaders(token) });
+            const statusData = await statusRes.json();
+
+            console.log(`[Meta API Video] Status tentativa ${attempts}: ${statusData.status_code}`);
+
+            if (statusData.status_code === 'FINISHED') {
+                ready = true;
+            } else if (statusData.status_code === 'ERROR') {
+                const errorMsg = statusData.error_message || 'Erro de processamento desconhecido.';
+                console.error(`[Meta API Video] Erro detectado: ${errorMsg}`);
+                return { success: false, error: `Erro no processamento do vídeo: ${errorMsg}` };
+            } else if (statusData.error?.code === 4) {
+                // Rate limit da Meta API — aguardar 30s antes de tentar novamente
+                console.warn(`[Meta API Video] Rate limit atingido na tentativa ${attempts}. Aguardando 30s...`);
+                await sleep(30000);
+            } else if (!statusData.status_code) {
+                console.warn(`[Meta API Video] Resposta inesperada da Meta:`, statusData);
+            }
+        }
+
+        if (!ready) {
+            return { success: false, error: 'Tempo limite esgotado no processamento do vídeo.' };
+        }
+
+        // 3. Publicar
+        const pubUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media_publish?creation_id=${containerId}`;
+        const pubRes = await fetch(pubUrl, { method: 'POST', headers: metaHeaders(token) });
+        const pubData = await pubRes.json();
+
+        if (pubData.error) {
+            console.error('[Meta API Video Publish Error]', pubData.error);
+            return { success: false, error: pubData.error.message };
+        }
+
+        return { success: true, id: pubData.id };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}
+
+/** Atalho para Reels */
+export async function publishReel(token: string, userId: string, videoUrl: string, caption: string) {
+    return publishVideo(token, userId, videoUrl, caption, true);
+}
+
+/**
+ * Publica um Story via Meta API.
+ * Stories não aceitam legenda (caption) via API de publicação direta da mesma forma que posts.
+ */
+export async function publishStory(
+    token: string, 
+    userId: string, 
+    mediaUrl: string
+): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+        console.log(`[Meta API Story] Criando container para STORY: ${mediaUrl}...`);
+        
+        const isVideo = mediaUrl.toLowerCase().match(/\.(mp4|mov|avi|wmv|m4v)$/i);
+        const createParam = isVideo ? `video_url=${encodeURIComponent(mediaUrl)}` : `image_url=${encodeURIComponent(mediaUrl)}`;
+        
+        const createUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media?media_type=STORIES&${createParam}`;
+        const createRes = await fetch(createUrl, { method: 'POST', headers: metaHeaders(token) });
+        const createData = await createRes.json();
+
+        if (createData.error) {
+            console.error('[Meta API Story Create]', createData.error);
+            return { success: false, error: createData.error.message };
+        }
+
+        const containerId = createData.id;
+        if (!containerId) return { success: false, error: 'Container não criado.' };
+
+        // 2. Aguardar processamento (Stories podem ser vídeo ou imagem)
+        console.log(`[Meta API Story] Aguardando processamento do container ${containerId}...`);
+        let ready = false;
+        let attempts = 0;
+        const maxAttempts = isVideo ? 20 : 10;
+        
+        while (!ready && attempts < maxAttempts) {
+            attempts++;
+            await sleep(isVideo ? 15000 : 8000); // 15s vídeo / 8s imagem — evita rate limit
+
+            const statusRes = await fetch(`${GRAPH_BASE}/${GRAPH_VERSION}/${containerId}?fields=status_code,error_message`, { headers: metaHeaders(token) });
+            const statusData = await statusRes.json();
+
+            console.log(`[Meta API Story] Status tentativa ${attempts}: ${statusData.status_code}`);
+
+            if (statusData.status_code === 'FINISHED') {
+                ready = true;
+            } else if (statusData.status_code === 'ERROR') {
+                const errorMsg = statusData.error_message || 'Erro de processamento desconhecido.';
+                console.error(`[Meta API Story] ❌ Erro no processamento (tentativa ${attempts}): ${errorMsg}`);
+                return { success: false, error: `Erro no story: ${errorMsg}` };
+            } else if (statusData.error?.code === 4) {
+                console.warn(`[Meta API Story] Rate limit atingido na tentativa ${attempts}. Aguardando 30s...`);
+                await sleep(30000);
+            } else if (!statusData.status_code) {
+                console.warn(`[Meta API Story] Resposta inesperada da Meta:`, statusData);
+            }
+        }
+
+        if (!ready) return { success: false, error: 'Tempo limite esgotado no processamento do story.' };
+
+        // 3. Publicar
+        const pubUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media_publish?creation_id=${containerId}`;
+        const pubRes = await fetch(pubUrl, { method: 'POST', headers: metaHeaders(token) });
+        const pubData = await pubRes.json();
+
+        if (pubData.error) {
+            console.error('[Meta API Story Publish Error]', pubData.error);
+            return { success: false, error: pubData.error.message };
+        }
+
+        return { success: true, id: pubData.id };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * Publica um Carousel (Sidecar) via Meta API.
+ * Requer URLs públicas para as imagens.
+ */
+export async function publishCarousel(
+    token: string,
+    userId: string,
+    imageUrls: string[],
+    caption: string
+): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+        console.log(`[Meta API Carousel] Iniciando criação de container para ${imageUrls.length} imagens...`);
+        
+        // 1. Criar containers individuais para cada item do carousel
+        const itemIds: string[] = [];
+        for (const url of imageUrls) {
+            const isVideoItem = url.toLowerCase().match(/\.(mp4|mov|avi|wmv|m4v)$/i);
+            const itemMediaParam = isVideoItem
+                ? `video_url=${encodeURIComponent(url)}&media_type=VIDEO`
+                : `image_url=${encodeURIComponent(url)}&media_type=IMAGE`;
+            const createItemUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media?${itemMediaParam}&is_carousel_item=true`;
+            const res = await fetch(createItemUrl, { method: 'POST', headers: metaHeaders(token) });
+            const data = await res.json();
+            
+            if (data.error) {
+                return { success: false, error: `Erro no item ${url}: ${data.error.message}` };
+            }
+            itemIds.push(data.id);
+        }
+
+        // 2. Aguardar (polling opcional, mas recomendado para vídeos; para imagens costuma ser rápido)
+        // Por simplicidade e cautela, aguardamos um breve momento
+        await sleep(3000);
+
+        // 3. Criar o container pai do Carousel
+        const childrenParam = itemIds.join(',');
+        const createCarouselUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media?media_type=CAROUSEL&children=${childrenParam}&caption=${encodeURIComponent(caption)}`;
+        
+        const carouselRes = await fetch(createCarouselUrl, { method: 'POST', headers: metaHeaders(token) });
+        const carouselData = await carouselRes.json();
+
+        if (carouselData.error) {
+            console.error('[Meta API Carousel Create]', carouselData.error);
+            return { success: false, error: `Container Pai: ${carouselData.error.message}` };
+        }
+
+        const creationId = carouselData.id;
+
+        // 4. Aguardar processamento do carrossel (Status Check)
+        console.log(`[Meta API Carousel] Aguardando processamento do container pai ${creationId}...`);
+        let ready = false;
+        let attempts = 0;
+        while (!ready && attempts < 10) {
+            attempts++;
+            await sleep(3000);
+            const statusRes = await fetch(`${GRAPH_BASE}/${GRAPH_VERSION}/${creationId}?fields=status_code,error_message`, { headers: metaHeaders(token) });
+            const statusData = await statusRes.json();
+            
+            if (statusData.status_code === 'FINISHED') {
+                ready = true;
+                console.log(`[Meta API Carousel] Container pronto após ${attempts} tentativa(s).`);
+            } else if (statusData.status_code === 'ERROR') {
+                const errorMsg = statusData.error_message || 'Erro de processamento desconhecido no carrossel.';
+                return { success: false, error: `Erro no carrossel: ${errorMsg}` };
+            }
+        }
+
+        // 5. Publicar o carousel
+        const pubUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media_publish?creation_id=${creationId}`;
+        const pubRes = await fetch(pubUrl, { method: 'POST', headers: metaHeaders(token) });
+        const pubData = await pubRes.json();
+
+        if (pubData.error) {
+            console.error('[Meta API Carousel Publish]', pubData.error);
+            return { success: false, error: `Publicação: ${pubData.error.message}` };
+        }
+
+        return { success: true, id: pubData.id };
+    } catch (err: any) {
+        console.error('[Meta API Carousel Catch]', err);
         return { success: false, error: err.message };
     }
 }

@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,44 +8,41 @@ datasource db {
 }
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String   @id @default(cuid())
   userId            String?
-  type              String // e.g., "instagram"
-  provider          String // e.g., "facebook"
-  providerAccountId String  @unique
+  type              String
+  provider          String
+  providerAccountId String   @unique
   access_token      String?
   expires_at        Int?
   username          String?
-  name              String?
+  picture           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  password          String?
+  notes             String?
   biography         String?
   followers_count   Int?
   follows_count     Int?
   media_count       Int?
+  name              String?
   website           String?
-  password          String?
-  picture           String?
-  notes             String? // JSON string com informações estruturadas do negócio
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model Content {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
   description String?
-  type        String // 'post' | 'story' | 'reel' | 'carousel'
-  status      String // 'idea' | 'draft' | 'approved' | 'scheduled' | 'published'
+  type        String
+  status      String
   scheduledAt DateTime?
-  hashtags    String // Armazenado como JSON string (ex: '["#restaurante"]') devido à limitação do SQLite
-  mediaUrls   String // Armazenado como JSON string
+  hashtags    String
+  mediaUrls   String
   accountId   String?
-  order       Int       @default(0)
-
-  collections Collection[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  collections Collection[] @relation("CollectionToContent")
 }
 
 model Collection {
@@ -59,11 +53,9 @@ model Collection {
   icon        String?
   startDate   DateTime?
   endDate     DateTime?
-
-  contents Content[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  contents    Content[] @relation("CollectionToContent")
 }
 
 model Competitor {
@@ -71,20 +63,18 @@ model Competitor {
   name        String
   handle      String    @unique
   avatarUrl   String?
-  metrics     String? // JSON string
+  metrics     String?
   lastChecked DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Analytics {
-  id       String  @id @default(cuid())
-  targetId String // Pode ser accountId ou competitor handle
-  type     String // 'account' | 'competitor'
-  data     String // JSON string com as métricas
-  period   String? // ex: '7d', '30d'
-
+  id        String   @id @default(cuid())
+  targetId  String
+  type      String
+  data      String
+  period    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -92,16 +82,15 @@ model Analytics {
 }
 
 model Setting {
-  id    String  @id @default(cuid())
-  key   String  @unique
-  value String? // JSON string
-
+  id        String    @id @default(cuid())
+  key       String    @unique
+  value     String?
   createdAt DateTime? @default(now())
   updatedAt DateTime? @updatedAt
 }
 
 model MapsBusiness {
-  id           String  @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
   rating       Float?
   totalReviews Int?
@@ -110,12 +99,11 @@ model MapsBusiness {
   category     String?
   hours        String?
   website      String?
-  highlights   String? // JSON array string
-  rawMarkdown  String? // Full scraped markdown for re-parsing
-  reviews      String? // JSON array of scraped reviews
-  aiAnalysis   String? // JSON object of AI sentiment analysis
-
-  scrapedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  highlights   String?
+  rawMarkdown  String?
+  scrapedAt    DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  aiAnalysis   String?
+  reviews      String?
 }

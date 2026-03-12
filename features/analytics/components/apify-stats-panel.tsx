@@ -256,7 +256,7 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
     return (
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
             {/* ─── Section A: KPI Cards ─── */}
-            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 relative z-40">
                 {kpiCards.map((card) => (
                     <motion.div key={card.label} variants={item} className="group relative overflow-hidden rounded-xl p-4 transition-all duration-300 v2-glass v2-glass-hover">
                         <div className="v2-grain pointer-events-none absolute inset-0 z-[1]" />
@@ -276,7 +276,7 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
             </div>
 
             {/* ─── Section B: Statistical Insights (2x2 grid) ─── */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 relative z-30">
                 {/* B1: Coeficiente Viral (melhorado) */}
                 <motion.div variants={item} className="rounded-xl p-5 v2-glass">
                     <div className="flex items-center gap-2 mb-3">
@@ -476,7 +476,7 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
             </div>
 
             {/* ─── Section C: Post Score Table ─── */}
-            <motion.div variants={item} className="rounded-xl p-5 v2-glass">
+            <motion.div variants={item} className="rounded-xl p-5 v2-glass relative z-20">
                 <div className="flex items-center gap-2 mb-4">
                     <Target className="h-4 w-4" style={{ color: '#ec4899' }} />
                     <span className="v2-label text-sm font-semibold">Score de Engajamento por Post</span>
@@ -540,7 +540,7 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
 
             {/* ─── Section D: Hashtag Efficiency ─── */}
             {stats.hashtagEff.length > 0 && (
-                <motion.div variants={item} className="rounded-xl p-5 v2-glass">
+                <motion.div variants={item} className="rounded-xl p-5 v2-glass relative z-10">
                     <div className="flex items-center gap-2 mb-4">
                         <Hash className="h-4 w-4" style={{ color: '#10b981' }} />
                         <span className="v2-label text-sm font-semibold">Eficiência de Hashtags</span>

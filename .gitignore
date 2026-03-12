@@ -52,7 +52,7 @@ prisma/dev.db
 # Debug artifacts (login screenshots, logs, story debug)
 public/login-*
 public/debug-*
-public/story-debug-*
+public/story-debug*
 public/diag-*
 public/canvas_*
 
@@ -65,9 +65,35 @@ public/maps-debug-*
 sessions/
 .chrome-session-maps/
 
-# Client-specific scripts (contain real data)
+# Temporary / debug files
+tmp/
+dom_dump.html
+snapshot-estrategia.md
+.playwright-mcp/
+
+# Root-level screenshots (debug artifacts)
+/*.png
+
+# Docs internos (relatórios de análise local)
+docs/RELATORIO-*
+
+# Creative assets (user-uploaded)
+public/creatives/
+
+# Client-specific scripts (contain real data / local paths)
 scripts/test-varanda-*
-scripts/test-tarcila-*
+scripts/test-tarcila*
+scripts/generate-story-native*
+check_db.js
+test-scraper.ts
+public/maps-debug.html
+scripts/inspect-caption.js
+scripts/repair-db.js
+scripts/add-varanda-*
+scripts/test-multiple-upload*
+scripts/playwright-dom-dumper*
+scripts/parse-dom*
+squads/
 scripts/inject-senior-*
 scripts/inject-story-tarcila*
 scripts/inject-story-test*

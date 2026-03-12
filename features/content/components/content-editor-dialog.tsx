@@ -230,6 +230,28 @@ export function ContentEditorDialog({
         addToQueue(content.id, content.title, content.type as 'post' | 'story');
     };
 
+    const handlePublishMeta = async () => {
+        if (!content) return;
+        
+        setIsSaving(true);
+        const toastId = toast.loading('Publicando via Meta API...');
+        
+        try {
+            const res = await publishInstagramPostAction(content.id, content.accountId || undefined, { useMetaApi: true });
+            
+            if (res.success) {
+                toast.success('Publicado com sucesso!', { id: toastId });
+                onOpenChange(false);
+            } else {
+                toast.error(`Falha na publicação: ${res.message}`, { id: toastId });
+            }
+        } catch (error: any) {
+            toast.error(`Erro: ${error.message || 'Erro interno'}`, { id: toastId });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const isInQueue = queue.some(i => i.contentId === content?.id);
     const queueItem = queue.find(i => i.contentId === content?.id);
 
@@ -596,6 +618,18 @@ export function ContentEditorDialog({
                                                 ? 'Na fila de espera...'
                                                 : 'Publicar via Robô'}
                                     </Button>
+
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="w-full border-blue-500/50 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                        disabled={isSaving || isUploading || isProcessing}
+                                        onClick={handlePublishMeta}
+                                    >
+                                        <Icons.Share2 className="mr-2 h-4 w-4" />
+                                        Publicar via Meta API
+                                    </Button>
+
                                     {isInQueue && (
                                         <p className="text-[10px] text-center text-muted-foreground animate-pulse">
                                             O robô processará este post automaticamente seguindo a fila.

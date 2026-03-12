@@ -98,8 +98,12 @@ export default function SettingsPage() {
         }
         setIsSavingMeta(true);
         try {
-            // Verificar token via API antes de salvar
-            const res = await fetch(`/api/meta-insights?token=${encodeURIComponent(metaToken.trim())}`);
+            // Verificar token via API antes de salvar (token no body, nunca na URL)
+            const res = await fetch('/api/meta-insights', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: metaToken.trim(), verifyOnly: true }),
+            });
             const json = await res.json();
             if (!json.success) {
                 toast.error('Token inválido ou expirado. Verifique e tente novamente.');
@@ -129,7 +133,11 @@ export default function SettingsPage() {
         if (!token) return;
         setIsVerifyingMeta(true);
         try {
-            const res = await fetch(`/api/meta-insights?token=${encodeURIComponent(token)}`);
+            const res = await fetch('/api/meta-insights', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, verifyOnly: true }),
+            });
             const json = await res.json();
             if (json.success) {
                 toast.success(`Token válido! Conta @${json.username}`);

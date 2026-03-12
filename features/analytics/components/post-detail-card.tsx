@@ -133,7 +133,7 @@ export function PostTooltip({
         if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
             const spaceBelow = window.innerHeight - rect.bottom;
-            setPosition(spaceBelow < 320 ? 'top' : 'bottom');
+            setPosition(spaceBelow < 400 ? 'top' : 'bottom');
         }
         timeoutRef.current = setTimeout(() => setShow(true), 200);
     };

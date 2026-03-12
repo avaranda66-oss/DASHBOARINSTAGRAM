@@ -34,7 +34,8 @@ export async function loginInstagramAction(): Promise<boolean> {
     });
 }
 
-export async function publishInstagramPostAction(contentId: string, handle?: string): Promise<{ success: boolean; message: string }> {
+export async function publishInstagramPostAction(contentId: string, handle?: string, options?: { useMetaApi?: boolean }): Promise<{ success: boolean; message: string }> {
+    const reqBody = options || {};
     try {
         const content = await prisma.content.findUnique({
             where: { id: contentId }
@@ -69,16 +70,101 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
         const targetHandle = handle || content.accountId || "default";
         const normalizedType = (content.type || 'post').toLowerCase();
 
-        if (normalizedType === 'story') {
-            console.log(`[Action] Detectado tipo STORY para ${contentId}. Chamando publishStory...`);
-            // publishStory espera apenas uma URL de imagem
-            success = await InstagramService.publishStory(targetHandle, imageUrls[0]);
-        } else if (normalizedType === 'reel') {
-            console.log(`[Action] Detectado tipo REEL para ${contentId}. Chamando publishReel...`);
-            success = await InstagramService.publishReel(targetHandle, imageUrls[0], caption);
+        // [NOVO] Opção de postar via Meta API
+        const useMetaApi = (reqBody as any)?.useMetaApi === true;
+
+        if (useMetaApi) {
+            console.log(`[Action] Postando via Meta API para ${contentId}...`);
+            // Tentar buscar por ID (CUID), ID numérico do provedor ou pelo handle diretamente
+            let account = await prisma.account.findFirst({
+                where: {
+                    OR: [
+                        { id: targetHandle },
+                        { providerAccountId: targetHandle },
+                        { username: targetHandle.replace('@', '') }
+                    ]
+                }
+            });
+
+            const token = account?.access_token ?? null;
+
+            // SEGURANÇA: O fallback para token global foi REMOVIDO.
+            // Usar o token global para uma conta diferente causa publicação na conta ERRADA,
+            // pois getInstagramUserId(token) retorna o userId do DONO do token, não da conta alvo.
+            // Cada conta DEVE ter seu próprio token configurado em "Editar Conta".
+            if (!token) {
+                throw new Error(
+                    `Token Meta não encontrado para @${targetHandle}. ` +
+                    `Configure o token individual desta conta em "Gerenciar Contas" → Editar → campo "Token Meta API". ` +
+                    `O token Global em Configurações não é usado para evitar publicação na conta errada.`
+                );
+            }
+
+            // Mapear URLs locais para Públicas via Tunnel se configurado
+            const tunnelSetting = await prisma.setting.findUnique({ where: { key: 'tunnel_url' } });
+            const tunnelUrl = tunnelSetting?.value ? JSON.parse(tunnelSetting.value) : null;
+            
+            console.log(`[Action] Tunnel URL: ${tunnelUrl}`);
+
+            let finalImageUrls = imageUrls;
+            if (tunnelUrl) {
+                finalImageUrls = imageUrls.map((url: string) => {
+                    // Mapear tanto /uploads/ quanto /creatives/ para a URL do túnel
+                    if (url.startsWith('/uploads/') || url.startsWith('/creatives/')) {
+                        const mapped = `${tunnelUrl.replace(/\/$/, '')}${url}`;
+                        console.log(`[Action] Mapeando ${url} -> ${mapped}`);
+                        return mapped;
+                    }
+                    return url;
+                });
+            } else {
+                console.warn(`[Action] AVISO: tunnel_url não configurado. Meta API provavelmente falhará com caminhos locais.`);
+            }
+
+            const { publishImage, publishCarousel, publishReel, publishVideo, publishStory, getInstagramUserId } = await import('@/lib/services/instagram-graph.service');
+            const userId = await getInstagramUserId(token);
+            if (!userId) throw new Error("ID do Instagram não encontrado para o token fornecido.");
+
+            if (normalizedType === 'story') {
+                const url = finalImageUrls[0];
+                console.log(`[Action] Postando STORY via Meta API: ${url}`);
+                const res = await publishStory(token, userId, url);
+                success = res.success;
+                if (!success) throw new Error(`Meta API Story: ${res.error}`);
+            } else if (finalImageUrls.length > 1) {
+                const res = await publishCarousel(token, userId, finalImageUrls, caption);
+                success = res.success;
+                if (!success) throw new Error(`Meta API Carousel: ${res.error}`);
+            } else {
+                const url = finalImageUrls[0];
+                const isVideo = url.toLowerCase().match(/\.(mp4|mov|avi|wmv|m4v)$/i);
+                
+                if (isVideo) {
+                    console.log(`[Action] Detectado VIDEO/REEL para Meta API: ${url}`);
+                    const res = await publishReel(token, userId, url, caption);
+                    success = res.success;
+                    if (!success) throw new Error(`Meta API Reel/Video: ${res.error}`);
+                } else {
+                    if (normalizedType === 'reel') {
+                        throw new Error("A Meta API exige arquivos de vídeo (.mp4, .mov) para postagens do tipo Reel. Para imagens, use o tipo 'Post'.");
+                    }
+                    console.log(`[Action] Detectado IMAGE para Meta API: ${url}`);
+                    const res = await publishImage(token, userId, url, caption);
+                    success = res.success;
+                    if (!success) throw new Error(`Meta API Image: ${res.error}`);
+                }
+            }
         } else {
-            console.log(`[Action] Detectado tipo ${content.type} para ${contentId}. Chamando publishPost...`);
-            success = await InstagramService.publishPost(targetHandle, imageUrls, caption);
+            if (normalizedType === 'story') {
+                console.log(`[Action] Detectado tipo STORY para ${contentId}. Chamando publishStory...`);
+                success = await InstagramService.publishStory(targetHandle, imageUrls[0]);
+            } else if (normalizedType === 'reel') {
+                console.log(`[Action] Detectado tipo REEL para ${contentId}. Chamando publishReel...`);
+                success = await InstagramService.publishReel(targetHandle, imageUrls[0], caption);
+            } else {
+                console.log(`[Action] Detectado tipo ${content.type} para ${contentId}. Chamando publishPost...`);
+                success = await InstagramService.publishPost(targetHandle, imageUrls, caption);
+            }
         }
 
         if (success) {

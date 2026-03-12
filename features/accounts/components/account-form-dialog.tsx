@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Save, X, Trash2, Camera, Eye, EyeOff, MapPin, Phone, Clock, Globe, Info, Briefcase } from 'lucide-react';
+import { Save, X, Trash2, Camera, Eye, EyeOff, MapPin, Phone, Clock, Globe, Info, Briefcase, Zap } from 'lucide-react';
 import { useAccountStore } from '@/stores';
 import {
     accountSchema,
@@ -30,6 +30,7 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
     const { addAccount, updateAccount, deleteAccount, connectAutomation } = useAccountStore();
     const [avatarPreview, setAvatarPreview] = useState<string | null>(account?.avatarUrl || null);
     const [showPassword, setShowPassword] = useState(false);
+    const [showToken, setShowToken] = useState(false);
     const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({});
 
     const {
@@ -45,6 +46,7 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
             handle: account?.handle || '',
             avatarUrl: account?.avatarUrl || null,
             notes: account?.notes || null,
+            oauthToken: account?.oauthToken || null,
         },
     });
 
@@ -55,6 +57,7 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
                 handle: account?.handle || '',
                 avatarUrl: account?.avatarUrl || null,
                 notes: account?.notes || null,
+                oauthToken: account?.oauthToken || null,
             });
             setAvatarPreview(account?.avatarUrl || null);
             setBusinessInfo(parseBusinessInfo(account?.notes ?? null));
@@ -205,6 +208,36 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
                             </div>
                             <p className="mt-1.5 text-[11px] text-muted-foreground leading-tight">
                                 Informar a senha permite que o robô faça login sozinho se a sessão expirar.
+                            </p>
+                        </div>
+
+                        {/* Meta API Token */}
+                        <div>
+                            <label className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+                                <span className="flex items-center gap-1.5">
+                                    <Zap className="h-3.5 w-3.5 text-blue-500" />
+                                    Token Meta API (Opcional)
+                                </span>
+                                <span className="text-[10px] font-normal border rounded px-1.5 py-0.5 bg-muted/50">Publicação oficial</span>
+                            </label>
+                            <div className="relative mt-1.5">
+                                <Input
+                                    type={showToken ? 'text' : 'password'}
+                                    {...register('oauthToken')}
+                                    placeholder="IGAAY..."
+                                    autoComplete="off"
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowToken(!showToken)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                    {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
+                            <p className="mt-1.5 text-[11px] text-muted-foreground leading-tight">
+                                Long-lived Token do Instagram para publicar via Meta API oficial. Cada conta precisa do seu próprio token.
                             </p>
                         </div>
 
