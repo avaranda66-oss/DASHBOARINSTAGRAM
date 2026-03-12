@@ -94,8 +94,12 @@ export default function AnalyticsPage() {
     useEffect(() => { getCompetitorsAction().then(setCompetitors); }, []);
     useEffect(() => { setFixedInsights(null); }, [posts]);
 
-    const metaConnected = !!settingsStore.settings?.metaAccessToken;
-    const metaUsername = settingsStore.settings?.metaUsername;
+    // Token Meta: prioridade para token salvo na conta, fallback para settings global
+    const accountWithToken = accounts.find(a => !!a.oauthToken);
+    const metaTokenResolved = settingsStore.settings?.metaAccessToken || accountWithToken?.oauthToken || null;
+    const metaUsernameResolved = settingsStore.settings?.metaUsername || (accountWithToken ? accountWithToken.handle.replace('@', '') : null);
+    const metaConnected = !!metaTokenResolved;
+    const metaUsername = metaUsernameResolved;
 
     // Carrega dados Meta do DB para não resetar no F5
     // + Limpa dados contaminados que foram salvos erroneamente com type='account'
@@ -122,9 +126,9 @@ export default function AnalyticsPage() {
     }, [metaUsername]);
 
     const handleFetchMeta = async () => {
-        const token = settingsStore.settings?.metaAccessToken;
+        const token = metaTokenResolved;
         if (!token) {
-            setMetaError('Configure o Token Meta em Configurações antes de usar esta fonte.');
+            setMetaError('Configure o Token Meta na conta (Gerenciar Contas → Editar) ou em Configurações.');
             return;
         }
         setIsLoadingMeta(true);
@@ -145,14 +149,19 @@ export default function AnalyticsPage() {
             analyticsStore.setPostsFromMeta(json.data, metaUser);
             // Persistir no cache Meta separado (type='meta'), sem tocar no cache Apify (type='account')
             saveMetaAnalyticsAction(metaUser, json.data).catch(console.error);
-            // Salvar followers/nome no perfil da conta
-            if (json.followersCount != null || json.name) {
+            // Salvar followers/nome/bio/foto no perfil da conta
+            if (json.followersCount != null || json.name || json.biography) {
                 setMetaProfile({ followersCount: json.followersCount, name: json.name });
                 if (metaUser) {
                     import('@/app/actions/account.actions').then(({ updateAccountMetaProfileAction }) => {
                         updateAccountMetaProfileAction(metaUser, {
                             followersCount: json.followersCount,
                             name: json.name,
+                            biography: json.biography,
+                            profilePictureUrl: json.profilePictureUrl,
+                            followsCount: json.followsCount,
+                            mediaCount: json.mediaCount,
+                            website: json.website,
                         }).catch(console.error);
                     });
                 }
@@ -317,9 +326,9 @@ export default function AnalyticsPage() {
     const handleDiscovery = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!discoveryHandle.trim()) return;
-        const metaToken = settingsStore.settings?.metaAccessToken;
+        const metaToken = metaTokenResolved;
         if (!metaToken) {
-            setDiscoveryError("Meta API não configurada. Adicione o token na aba Configurações.");
+            setDiscoveryError("Token Meta não encontrado. Configure na conta (Gerenciar Contas → Editar) ou em Configurações.");
             return;
         }
 
@@ -421,23 +430,31 @@ export default function AnalyticsPage() {
                             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10">
                                 <Zap className="h-7 w-7 text-blue-400" />
                             </div>
-                            <h3 className="mt-4 text-lg font-semibold">Meta API não configurada</h3>
+                            <h3 className="mt-4 text-lg font-semibold">Token Meta não encontrado</h3>
                             <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">
-                                Configure seu token Meta em Configurações para acessar dados privados como alcance real, saves e compartilhamentos.
+                                Configure o token Meta na sua conta (Gerenciar Contas → Editar → Token Meta) para acessar dados privados como alcance real, saves e compartilhamentos.
                             </p>
-                            <Button
-                                className="mt-4"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.location.href = '/dashboard/settings'}
-                            >
-                                Ir para Configurações →
-                            </Button>
+                            <div className="flex gap-2 justify-center mt-4">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => window.location.href = '/dashboard/accounts'}
+                                >
+                                    Gerenciar Contas →
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => window.location.href = '/dashboard/settings'}
+                                >
+                                    Configurações
+                                </Button>
+                            </div>
                         </div>
                     ) : (
                         <MinhaContaView
-                            token={settingsStore.settings!.metaAccessToken!}
-                            username={metaUsername}
+                            token={metaTokenResolved!}
+                            username={metaUsername ?? undefined}
                         />
                     )}
                 </motion.div>
@@ -859,7 +876,7 @@ export default function AnalyticsPage() {
 
                             <motion.div variants={item}>
                                 <ErrorBoundary>
-                                    <CommentsAnalysis posts={filteredPosts} metaToken={settingsStore.settings?.metaAccessToken ?? undefined} />
+                                    <CommentsAnalysis posts={filteredPosts} metaToken={metaTokenResolved ?? undefined} />
                                 </ErrorBoundary>
                             </motion.div>
 
@@ -869,7 +886,7 @@ export default function AnalyticsPage() {
                                     <ErrorBoundary>
                                         <CarouselSlideAnalysis
                                             posts={filteredPosts}
-                                            metaToken={settingsStore.settings?.metaAccessToken}
+                                            metaToken={metaTokenResolved ?? undefined}
                                         />
                                     </ErrorBoundary>
                                 </motion.div>

@@ -76,7 +76,7 @@ export async function startInstagramScraper(
             username: usernames,
             resultsLimit,
             ...(periodDays ? { onlyPostsNewerThan: `${periodDays} days` } : {}),
-            skipPinnedPosts: true, // Evita confusão com posts antigos fixados no topo
+            skipPinnedPosts: false, // Inclui posts fixados para mostrar no topo do grid como no Instagram real
         }),
     });
 

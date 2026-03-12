@@ -239,8 +239,8 @@
   --v2-border: oklch(1 0 0 / 6%);
   --v2-border-accent: oklch(0.75 0.15 55 / 15%);
   --v2-text-primary: oklch(0.95 0 0);
-  --v2-text-secondary: oklch(0.7 0 0);
-  --v2-text-tertiary: oklch(0.5 0 0);
+  --v2-text-secondary: oklch(0.8 0 0);
+  --v2-text-tertiary: oklch(0.62 0 0);
   --v2-success: oklch(0.65 0.15 155);
   --v2-warning: oklch(0.7 0.15 80);
   --v2-danger: oklch(0.6 0.15 25);

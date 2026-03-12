@@ -386,7 +386,7 @@ export default function IntelligencePage() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="flex gap-2">
-                                        <Input placeholder="A Varanda Itamaraju" value={mapsQuery} onChange={e => setMapsQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleMaps()} className="flex-1" />
+                                        <Input placeholder="Restaurante Centro SP" value={mapsQuery} onChange={e => setMapsQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleMaps()} className="flex-1" />
                                         <Button onClick={handleMaps} disabled={mapsLoading} className="bg-green-600 hover:bg-green-700">
                                             {mapsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                                             <span className="ml-2 hidden sm:inline">Pesquisar</span>

@@ -45,6 +45,7 @@ export function ContentEditorDialog({
     const [isUploading, setIsUploading] = useState(false);
     const { addToQueue, queue, isProcessing } = useAutomationStore();
     const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
     // Helper to format ISO string to YYYY-MM-DDTHH:MM for datetime-local input
     const formatISOForInput = (isoString: string | null | undefined) => {
@@ -215,6 +216,9 @@ export function ContentEditorDialog({
             (mediaUrls || []).filter((_, i) => i !== index),
             { shouldDirty: true },
         );
+        if (currentMediaIndex >= (mediaUrls?.length || 0) - 1) {
+            setCurrentMediaIndex(Math.max(0, (mediaUrls?.length || 0) - 2));
+        }
     };
 
     const handleClose = () => {
@@ -289,7 +293,10 @@ export function ContentEditorDialog({
                         <button
                             type="button"
                             className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${activeTab === 'preview' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                            onClick={() => setActiveTab('preview')}
+                            onClick={() => {
+                                setActiveTab('preview');
+                                setCurrentMediaIndex(0);
+                            }}
                         >
                             <span className="flex items-center justify-center gap-1.5">
                                 <Icons.Eye className="h-4 w-4" /> Preview
@@ -505,12 +512,13 @@ export function ContentEditorDialog({
                                         <Icons.MoreHorizontal className="w-5 h-5 text-muted-foreground" />
                                     </div>
 
-                                    {/* Image */}
-                                    <div className="w-full aspect-[4/5] bg-muted/30 relative flex items-center justify-center">
+                                    {/* Image/Carousel */}
+                                    <div className="w-full aspect-[4/5] bg-muted/30 relative flex items-center justify-center group/media">
                                         {(mediaUrls && mediaUrls.length > 0) ? (
-                                            mediaUrls[0].match(/\.(mp4|webm|ogg)$/i) ? (
+                                            mediaUrls[currentMediaIndex].match(/\.(mp4|webm|ogg)$/i) ? (
                                                 <video
-                                                    src={mediaUrls[0]}
+                                                    key={mediaUrls[currentMediaIndex]}
+                                                    src={mediaUrls[currentMediaIndex]}
                                                     className="w-full h-full object-cover"
                                                     autoPlay
                                                     muted
@@ -518,7 +526,12 @@ export function ContentEditorDialog({
                                                     playsInline
                                                 />
                                             ) : (
-                                                <img src={mediaUrls[0]} className="w-full h-full object-cover" alt="Preview" />
+                                                <img 
+                                                    key={mediaUrls[currentMediaIndex]}
+                                                    src={mediaUrls[currentMediaIndex]} 
+                                                    className="w-full h-full object-cover animate-in fade-in duration-300" 
+                                                    alt="Preview" 
+                                                />
                                             )
                                         ) : (
                                             <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -526,10 +539,39 @@ export function ContentEditorDialog({
                                                 <span className="text-xs font-medium">Sem imagem</span>
                                             </div>
                                         )}
+                                        
+                                        {/* Navigation Arrows */}
                                         {(mediaUrls && mediaUrls.length > 1) && (
-                                            <div className="absolute top-3 right-3 bg-black/50 backdrop-blur text-white text-[10px] font-medium px-2 py-1 rounded-full">
-                                                1/{mediaUrls.length}
-                                            </div>
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); setCurrentMediaIndex(prev => prev > 0 ? prev - 1 : mediaUrls.length - 1); }}
+                                                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover/media:opacity-100"
+                                                >
+                                                    <Icons.ChevronLeft className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); setCurrentMediaIndex(prev => prev < mediaUrls.length - 1 ? prev + 1 : 0); }}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover/media:opacity-100"
+                                                >
+                                                    <Icons.ChevronRight className="h-4 w-4" />
+                                                </button>
+                                                
+                                                <div className="absolute top-3 right-3 bg-black/50 backdrop-blur text-white text-[10px] font-medium px-2 py-1 rounded-full">
+                                                    {currentMediaIndex + 1}/{mediaUrls.length}
+                                                </div>
+
+                                                {/* Dots indicator */}
+                                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
+                                                    {mediaUrls.map((_, i) => (
+                                                        <div 
+                                                            key={i} 
+                                                            className={`h-1 rounded-full transition-all ${i === currentMediaIndex ? 'w-4 bg-white' : 'w-1 bg-white/40'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </>
                                         )}
                                     </div>
 

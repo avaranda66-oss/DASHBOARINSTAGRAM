@@ -26,7 +26,8 @@ import { MetaBestHourChart } from './meta-best-hour-chart';
 import { MetaReelsChart } from './meta-reels-chart';
 import { MetaPublishForm } from './meta-publish-form';
 import { MetaDiscoveryCard } from './meta-discovery-card';
-import { Rocket, Activity, Target } from 'lucide-react';
+import { FeedPreviewTab } from './feed-preview-tab';
+import { Rocket, Activity, Target, Smartphone } from 'lucide-react';
 import { periodComparison, engagementScore, performanceBadge, metricSummary, hookQualityScore, persuasionTriggerCount } from '@/lib/utils/statistics';
 
 interface MetaPost extends InstagramPostMetrics {
@@ -113,7 +114,7 @@ function TypeIcon({ type }: { type: string }) {
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } };
 
-type InternalTab = 'overview' | 'charts' | 'posts' | 'hashtags' | 'strategy' | 'audience' | 'competitors' | 'publish';
+type InternalTab = 'overview' | 'charts' | 'posts' | 'hashtags' | 'strategy' | 'audience' | 'competitors' | 'publish' | 'feed-preview';
 
 const INTERNAL_TABS: { key: InternalTab; label: string; icon: React.ElementType }[] = [
     { key: 'overview', label: 'Visão Geral', icon: TrendingUp },
@@ -124,6 +125,7 @@ const INTERNAL_TABS: { key: InternalTab; label: string; icon: React.ElementType 
     { key: 'audience', label: 'Audiência', icon: Users },
     { key: 'competitors', label: 'Concorrentes', icon: Search },
     { key: 'publish', label: 'Publicar', icon: Rocket },
+    { key: 'feed-preview', label: 'Feed Preview', icon: Smartphone },
 ];
 
 interface Props {
@@ -141,7 +143,15 @@ export function MinhaContaView({ token, username }: Props) {
     const [activeTab, setActiveTab] = useState<InternalTab>('overview');
     const [sortBy, setSortBy] = useState<'reach' | 'likes' | 'saves' | 'shares' | 'date'>('reach');
 
-    const [accountProfile, setAccountProfile] = useState<{ followersCount?: number, name?: string } | undefined>();
+    const [accountProfile, setAccountProfile] = useState<{
+        followersCount?: number;
+        name?: string;
+        biography?: string;
+        picture?: string;
+        follows_count?: number;
+        mediaCount?: number;
+        website?: string;
+    } | undefined>();
     const [insightsData, setInsightsData] = useState<{ accountInsights: any[], demographics: any } | null>(null);
     const [isLoadingInsights, setIsLoadingInsights] = useState(false);
 
@@ -272,12 +282,17 @@ export function MinhaContaView({ token, username }: Props) {
             setPosts(freshPosts);
             setFetchedAt(now);
             setIsFromCache(false);
-            // Atualiza seguidores e nome com dados frescos da API
-            if (json.followersCount != null || json.name) {
+            // Atualiza perfil com dados frescos da API (seguidores, bio, foto, etc.)
+            if (json.followersCount != null || json.name || json.biography) {
                 setAccountProfile(prev => ({
                     ...prev,
                     followersCount: json.followersCount ?? prev?.followersCount,
                     name: json.name ?? prev?.name,
+                    biography: json.biography ?? prev?.biography,
+                    picture: json.profilePictureUrl ?? prev?.picture,
+                    follows_count: json.followsCount ?? prev?.follows_count,
+                    mediaCount: json.mediaCount ?? prev?.mediaCount,
+                    website: json.website ?? prev?.website,
                 }));
                 // Persiste no banco para não resetar no F5
                 if (username) {
@@ -285,6 +300,11 @@ export function MinhaContaView({ token, username }: Props) {
                         updateAccountMetaProfileAction(username, {
                             followersCount: json.followersCount,
                             name: json.name,
+                            biography: json.biography,
+                            profilePictureUrl: json.profilePictureUrl,
+                            followsCount: json.followsCount,
+                            mediaCount: json.mediaCount,
+                            website: json.website,
                         }).catch(console.error);
                     });
                 }
@@ -947,6 +967,24 @@ export function MinhaContaView({ token, username }: Props) {
                                 </div>
                             )}
                         </motion.div>
+                    )}
+
+                    {/* ── TAB: Feed Preview ── */}
+                    {activeTab === 'feed-preview' && (
+                        <FeedPreviewTab
+                            posts={posts}
+                            account={{
+                                username: username ?? '',
+                                name: accountProfile?.name,
+                                biography: accountProfile?.biography,
+                                picture: accountProfile?.picture,
+                                followers_count: accountProfile?.followersCount,
+                                follows_count: accountProfile?.follows_count,
+                                media_count: accountProfile?.mediaCount ?? posts.length,
+                                website: accountProfile?.website,
+                            }}
+                            avgEngagement={summary?.avgEngagementRate ?? 0}
+                        />
                     )}
                 </>
             )}

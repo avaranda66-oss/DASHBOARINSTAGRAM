@@ -67,3 +67,58 @@ export async function saveAllContentsAction(contents: Content[]): Promise<void> 
 export async function deleteContentAction(id: string): Promise<void> {
     await prisma.content.delete({ where: { id } });
 }
+
+/**
+ * Reordena conteúdos agendados, redistribuindo as datas de agendamento.
+ *
+ * orderedIds vem do mini storyboard "Ordem de Publicação":
+ * - orderedIds[0] = publica PRIMEIRO = recebe a data MAIS ANTIGA
+ * - orderedIds[last] = publica POR ÚLTIMO = recebe a data MAIS RECENTE
+ *
+ * No grid do Instagram, orderedIds[last] aparecerá na posição 1 (topo-esquerda)
+ * porque é o mais recente.
+ */
+export async function reorderContentsAction(orderedIds: string[]): Promise<void> {
+    // 1. Buscar as datas atuais de todos os conteúdos envolvidos
+    const contents = await prisma.content.findMany({
+        where: { id: { in: orderedIds } },
+        select: { id: true, scheduledAt: true },
+    });
+
+    // 2. Coletar datas e ordenar da mais antiga para a mais recente
+    const dates = contents
+        .map(c => c.scheduledAt)
+        .filter((d): d is Date => d !== null)
+        .sort((a, b) => a.getTime() - b.getTime()); // mais antiga primeiro
+
+    // 3. Atribuir: orderedIds[0] recebe a data mais antiga (publica primeiro)
+    for (let i = 0; i < orderedIds.length; i++) {
+        const newDate = i < dates.length ? dates[i] : null;
+        await prisma.content.update({
+            where: { id: orderedIds[i] },
+            data: {
+                order: i,
+                ...(newDate ? { scheduledAt: newDate } : {}),
+            },
+        });
+    }
+    revalidatePath('/dashboard/content');
+}
+
+/**
+ * Reagenda conteúdos com datas específicas sugeridas pela IA.
+ * Cada item tem id + datetime ISO string.
+ */
+export async function rescheduleContentsAction(
+    schedule: { id: string; datetime: string }[]
+): Promise<void> {
+    for (const item of schedule) {
+        await prisma.content.update({
+            where: { id: item.id },
+            data: {
+                scheduledAt: new Date(item.datetime),
+            },
+        });
+    }
+    revalidatePath('/dashboard/content');
+}

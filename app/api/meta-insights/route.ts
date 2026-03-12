@@ -64,6 +64,11 @@ export async function POST(req: NextRequest) {
                 username: verification.username,
                 followersCount: verification.followersCount,
                 name: verification.name,
+                biography: verification.biography,
+                profilePictureUrl: verification.profilePictureUrl,
+                followsCount: verification.followsCount,
+                mediaCount: verification.mediaCount,
+                website: verification.website,
             });
         }
 
@@ -75,6 +80,11 @@ export async function POST(req: NextRequest) {
             username: verification.username,
             followersCount: verification.followersCount,
             name: verification.name,
+            biography: verification.biography,
+            profilePictureUrl: verification.profilePictureUrl,
+            followsCount: verification.followsCount,
+            mediaCount: verification.mediaCount,
+            website: verification.website,
             source: 'meta',
             fetchedAt: new Date().toISOString(),
         });

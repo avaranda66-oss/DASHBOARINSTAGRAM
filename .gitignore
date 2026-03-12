@@ -64,6 +64,7 @@ public/maps-debug-*
 # Session data (Playwright cookies, tokens)
 sessions/
 .chrome-session-maps/
+.chrome-session-ig/
 
 # Temporary / debug files
 tmp/
@@ -102,3 +103,22 @@ scripts/diag-*
 scripts/run-story-*
 scripts/test-real-*
 scripts/test-ai-*
+scripts/save-final-campaign.*
+scripts/save-impasto-*
+scripts/save-tarcila-*
+scripts/save-obsidian-*
+scripts/fix-media-urls.*
+scripts/fix-networking.*
+scripts/list-ideas.*
+scripts/verify-fix.*
+scripts/schedule-carousel.*
+scripts/add-varanda-*
+scripts/serve-public-tunnel.*
+scripts/check-db.*
+scripts/fix-db.*
+
+# AIOS local state
+.aios/
+
+# Public highlights cache
+public/ig-highlights/

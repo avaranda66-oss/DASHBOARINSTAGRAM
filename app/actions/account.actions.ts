@@ -64,12 +64,25 @@ export async function deleteAccountAction(id: string) {
     }
 }
 
-export async function updateAccountMetaProfileAction(username: string, data: { followersCount?: number; name?: string }) {
+export async function updateAccountMetaProfileAction(username: string, data: {
+    followersCount?: number;
+    name?: string;
+    biography?: string;
+    profilePictureUrl?: string;
+    followsCount?: number;
+    mediaCount?: number;
+    website?: string;
+}) {
     try {
         const handle = username.replace('@', '').toLowerCase();
         const updateData: any = {};
         if (data.followersCount != null) updateData.followers_count = data.followersCount;
         if (data.name) updateData.name = data.name;
+        if (data.biography != null) updateData.biography = data.biography;
+        if (data.profilePictureUrl) updateData.picture = data.profilePictureUrl;
+        if (data.followsCount != null) updateData.follows_count = data.followsCount;
+        if (data.mediaCount != null) updateData.media_count = data.mediaCount;
+        if (data.website != null) updateData.website = data.website;
         if (Object.keys(updateData).length === 0) return { success: true };
 
         await db.account.update({
@@ -95,6 +108,9 @@ export async function getAccountByUsernameAction(username: string) {
             followersCount: (account as any).followers_count || undefined,
             mediaCount: (account as any).media_count || undefined,
             biography: (account as any).biography || undefined,
+            picture: (account as any).picture || undefined,
+            follows_count: (account as any).follows_count || undefined,
+            website: (account as any).website || undefined,
         };
     } catch (e) {
         return null;

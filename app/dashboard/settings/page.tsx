@@ -774,7 +774,7 @@ export default function SettingsPage() {
                             <span>v1.0.0</span>
                             <p className="text-xs">Feito com Next.js 15, Zustand e Tailwind CSS.</p>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => window.open('https://github.com/avaranda66-oss', '_blank')}>
+                        <Button variant="ghost" size="sm" onClick={() => window.open('https://github.com/avaranda66-oss/DASHBOARINSTAGRAM', '_blank')}>
                             <Github className="mr-2 h-4 w-4" />
                             Visitar Repositório
                         </Button>

@@ -31,6 +31,7 @@ export interface InstagramPostMetrics {
     latestComments: PostComment[];
     engagementRate?: number;
     source?: 'apify' | 'meta';
+    isPinned?: boolean;
 }
 
 /** Aggregated summary computed from an array of InstagramPostMetrics */

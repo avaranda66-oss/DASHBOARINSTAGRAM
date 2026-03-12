@@ -186,7 +186,7 @@ export async function fetchInstagramInsights(token: string, limit = 50): Promise
             videoViewCount: null,
             videoPlayCount: null,
             timestamp: item.timestamp,
-            displayUrl: item.media_url ?? item.thumbnail_url ?? '',
+            displayUrl: (item.media_type === 'VIDEO' ? item.thumbnail_url ?? item.media_url : item.media_url ?? item.thumbnail_url) ?? '',
             ownerUsername: item.username ?? '',
             ownerProfilePicUrl: undefined,
             latestComments: [],
@@ -372,15 +372,35 @@ export async function fetchPostComments(
 /**
  * Verifica se um token Meta está válido fazendo uma requisição leve.
  */
-export async function verifyMetaToken(token: string): Promise<{ valid: boolean; username?: string; followersCount?: number; name?: string }> {
+export async function verifyMetaToken(token: string): Promise<{
+    valid: boolean;
+    username?: string;
+    followersCount?: number;
+    name?: string;
+    biography?: string;
+    profilePictureUrl?: string;
+    followsCount?: number;
+    mediaCount?: number;
+    website?: string;
+}> {
     try {
         const res = await fetch(
-            `${GRAPH_BASE}/${GRAPH_VERSION}/me?fields=username,followers_count,name`,
+            `${GRAPH_BASE}/${GRAPH_VERSION}/me?fields=username,followers_count,follows_count,media_count,name,biography,profile_picture_url,website`,
             { headers: metaHeaders(token) }
         );
         const data = await res.json();
         if (data.error) return { valid: false };
-        return { valid: true, username: data.username, followersCount: data.followers_count, name: data.name };
+        return {
+            valid: true,
+            username: data.username,
+            followersCount: data.followers_count,
+            name: data.name,
+            biography: data.biography,
+            profilePictureUrl: data.profile_picture_url,
+            followsCount: data.follows_count,
+            mediaCount: data.media_count,
+            website: data.website,
+        };
     } catch {
         return { valid: false };
     }
