@@ -91,16 +91,18 @@ export async function fetchInstagramInsights(token: string, limit = 50): Promise
 
         // 3. Buscar insights avançados (reach, saves, shares, views)
         try {
-            // Métricas variam por tipo de mídia
-            let metricsParam = 'reach,shares,total_interactions';
+            // CRÍTICO: se UMA métrica inválida for pedida, a API falha o request INTEIRO
+            // plays foi deprecado na v22 — removido para corrigir regressão de 16 posts sem dados
             const productType = item.media_product_type || (item.media_type === 'VIDEO' ? 'REELS' : 'FEED');
-            
-            if (productType === 'REELS') {
-                metricsParam += ',saved,views,plays,ig_reels_avg_watch_time';
-            } else if (productType === 'STORY') {
-                metricsParam += ',views,follows,profile_visits,replies';
-            } else { // FEED
-                metricsParam += ',saved,views,follows,profile_visits';
+            let metricsParam: string;
+
+            if (productType === 'STORY') {
+                metricsParam = 'reach,views,shares,replies,follows,profile_visits';
+            } else if (productType === 'REELS') {
+                metricsParam = 'reach,saved,shares,views,total_interactions,ig_reels_avg_watch_time';
+            } else {
+                // FEED (IMAGE / CAROUSEL_ALBUM)
+                metricsParam = 'reach,saved,shares,views,total_interactions,follows,profile_visits';
             }
 
             const insightsUrl =
