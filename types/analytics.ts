@@ -30,6 +30,7 @@ export interface InstagramPostMetrics {
     ownerProfilePicUrl?: string;
     latestComments: PostComment[];
     engagementRate?: number;
+    source?: 'apify' | 'meta';
 }
 
 /** Aggregated summary computed from an array of InstagramPostMetrics */
@@ -78,6 +79,8 @@ export interface MetaPostMetrics extends InstagramPostMetrics {
     shares: number;
     totalInteractions: number;
     source: 'meta';
+    media_product_type: string;
+    ig_reels_avg_watch_time?: number;
 }
 
 /** Cached analytics data stored in localStorage, linked to an account handle */

@@ -47,6 +47,14 @@ export function MetaAccountTrends({ data }: Props) {
         ))}
       </div>
 
+      {/* Check if selected metric has any data */}
+      {data.every(d => (d[metric] as number) === 0) ? (
+        <div className="flex items-center justify-center h-[250px] bg-zinc-900/10 rounded-xl border border-dashed border-zinc-800">
+          <p className="text-sm text-muted-foreground">
+            Sem dados de &quot;{options.find(o => o.value === metric)?.label}&quot; no período. A Meta API pode não disponibilizar esta métrica para sua conta.
+          </p>
+        </div>
+      ) : (
       <div className="h-[250px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -95,6 +103,7 @@ export function MetaAccountTrends({ data }: Props) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      )}
     </div>
   );
 }

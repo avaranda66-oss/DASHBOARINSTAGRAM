@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
     Zap, RefreshCw, AlertCircle, TrendingUp, Eye, Heart,
     Bookmark, Share2, Users, BarChart2, BarChart, Hash, Sparkles,
-    ExternalLink, Image, Video, Layers,
+    ExternalLink, Image, Video, Layers, Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
@@ -25,7 +25,9 @@ import { MetaAudienceDemographics } from './meta-audience-demographics';
 import { MetaBestHourChart } from './meta-best-hour-chart';
 import { MetaReelsChart } from './meta-reels-chart';
 import { MetaPublishForm } from './meta-publish-form';
-import { Rocket } from 'lucide-react';
+import { MetaDiscoveryCard } from './meta-discovery-card';
+import { Rocket, Activity, Target } from 'lucide-react';
+import { periodComparison, engagementScore, performanceBadge, metricSummary, hookQualityScore, persuasionTriggerCount } from '@/lib/utils/statistics';
 
 interface MetaPost extends InstagramPostMetrics {
     reach?: number;
@@ -64,10 +66,11 @@ function computeMetaSummary(posts: MetaPost[]): MetaSummary {
     const avgReach = totalPosts > 0 ? Math.round(totalReach / totalPosts) : 0;
 
     const postsWithReach = posts.filter((p) => (p.reach ?? 0) > 0);
+    // BUG FIX: incluir saves e shares no cálculo de engagement rate (fórmula completa e consistente)
     const avgEngagementRate =
         postsWithReach.length > 0
             ? Math.round(
-                (postsWithReach.reduce((s, p) => s + ((p.likesCount + p.commentsCount) / p.reach!) * 100, 0) /
+                (postsWithReach.reduce((s, p) => s + ((p.likesCount + p.commentsCount + (p.saved ?? 0) + (p.shares ?? 0)) / p.reach!) * 100, 0) /
                     postsWithReach.length) * 100,
             ) / 100
             : 0;
@@ -110,7 +113,7 @@ function TypeIcon({ type }: { type: string }) {
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } };
 
-type InternalTab = 'overview' | 'charts' | 'posts' | 'hashtags' | 'strategy' | 'audience' | 'publish';
+type InternalTab = 'overview' | 'charts' | 'posts' | 'hashtags' | 'strategy' | 'audience' | 'competitors' | 'publish';
 
 const INTERNAL_TABS: { key: InternalTab; label: string; icon: React.ElementType }[] = [
     { key: 'overview', label: 'Visão Geral', icon: TrendingUp },
@@ -119,6 +122,7 @@ const INTERNAL_TABS: { key: InternalTab; label: string; icon: React.ElementType 
     { key: 'hashtags', label: 'Hashtags', icon: Hash },
     { key: 'strategy', label: 'Estratégia IA', icon: Sparkles },
     { key: 'audience', label: 'Audiência', icon: Users },
+    { key: 'competitors', label: 'Concorrentes', icon: Search },
     { key: 'publish', label: 'Publicar', icon: Rocket },
 ];
 
@@ -141,9 +145,15 @@ export function MinhaContaView({ token, username }: Props) {
     const [insightsData, setInsightsData] = useState<{ accountInsights: any[], demographics: any } | null>(null);
     const [isLoadingInsights, setIsLoadingInsights] = useState(false);
 
-    // Fetch Insights when Audience tab is active
+    // Concorrentes (Business Discovery)
+    const [competitorUsername, setCompetitorUsername] = useState('');
+    const [competitorData, setCompetitorData] = useState<{ profile: any; posts: any[]; fetchedAt: string } | null>(null);
+    const [isLoadingCompetitor, setIsLoadingCompetitor] = useState(false);
+    const [competitorError, setCompetitorError] = useState<string | null>(null);
+
+    // BUG FIX: Fetch Insights when Audience OR Strategy tab is active (ambas usam esses dados)
     useEffect(() => {
-        if (activeTab === 'audience' && !insightsData && !isLoadingInsights && token) {
+        if ((activeTab === 'audience' || activeTab === 'strategy') && !insightsData && !isLoadingInsights && token) {
             setIsLoadingInsights(true);
             fetch('/api/meta-account-insights', {
                 method: 'POST',
@@ -183,6 +193,66 @@ export function MinhaContaView({ token, username }: Props) {
     const hasFetched = posts.length > 0;
     const summary = hasFetched ? computeMetaSummary(posts) : null;
 
+    const handleFetchCompetitor = async () => {
+        if (!competitorUsername.trim()) return;
+        // Não faz sentido buscar a própria conta aqui
+        if (username && competitorUsername.trim().toLowerCase() === username.toLowerCase()) {
+            setCompetitorError('Não é possível buscar sua própria conta. Use a aba "Visão Geral" para ver seus dados.');
+            return;
+        }
+        setIsLoadingCompetitor(true);
+        setCompetitorError(null);
+        try {
+            const handle = competitorUsername.trim().replace('@', '');
+            // Usa Apify (scraping público) — funciona para qualquer conta pública
+            const res = await fetch('/api/apify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    profileUrls: [`https://www.instagram.com/${handle}/`],
+                    resultsLimit: 25,
+                }),
+            });
+            const json = await res.json();
+            if (!json.success) {
+                setCompetitorError(json.error ?? 'Erro ao buscar perfil. Verifique se a conta existe e é pública.');
+                return;
+            }
+            const posts: any[] = json.data ?? [];
+            if (posts.length === 0) {
+                setCompetitorError('Nenhum post encontrado. A conta pode ser privada ou não existir.');
+                return;
+            }
+            const firstPost = posts[0];
+            setCompetitorData({
+                profile: {
+                    handle: firstPost.ownerUsername ?? handle,
+                    name: undefined,
+                    biography: undefined,
+                    followersCount: 0,
+                    followsCount: 0,
+                    mediaCount: posts.length,
+                    avatarUrl: firstPost.ownerProfilePicUrl,
+                },
+                posts: posts.map((p: any) => ({
+                    id: p.id ?? p.shortCode,
+                    caption: p.caption,
+                    type: p.type,
+                    likesCount: p.likesCount ?? 0,
+                    commentsCount: p.commentsCount ?? 0,
+                    timestamp: p.timestamp,
+                    url: p.url ?? `https://instagram.com/p/${p.shortCode}/`,
+                    thumbnailUrl: p.displayUrl,
+                })),
+                fetchedAt: new Date().toISOString(),
+            });
+        } catch (e: any) {
+            setCompetitorError(e.message ?? 'Erro de rede.');
+        } finally {
+            setIsLoadingCompetitor(false);
+        }
+    };
+
     const handleFetch = async () => {
         setIsLoading(true);
         setError(null);
@@ -202,6 +272,23 @@ export function MinhaContaView({ token, username }: Props) {
             setPosts(freshPosts);
             setFetchedAt(now);
             setIsFromCache(false);
+            // Atualiza seguidores e nome com dados frescos da API
+            if (json.followersCount != null || json.name) {
+                setAccountProfile(prev => ({
+                    ...prev,
+                    followersCount: json.followersCount ?? prev?.followersCount,
+                    name: json.name ?? prev?.name,
+                }));
+                // Persiste no banco para não resetar no F5
+                if (username) {
+                    import('@/app/actions/account.actions').then(({ updateAccountMetaProfileAction }) => {
+                        updateAccountMetaProfileAction(username, {
+                            followersCount: json.followersCount,
+                            name: json.name,
+                        }).catch(console.error);
+                    });
+                }
+            }
             // Persistir no banco para próximas visitas
             if (username) {
                 saveMetaAnalyticsAction(username, freshPosts).catch(console.error);
@@ -391,6 +478,211 @@ export function MinhaContaView({ token, username }: Props) {
                                 </motion.div>
                             )}
 
+                            {/* ─── Indicadores Avançados (Meta-exclusivos) ─── */}
+                            <motion.div variants={item} className="space-y-4">
+                                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <Activity className="h-3.5 w-3.5 text-purple-400" /> Indicadores Avançados
+                                </h3>
+                                {(() => {
+                                    const metaPosts = posts.filter(p => (p as any).reach > 0);
+                                    if (metaPosts.length < 3) return <p className="text-xs text-muted-foreground">Mínimo 3 posts com dados Meta para análise.</p>;
+
+                                    const reaches = metaPosts.map(p => (p as any).reach as number);
+                                    const saves = metaPosts.map(p => (p as any).saved as number ?? 0);
+                                    const shares = metaPosts.map(p => (p as any).shares as number ?? 0);
+
+                                    // Period comparison
+                                    const mid = Math.floor(reaches.length / 2);
+                                    const reachComp = periodComparison(reaches.slice(mid), reaches.slice(0, mid));
+
+                                    // Type efficiency
+                                    const typeMap: Record<string, { saves: number; shares: number; reach: number; count: number }> = {};
+                                    metaPosts.forEach(p => {
+                                        const type = p.type === 'Video' ? 'Reels' : p.type === 'Sidecar' ? 'Carrossel' : 'Imagem';
+                                        if (!typeMap[type]) typeMap[type] = { saves: 0, shares: 0, reach: 0, count: 0 };
+                                        typeMap[type].saves += (p as any).saved ?? 0;
+                                        typeMap[type].shares += (p as any).shares ?? 0;
+                                        typeMap[type].reach += (p as any).reach ?? 0;
+                                        typeMap[type].count++;
+                                    });
+
+                                    // Top 5 by depth score
+                                    const scored = metaPosts.map(p => ({
+                                        post: p,
+                                        score: engagementScore({ likes: p.likesCount, comments: p.commentsCount, views: p.videoViewCount ?? 0, saves: (p as any).saved ?? 0, shares: (p as any).shares ?? 0 }),
+                                    })).sort((a, b) => b.score - a.score);
+                                    const allScores = scored.map(s => s.score);
+
+                                    // Metric summaries
+                                    const reachSummary = metricSummary(reaches, 'Alcance');
+                                    const saveSummary = metricSummary(saves, 'Saves');
+
+                                    const SIG_LABELS: Record<string, string> = { significant: 'Significativo', marginal: 'Marginal', negligible: 'Negligível' };
+                                    const SIG_COLORS: Record<string, string> = { significant: '#10b981', marginal: '#f59e0b', negligible: '#6b7280' };
+
+                                    return (
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            {/* Period Comparison */}
+                                            <div className="rounded-xl v2-glass p-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <TrendingUp className="h-3.5 w-3.5 text-green-400" />
+                                                    <span className="text-xs font-semibold">Evolução do Alcance</span>
+                                                </div>
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className={`text-2xl font-mono font-bold ${reachComp.direction === 'up' ? 'text-green-400' : reachComp.direction === 'down' ? 'text-red-400' : 'text-muted-foreground'}`}>
+                                                        {reachComp.direction === 'up' ? '+' : ''}{Math.round(reachComp.changePercent)}%
+                                                    </span>
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-mono" style={{ background: SIG_COLORS[reachComp.significance] + '20', color: SIG_COLORS[reachComp.significance] }}>
+                                                        {SIG_LABELS[reachComp.significance]}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[10px] text-muted-foreground mt-1">Recente: {fmt(Math.round(reachComp.currentAvg))} | Anterior: {fmt(Math.round(reachComp.previousAvg))}</p>
+                                            </div>
+
+                                            {/* Type Efficiency */}
+                                            <div className="rounded-xl v2-glass p-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Layers className="h-3.5 w-3.5 text-amber-400" />
+                                                    <span className="text-xs font-semibold">Eficiência por Tipo</span>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    {Object.entries(typeMap).map(([type, d]) => (
+                                                        <div key={type} className="flex items-center justify-between text-[11px]">
+                                                            <span className="text-muted-foreground">{type} ({d.count})</span>
+                                                            <div className="flex gap-3 text-[10px] font-mono">
+                                                                <span title="Save Rate"><Bookmark className="h-2.5 w-2.5 inline text-amber-400" /> {d.reach > 0 ? ((d.saves / d.reach) * 100).toFixed(1) : '0'}%</span>
+                                                                <span title="Share Rate"><Share2 className="h-2.5 w-2.5 inline text-emerald-400" /> {d.reach > 0 ? ((d.shares / d.reach) * 100).toFixed(1) : '0'}%</span>
+                                                                <span title="Alcance Médio"><Eye className="h-2.5 w-2.5 inline text-blue-400" /> {fmt(Math.round(d.reach / d.count))}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Top 5 Depth Score */}
+                                            <div className="rounded-xl v2-glass p-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Target className="h-3.5 w-3.5 text-rose-400" />
+                                                    <span className="text-xs font-semibold">Top 5 — Depth Score</span>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    {scored.slice(0, 5).map((s, i) => {
+                                                        const badge = performanceBadge(s.score, allScores);
+                                                        return (
+                                                            <div key={s.post.shortCode} className="flex items-center gap-2 text-[11px]">
+                                                                <span className="font-mono text-muted-foreground w-4">{i + 1}</span>
+                                                                <span className="truncate flex-1" title={s.post.caption}>{s.post.caption?.slice(0, 40) || s.post.shortCode}</span>
+                                                                <span className="font-mono font-bold">{s.score}</span>
+                                                                <span className={`text-[9px] ${badge.color}`}>{badge.emoji}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            {/* Metric Summaries */}
+                                            <div className="rounded-xl v2-glass p-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <BarChart className="h-3.5 w-3.5 text-blue-400" />
+                                                    <span className="text-xs font-semibold">Resumo de Métricas</span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {[reachSummary, saveSummary].map((ms) => (
+                                                        <div key={ms.insight.slice(0, 20)} className="text-[10px]">
+                                                            <p className="text-muted-foreground leading-relaxed">{ms.insight}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Value Per Follower (Meta-exclusivo) */}
+                                            <div className="rounded-xl v2-glass p-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Users className="h-3.5 w-3.5 text-violet-400" />
+                                                    <span className="text-xs font-semibold">Value Per Follower</span>
+                                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-400 ml-auto">Meta Only</span>
+                                                </div>
+                                                {(() => {
+                                                    const totalSavesVPF = metaPosts.reduce((s, p) => s + ((p as any).saved ?? 0), 0);
+                                                    const totalSharesVPF = metaPosts.reduce((s, p) => s + ((p as any).shares ?? 0), 0);
+                                                    const vpf = totalSavesVPF + totalSharesVPF;
+                                                    return (
+                                                        <div>
+                                                            <p className="text-2xl font-mono font-bold text-violet-400">{fmt(vpf)}</p>
+                                                            <p className="text-[10px] text-muted-foreground">saves ({fmt(totalSavesVPF)}) + shares ({fmt(totalSharesVPF)}) = ações de alto valor</p>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+
+                                            {/* Persuasion Triggers Summary (Meta-exclusivo) */}
+                                            <div className="rounded-xl v2-glass p-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                                                    <span className="text-xs font-semibold">Gatilhos de Persuasão</span>
+                                                </div>
+                                                {(() => {
+                                                    let urgTotal = 0, authTotal = 0, scarTotal = 0, postsWithTriggers = 0;
+                                                    for (const p of metaPosts) {
+                                                        const result = persuasionTriggerCount(p.caption ?? '');
+                                                        if (result.hasPersuasion) postsWithTriggers++;
+                                                        urgTotal += result.urgency;
+                                                        authTotal += result.authority;
+                                                        scarTotal += result.scarcity;
+                                                    }
+                                                    return (
+                                                        <div className="space-y-1.5">
+                                                            <div className="flex justify-between text-[11px]">
+                                                                <span className="text-muted-foreground">Urgência</span>
+                                                                <span className="font-mono font-bold">{urgTotal}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-[11px]">
+                                                                <span className="text-muted-foreground">Autoridade</span>
+                                                                <span className="font-mono font-bold">{authTotal}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-[11px]">
+                                                                <span className="text-muted-foreground">Escassez</span>
+                                                                <span className="font-mono font-bold">{scarTotal}</span>
+                                                            </div>
+                                                            <p className="text-[10px] text-muted-foreground mt-1">{postsWithTriggers} de {metaPosts.length} posts usam gatilhos</p>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+
+                                            {/* Hook Quality (Meta-exclusivo) */}
+                                            <div className="rounded-xl v2-glass p-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Zap className="h-3.5 w-3.5 text-sky-400" />
+                                                    <span className="text-xs font-semibold">Hook Quality</span>
+                                                </div>
+                                                {(() => {
+                                                    const hq = hookQualityScore(
+                                                        metaPosts.map(p => ({ caption: p.caption ?? '', engagement: p.likesCount + p.commentsCount }))
+                                                    );
+                                                    return (
+                                                        <div>
+                                                            <div className="flex items-baseline gap-2 mb-2">
+                                                                <span className="text-2xl font-mono font-bold text-sky-400">{hq.score}/100</span>
+                                                                <span className="text-[10px] text-muted-foreground">Melhor: {hq.bestHookType}</span>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                {hq.hookTypes.slice(0, 4).map(h => (
+                                                                    <div key={h.type} className="flex justify-between text-[10px]">
+                                                                        <span className={h.type === hq.bestHookType ? 'text-sky-400' : 'text-muted-foreground'}>{h.type}</span>
+                                                                        <span className="font-mono">{fmt(h.avgEngagement)} eng ({h.count})</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </motion.div>
+
                             {/* Sortable posts table */}
                             <motion.div variants={item}>
                                 <div className="flex items-center justify-between mb-3">
@@ -432,8 +724,9 @@ export function MinhaContaView({ token, username }: Props) {
                                             </thead>
                                             <tbody>
                                                 {sortedPosts.map((post, idx) => {
+                                                    // BUG FIX: incluir saves e shares (fórmula consistente)
                                                     const engRate = (post.reach ?? 0) > 0
-                                                        ? ((post.likesCount + post.commentsCount) / post.reach!) * 100
+                                                        ? ((post.likesCount + post.commentsCount + (post.saved ?? 0) + (post.shares ?? 0)) / post.reach!) * 100
                                                         : 0;
                                                     return (
                                                         <tr key={post.id} className="border-b border-[var(--v2-border)]/50 hover:bg-[var(--v2-accent)]/5 transition-colors">
@@ -548,6 +841,68 @@ export function MinhaContaView({ token, username }: Props) {
                                 accountInsights={insightsData?.accountInsights}
                                 demographics={insightsData?.demographics}
                             />
+                        </motion.div>
+                    )}
+
+                    {/* ── TAB: Concorrentes ── */}
+                    {activeTab === 'competitors' && (
+                        <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
+                            <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
+                                <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-3">
+                                    Análise de Concorrentes — Perfis Públicos
+                                </h4>
+                                <p className="text-xs text-[var(--v2-text-tertiary)] mb-4">
+                                    Busque posts públicos de qualquer conta do Instagram. Funciona para contas pessoais, business e creator.
+                                </p>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="@usuario ou usuario"
+                                        value={competitorUsername}
+                                        onChange={(e) => setCompetitorUsername(e.target.value.replace('@', ''))}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && competitorUsername.trim() && !isLoadingCompetitor) {
+                                                handleFetchCompetitor();
+                                            }
+                                        }}
+                                        className="flex-1 bg-[var(--v2-bg-surface)] border border-[var(--v2-border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--v2-accent)]/50"
+                                    />
+                                    <Button
+                                        onClick={handleFetchCompetitor}
+                                        disabled={isLoadingCompetitor || !competitorUsername.trim()}
+                                        size="sm"
+                                        className="bg-[var(--v2-accent)] hover:bg-[var(--v2-accent-hover)] text-white shrink-0"
+                                    >
+                                        {isLoadingCompetitor ? (
+                                            <><RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> Buscando...</>
+                                        ) : (
+                                            <><Search className="mr-2 h-3.5 w-3.5" /> Buscar</>
+                                        )}
+                                    </Button>
+                                </div>
+                                {competitorError && (
+                                    <p className="mt-2 text-xs text-destructive flex items-center gap-1.5">
+                                        <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {competitorError}
+                                    </p>
+                                )}
+                            </motion.div>
+
+                            {competitorData && (
+                                <motion.div variants={item}>
+                                    <MetaDiscoveryCard
+                                        profile={competitorData.profile}
+                                        posts={competitorData.posts}
+                                        fetchedAt={competitorData.fetchedAt}
+                                    />
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {/* ── TAB: Publicar ── */}
+                    {activeTab === 'publish' && (
+                        <motion.div variants={item}>
+                            <MetaPublishForm />
                         </motion.div>
                     )}
 

@@ -14,6 +14,11 @@ import { toast } from 'sonner';
 import type { InstagramPostMetrics, AnalyticsSummary } from '@/types/analytics';
 import { ComparisonAIChat } from './comparison-ai-chat';
 import { analyzeCommentsSentiment } from '@/lib/utils/sentiment';
+import {
+    postingConsistencyIndex, linearTrend, bestTimeToPost, descriptiveStats,
+    contentROIScore, paretoAnalysis, contentVelocityScore, variableRewardScore,
+    investmentDepthScore, hookQualityScore, brandEquityScore, persuasionTriggerCount,
+} from '@/lib/utils/statistics';
 import { useAnalyticsStore } from '@/stores';
 
 // ─── Types ───
@@ -125,6 +130,21 @@ export interface ProfileMetrics {
     // Sentiment & Quality
     commentSentiment: { pctPos: number, pctNeu: number, pctNeg: number, total: number, brand: number };
     qualifiedEngagement: number; // Média de Engajamento * Fator de Positividade
+    // Statistical indicators
+    postingConsistency: { cv: number; postsPerWeek: number; score: number; classification: string };
+    engagementVolatility: 'high' | 'medium' | 'low';
+    trendDirection: 'rising' | 'falling' | 'stable';
+    trendR2: number;
+    bestDay: string;
+    // Intelligence indicators (Apify-safe — fair for VS)
+    contentROI: number;
+    paretoEfficiency: number;
+    contentVelocity: number;
+    variableReward: number;
+    investmentDepth: number;
+    hookQuality: number;
+    brandEquity: number;
+    persuasionTriggers: number;
 }
 
 function computeProfileMetrics(handle: string, posts: InstagramPostMetrics[], isClient: boolean, filterDays: number, customRange?: { start: string, end: string } | null): ProfileMetrics {
@@ -174,6 +194,14 @@ function computeProfileMetrics(handle: string, posts: InstagramPostMetrics[], is
     const avgEngagement = n > 0 ? Math.round((totalEng / n) * 10) / 10 : 0;
     const qualifiedEngagement = Math.round((avgEngagement * sentiment.positivityMultiplier) * 10) / 10;
 
+    // Statistical indicators
+    const consistency = postingConsistencyIndex(posts);
+    const engValues = posts.map(p => p.likesCount + p.commentsCount);
+    const engStats = descriptiveStats(engValues);
+    const engVolatility: 'high' | 'medium' | 'low' = engStats.cv > 0.5 ? 'high' : engStats.cv > 0.2 ? 'medium' : 'low';
+    const engTrend = linearTrend(engValues);
+    const bestDayResult = bestTimeToPost(posts.map(p => ({ date: p.timestamp, engagement: p.likesCount + p.commentsCount })));
+
     return {
         handle, isClient,
         postCount: n,
@@ -204,6 +232,20 @@ function computeProfileMetrics(handle: string, posts: InstagramPostMetrics[], is
         avgViewsPerReel: avgOf(reelsWithViews, p => p.videoViewCount ?? 0),
         commentSentiment: { pctPos: sentiment.pctPos, pctNeu: sentiment.pctNeu, pctNeg: sentiment.pctNeg, total: sentiment.total, brand: sentiment.brand },
         qualifiedEngagement,
+        postingConsistency: consistency,
+        engagementVolatility: engVolatility,
+        trendDirection: engTrend.direction,
+        trendR2: Math.round(engTrend.r2 * 100) / 100,
+        bestDay: bestDayResult.bestDay,
+        // Intelligence indicators (all Apify-safe)
+        contentROI: contentROIScore(posts.map(p => ({ type: p.type, engagement: p.likesCount + p.commentsCount }))).score,
+        paretoEfficiency: paretoAnalysis(posts.map(p => ({ id: p.id, engagement: p.likesCount + p.commentsCount }))).percentOfPosts,
+        contentVelocity: contentVelocityScore(posts.filter(p => p.timestamp).map(p => ({ timestamp: p.timestamp, engagement: p.likesCount + p.commentsCount }))).score,
+        variableReward: variableRewardScore(engValues).score,
+        investmentDepth: investmentDepthScore(posts).score,
+        hookQuality: hookQualityScore(posts.map(p => ({ caption: p.caption ?? '', engagement: p.likesCount + p.commentsCount }))).score,
+        brandEquity: brandEquityScore(posts.map(p => ({ hashtags: p.hashtags ?? [], engagement: p.likesCount + p.commentsCount }))).score,
+        persuasionTriggers: posts.reduce((s, p) => s + persuasionTriggerCount(p.caption ?? '').total, 0),
     };
 }
 
@@ -398,7 +440,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                             <div className="flex flex-col items-center gap-2">
                                 <div className="relative h-12 w-12 rounded-full border-2 border-border/50 overflow-hidden bg-muted flex items-center justify-center shadow-sm">
                                     {avatarUrl ? (
-                                        <img src={avatarUrl} alt={p.handle} className="h-full w-full object-cover" />
+                                        <img src={`/api/image-proxy?url=${encodeURIComponent(avatarUrl)}`} alt={p.handle} className="h-full w-full object-cover" />
                                     ) : (
                                         <User className="h-6 w-6 text-muted-foreground/40" />
                                     )}
@@ -732,6 +774,122 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                         </div>
                     ));
                 })()}
+            </motion.div>
+
+            {/* ─── Indicadores Estatísticos ─── */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                className="rounded-xl border border-border bg-card overflow-x-auto">
+                <div className="px-4 py-2.5 border-b border-border bg-muted/30">
+                    <h4 className="text-xs font-semibold flex items-center gap-1.5">
+                        <TrendingUp className="h-3.5 w-3.5 text-purple-400" />
+                        Indicadores Estatísticos
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground">Análise matemática de consistência, volatilidade e tendência</p>
+                </div>
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-border">
+                            <th className="px-4 py-2 text-left text-[10px] text-muted-foreground uppercase">Indicador</th>
+                            {profiles.map(p => (
+                                <th key={p.handle} className={`px-3 py-2 text-center text-[10px] uppercase ${p.isClient ? 'text-blue-400' : 'text-orange-400'}`}>
+                                    @{p.handle}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                        <tr className="hover:bg-muted/10">
+                            <td className="px-4 py-2 whitespace-nowrap">
+                                <span className="flex items-center gap-1.5 text-xs">
+                                    <Calendar className="h-3 w-3 text-cyan-400" /> Consistência
+                                </span>
+                            </td>
+                            {profiles.map(p => (
+                                <td key={p.handle} className="px-3 py-2 text-center">
+                                    <span className={`text-xs font-medium ${p.postingConsistency.score >= 45 ? 'text-green-400' : p.postingConsistency.score >= 25 ? 'text-amber-400' : 'text-red-400'}`}>
+                                        {p.postingConsistency.classification}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground ml-1">({p.postingConsistency.score}/100)</span>
+                                </td>
+                            ))}
+                        </tr>
+                        <tr className="hover:bg-muted/10">
+                            <td className="px-4 py-2 whitespace-nowrap">
+                                <span className="flex items-center gap-1.5 text-xs">
+                                    <BarChart3 className="h-3 w-3 text-amber-400" /> Volatilidade
+                                </span>
+                            </td>
+                            {profiles.map(p => (
+                                <td key={p.handle} className="px-3 py-2 text-center">
+                                    <span className={`text-xs font-medium ${p.engagementVolatility === 'low' ? 'text-green-400' : p.engagementVolatility === 'medium' ? 'text-amber-400' : 'text-red-400'}`}>
+                                        {p.engagementVolatility === 'low' ? 'Baixa' : p.engagementVolatility === 'medium' ? 'Média' : 'Alta'}
+                                    </span>
+                                </td>
+                            ))}
+                        </tr>
+                        <tr className="hover:bg-muted/10">
+                            <td className="px-4 py-2 whitespace-nowrap">
+                                <span className="flex items-center gap-1.5 text-xs">
+                                    <TrendingUp className="h-3 w-3 text-green-400" /> Tendência
+                                </span>
+                            </td>
+                            {profiles.map(p => (
+                                <td key={p.handle} className="px-3 py-2 text-center">
+                                    <span className={`text-xs font-medium ${p.trendDirection === 'rising' ? 'text-green-400' : p.trendDirection === 'falling' ? 'text-red-400' : 'text-muted-foreground'}`}>
+                                        {p.trendDirection === 'rising' ? '↑ Crescendo' : p.trendDirection === 'falling' ? '↓ Caindo' : '→ Estável'}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground ml-1">(R²: {p.trendR2})</span>
+                                </td>
+                            ))}
+                        </tr>
+                        <tr className="hover:bg-muted/10">
+                            <td className="px-4 py-2 whitespace-nowrap">
+                                <span className="flex items-center gap-1.5 text-xs">
+                                    <Calendar className="h-3 w-3 text-blue-400" /> Melhor Dia
+                                </span>
+                            </td>
+                            {profiles.map(p => (
+                                <td key={p.handle} className="px-3 py-2 text-center">
+                                    <span className="text-xs font-semibold">{p.bestDay || 'N/D'}</span>
+                                </td>
+                            ))}
+                        </tr>
+                    </tbody>
+                </table>
+            </motion.div>
+
+            {/* ─── Inteligência Competitiva ─── */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+                className="rounded-xl border border-border bg-card overflow-x-auto">
+                <div className="px-4 py-2.5 border-b border-border bg-muted/30">
+                    <h4 className="text-xs font-semibold flex items-center gap-1.5">
+                        <BarChart3 className="h-3.5 w-3.5 text-violet-400" />
+                        Inteligência Competitiva
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground">Indicadores baseados em frameworks de especialistas (Hormozi, Cialdini, Eyal, Schwartz, Lindstrom, Brunson)</p>
+                </div>
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-border">
+                            <th className="px-4 py-2 text-left text-[10px] text-muted-foreground uppercase">Indicador</th>
+                            {profiles.map(p => (
+                                <th key={p.handle} className={`px-3 py-2 text-center text-[10px] uppercase ${p.isClient ? 'text-blue-400' : 'text-orange-400'}`}>
+                                    @{p.handle}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                        <MetricRow label="Content ROI" icon={TrendingUp} color="text-emerald-400" profiles={profiles} getValue={m => m.contentROI} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Pareto (80/20)" icon={BarChart3} color="text-amber-400" profiles={profiles} getValue={m => m.paretoEfficiency} formatValue={n => `${n}%`} />
+                        <MetricRow label="Content Velocity" icon={TrendingUp} color="text-sky-400" profiles={profiles} getValue={m => m.contentVelocity} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Variable Reward" icon={RefreshCw} color="text-cyan-400" profiles={profiles} getValue={m => m.variableReward} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Investment Depth" icon={MessageCircle} color="text-purple-400" profiles={profiles} getValue={m => m.investmentDepth} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Hook Quality" icon={Eye} color="text-yellow-400" profiles={profiles} getValue={m => m.hookQuality} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Brand Equity" icon={Heart} color="text-violet-400" profiles={profiles} getValue={m => m.brandEquity} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Persuasion Triggers" icon={TrendingUp} color="text-rose-400" profiles={profiles} getValue={m => m.persuasionTriggers} formatValue={n => `${n}`} />
+                    </tbody>
+                </table>
             </motion.div>
 
             {/* AI Analysis */}

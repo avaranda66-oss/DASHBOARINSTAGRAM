@@ -13,17 +13,22 @@ const COLORS = ['#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#6366f1', '#8b5cf6'
 
 function HorizontalBarChart({ data, color }: { data: DemographicEntry[], color: string }) {
   if (data.length === 0) return <p className="text-xs text-muted-foreground py-4">Sem dados</p>;
-  
+
   // Get top 10
   const topData = data.slice(0, 10);
 
+  // Calculate dynamic width for Y-axis labels based on longest label
+  const maxLabelLength = Math.max(...topData.map(d => d.label.length));
+  const yAxisWidth = Math.min(Math.max(maxLabelLength * 7, 80), 160);
+  const chartHeight = Math.max(200, topData.length * 28);
+
   return (
-    <div className="h-[200px] w-full">
+    <div style={{ height: `${chartHeight}px` }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           layout="vertical"
           data={topData}
-          margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+          margin={{ top: 5, right: 20, left: 5, bottom: 5 }}
         >
           <XAxis type="number" hide />
           <YAxis
@@ -31,9 +36,9 @@ function HorizontalBarChart({ data, color }: { data: DemographicEntry[], color: 
             dataKey="label"
             axisLine={false}
             tickLine={false}
-            width={85}
+            width={yAxisWidth}
             tick={{ fontSize: 10, fill: 'var(--v2-text-primary)' }}
-            tickFormatter={(value) => (value.length > 20 ? value.substring(0, 20) + '...' : value)}
+            tickFormatter={(value) => (value.length > 22 ? value.substring(0, 22) + '…' : value)}
           />
           <RechartsTooltip
             contentStyle={{
@@ -45,7 +50,7 @@ function HorizontalBarChart({ data, color }: { data: DemographicEntry[], color: 
             }}
             cursor={{ fill: 'var(--v2-bg-surface)', opacity: 0.2 }}
           />
-          <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]} barSize={12} animationDuration={500} />
+          <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]} barSize={14} animationDuration={500} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -69,10 +74,34 @@ export function MetaAudienceDemographics({ demographics, followersCount }: Props
 
   const data = demographics[view];
 
-  if (!data || (data.age.length === 0 && data.gender.length === 0)) {
+  if (!data || (data.age.length === 0 && data.gender.length === 0 && data.city.length === 0 && data.country.length === 0)) {
      return (
-       <div className="flex items-center justify-center p-8 bg-zinc-900/10 rounded-xl border border-dashed border-zinc-800">
-         <p className="text-sm text-muted-foreground">Não há dados demográficos disponíveis no momento.</p>
+       <div className="space-y-6">
+         <div className="flex justify-center">
+           <div className="flex bg-zinc-900/50 rounded-lg p-1 border border-zinc-800">
+             <button
+               onClick={() => setView('followers')}
+               className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                 view === 'followers' ? 'bg-blue-500 text-white shadow' : 'text-zinc-400 hover:text-white'
+               }`}
+             >
+               Seguidores
+             </button>
+             <button
+               onClick={() => setView('engaged')}
+               className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                 view === 'engaged' ? 'bg-purple-500 text-white shadow' : 'text-zinc-400 hover:text-white'
+               }`}
+             >
+               Engajados
+             </button>
+           </div>
+         </div>
+         <div className="flex items-center justify-center p-8 bg-zinc-900/10 rounded-xl border border-dashed border-zinc-800">
+           <p className="text-sm text-muted-foreground">
+             Não há dados demográficos de {view === 'engaged' ? 'contas engajadas' : 'seguidores'} disponíveis no momento.
+           </p>
+         </div>
        </div>
      );
   }

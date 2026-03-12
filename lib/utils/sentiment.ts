@@ -9,6 +9,14 @@ const POSITIVE_REGEX = /\b(parab[ée]ns|incr[ií]vel|lind[ao]+s?|to+p|amei+|sho+
 
 const NEGATIVE_REGEX = /\b(ruim|horr[ií]vel|p[é]ssim[ao]|decepcionante|fraco|pior|ódio|caro|lixo|nojento|frio|demora|mal|péssimo)\b/gi;
 
+const BUYING_INTENT_REGEX = /\b(onde compro|onde comprar|como compro|como comprar|quanto custa|qual o pre[çc]o|pre[çc]o|valor|quero comprar|quero um|quero uma|eu quero|tem pra vender|tem para vender|encomenda|encomendo|onde acho|onde encontro|link|site|loja|delivery|entrega|faz entrega|aceita encomenda|cardapio|card[áa]pio|hor[áa]rio|funciona|abre|endere[çc]o|contato|whatsapp|whats|zap)\b/gi;
+
+const URGENCY_KEYWORDS_REGEX = /\b([úu]ltimas? vagas?|s[oó] hoje|limitado|acaba|esgotando|[úu]ltimas? unidades?|desconto|promo[çc][ãa]o|por tempo limitado|corre|aproveite?|n[ãa]o perca|agora|imperd[ií]vel|exclusiv[oa])\b/gi;
+
+const SENSORY_REGEX = /\b(veja|imagine|brilhante|cores?|visual|bonit[oa]|ou[çc]a|som|m[úu]sica|sil[êe]ncio|sinta|toque|suave|quente|frio|textura|sabor|delicioso|doce|amargo|salgado|crocante|aroma|perfume|cheiro|fragr[âa]ncia)\b/gi;
+
+const AUTHORITY_REGEX = /\b(\d+\s*%|\d+\s*anos?|estudo|pesquisa|ciência|cient[ií]fico|comprovad[oa]|certificad[oa]|especialista|expert|profissional|referência|prêmio|award|reconhecid[oa])\b/gi;
+
 export type SentimentResult = 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'BRAND_REPLY';
 
 export function analyzeSingleComment(
@@ -86,6 +94,8 @@ export function analyzeCommentsSentiment(posts: InstagramPostMetrics[]) {
         }
 
         validCommentsCount++;
+        const words = c.text.split(/[\s,.;!?'"()]+/).filter((w: string) => w.length > 2).length;
+        totalCommentWords += words;
 
         if (result.sentiment === 'POSITIVE') {
             rawPos += result.positiveScore;
@@ -124,5 +134,121 @@ export function analyzeCommentsSentiment(posts: InstagramPostMetrics[]) {
         pctPos, pctNeu, pctNeg,
         total: validCommentsCount,
         positivityMultiplier
+    };
+}
+
+// =============================================================================
+// Buying Intent Detection
+// =============================================================================
+
+/**
+ * Detecta comentarios com intencao de compra usando regex PT-BR.
+ * Retorna lista de comentarios com buying intent e score geral.
+ */
+export function detectBuyingIntent(
+    comments: { id: string; text: string; ownerUsername: string }[]
+): {
+    intentComments: { id: string; text: string; ownerUsername: string; keywords: string[] }[];
+    intentCount: number;
+    totalComments: number;
+    intentRate: number;
+} {
+    const intentComments: { id: string; text: string; ownerUsername: string; keywords: string[] }[] = [];
+
+    for (const comment of comments) {
+        if (!comment.text) continue;
+        const matches = comment.text.match(BUYING_INTENT_REGEX);
+        if (matches && matches.length > 0) {
+            intentComments.push({
+                id: comment.id,
+                text: comment.text,
+                ownerUsername: comment.ownerUsername,
+                keywords: [...new Set(matches.map(m => m.toLowerCase()))],
+            });
+        }
+    }
+
+    return {
+        intentComments,
+        intentCount: intentComments.length,
+        totalComments: comments.length,
+        intentRate: comments.length > 0 ? Math.round((intentComments.length / comments.length) * 10000) / 100 : 0,
+    };
+}
+
+// =============================================================================
+// Urgency/Scarcity Detection (Cialdini)
+// =============================================================================
+
+/**
+ * Detecta gatilhos de urgencia/escassez no caption de posts.
+ */
+export function detectUrgencyTriggers(caption: string): {
+    hasUrgency: boolean;
+    triggers: string[];
+    count: number;
+} {
+    if (!caption) return { hasUrgency: false, triggers: [], count: 0 };
+    const matches = caption.match(URGENCY_KEYWORDS_REGEX);
+    if (!matches || matches.length === 0) return { hasUrgency: false, triggers: [], count: 0 };
+
+    return {
+        hasUrgency: true,
+        triggers: [...new Set(matches.map(m => m.toLowerCase()))],
+        count: matches.length,
+    };
+}
+
+// =============================================================================
+// Sensory Language Score (Lindstrom)
+// =============================================================================
+
+/**
+ * Detecta palavras sensoriais no caption. Posts com linguagem multisensorial
+ * geram mais saves e memorabilidade.
+ */
+export function sensoryLanguageScore(caption: string): {
+    score: number;
+    sensoryWords: string[];
+    count: number;
+    classification: 'multisensorial' | 'sensorial' | 'neutro';
+} {
+    if (!caption) return { score: 0, sensoryWords: [], count: 0, classification: 'neutro' };
+
+    const matches = caption.match(SENSORY_REGEX);
+    if (!matches || matches.length === 0) return { score: 0, sensoryWords: [], count: 0, classification: 'neutro' };
+
+    const uniqueWords = [...new Set(matches.map(m => m.toLowerCase()))];
+    // Score baseado em variedade (palavras unicas) vs quantidade
+    const score = Math.min(uniqueWords.length * 20, 100);
+
+    let classification: 'multisensorial' | 'sensorial' | 'neutro';
+    if (uniqueWords.length >= 3) classification = 'multisensorial';
+    else if (uniqueWords.length >= 1) classification = 'sensorial';
+    else classification = 'neutro';
+
+    return { score, sensoryWords: uniqueWords, count: uniqueWords.length, classification };
+}
+
+// =============================================================================
+// Authority Signal Detection (Cialdini)
+// =============================================================================
+
+/**
+ * Detecta sinais de autoridade no caption: numeros, estatisticas, certificacoes.
+ */
+export function detectAuthoritySignals(caption: string): {
+    hasAuthority: boolean;
+    signals: string[];
+    count: number;
+} {
+    if (!caption) return { hasAuthority: false, signals: [], count: 0 };
+    const matches = caption.match(AUTHORITY_REGEX);
+    if (!matches || matches.length === 0) return { hasAuthority: false, signals: [], count: 0 };
+
+    return {
+        hasAuthority: true,
+        signals: [...new Set(matches.map(m => m.toLowerCase()))],
+        count: matches.length,
     };
 }
