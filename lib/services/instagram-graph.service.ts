@@ -1,7 +1,7 @@
 import type { InstagramPostMetrics, PostComment } from '@/types/analytics';
 
 const GRAPH_BASE = 'https://graph.instagram.com';
-const GRAPH_VERSION = 'v21.0';
+const GRAPH_VERSION = 'v25.0';
 
 type MediaType = 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM' | string;
 
@@ -26,6 +26,7 @@ interface RawMediaItem {
     id: string;
     caption?: string;
     media_type: MediaType;
+    media_product_type?: string;
     media_url?: string;
     thumbnail_url?: string;
     permalink: string;
@@ -49,7 +50,7 @@ export async function fetchInstagramInsights(token: string, limit = 50): Promise
     // 1. Buscar lista de posts
     const mediaUrl =
         `${GRAPH_BASE}/${GRAPH_VERSION}/me/media` +
-        `?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,username` +
+        `?fields=id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,username` +
         `&limit=${limit}` +
         `&access_token=${token}`;
 
@@ -91,9 +92,15 @@ export async function fetchInstagramInsights(token: string, limit = 50): Promise
         // 3. Buscar insights avançados (reach, saves, shares, views)
         try {
             // Métricas variam por tipo de mídia
-            let metricsParam = 'reach,saved,shares,total_interactions';
-            if (item.media_type === 'VIDEO' || item.media_type === 'CAROUSEL_ALBUM') {
-                metricsParam += ',views';
+            let metricsParam = 'reach,shares,total_interactions';
+            const productType = item.media_product_type || (item.media_type === 'VIDEO' ? 'REELS' : 'FEED');
+            
+            if (productType === 'REELS') {
+                metricsParam += ',saved,views,plays,ig_reels_avg_watch_time';
+            } else if (productType === 'STORY') {
+                metricsParam += ',views,follows,profile_visits,replies';
+            } else { // FEED
+                metricsParam += ',saved,views,follows,profile_visits';
             }
 
             const insightsUrl =
@@ -256,5 +263,30 @@ export async function verifyMetaToken(token: string): Promise<{ valid: boolean; 
         return { valid: true, username: data.username };
     } catch {
         return { valid: false };
+    }
+}
+
+/**
+ * Renova o token de longa duração da Meta API.
+ * Deve ser chamado quando o token estiver a menos de 7 dias da expiração.
+ */
+export async function refreshMetaToken(token: string): Promise<{ access_token: string; expires_in: number } | null> {
+    try {
+        const url = `${GRAPH_BASE}/refresh_access_token?grant_type=ig_refresh_token&access_token=${token}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (data.error || !data.access_token) {
+            console.error('[Meta Token Refresh] Falha ao renovar token:', data.error);
+            return null;
+        }
+        
+        return {
+            access_token: data.access_token,
+            expires_in: data.expires_in
+        };
+    } catch (err) {
+        console.error('[Meta Token Refresh] Erro de rede ao renovar token:', err);
+        return null;
     }
 }

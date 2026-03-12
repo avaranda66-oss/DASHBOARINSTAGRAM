@@ -66,12 +66,18 @@ export async function GET(req: NextRequest) {
 
         // 3. Buscar dados do perfil
         const profileRes = await fetch(
-            `https://graph.instagram.com/v21.0/me` +
-            `?fields=username,profile_picture_url` +
+            `https://graph.instagram.com/v25.0/me` +
+            `?fields=username,name,biography,followers_count,follows_count,media_count,profile_picture_url,website` +
             `&access_token=${longLivedToken}`
         );
         const profileData = await profileRes.json();
         const username: string = profileData.username ?? '';
+        const name: string = profileData.name ?? '';
+        const biography: string = profileData.biography ?? '';
+        const followers_count: number = profileData.followers_count ?? 0;
+        const follows_count: number = profileData.follows_count ?? 0;
+        const media_count: number = profileData.media_count ?? 0;
+        const website: string = profileData.website ?? '';
         const picture: string = profileData.profile_picture_url ?? '';
 
         // 4. Salvar no Prisma (upsert por providerAccountId)
@@ -81,6 +87,12 @@ export async function GET(req: NextRequest) {
                 access_token: longLivedToken,
                 expires_at: expiresAt,
                 username,
+                name,
+                biography,
+                followers_count,
+                follows_count,
+                media_count,
+                website,
                 picture,
             },
             create: {
@@ -90,6 +102,12 @@ export async function GET(req: NextRequest) {
                 access_token: longLivedToken,
                 expires_at: expiresAt,
                 username,
+                name,
+                biography,
+                followers_count,
+                follows_count,
+                media_count,
+                website,
                 picture,
             },
         });
