@@ -10,7 +10,7 @@ import {
 import { nanoid } from 'nanoid';
 import { useAnalytics } from '@/features/analytics/hooks/use-analytics';
 import { AnalyticsSearch } from '@/features/analytics/components/analytics-search';
-import { KpiCards } from '@/features/analytics/components/kpi-cards';
+import { MetaKpiCards } from '@/features/analytics/components/kpi-cards';
 import { PostCards } from '@/features/analytics/components/post-cards';
 import { AnalyticsSkeleton } from '@/features/analytics/components/analytics-skeleton';
 import { InsightsPanel } from '@/features/analytics/components/insights-panel';
@@ -607,7 +607,7 @@ export default function AnalyticsPage() {
                                 </motion.div>
                             )}
 
-                            {summary && <motion.div variants={item}><KpiCards summary={summary} posts={posts} /></motion.div>}
+                            {summary && <motion.div variants={item}><MetaKpiCards posts={posts as any[]} /></motion.div>}
 
                             {
                                 summary?.bestPost && (

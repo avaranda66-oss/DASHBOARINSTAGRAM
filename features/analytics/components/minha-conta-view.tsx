@@ -18,6 +18,10 @@ import { MetaPostingDayChart } from './meta-posting-day-chart';
 import { MetaTopPosts } from './meta-top-posts';
 import { MetaHashtagAnalysis } from './meta-hashtag-analysis';
 import { MetaAiStrategy } from './meta-ai-strategy';
+import { MetaKpiCards } from './kpi-cards';
+import { MetaAccountTrends } from './meta-account-trends';
+import { MetaFollowerGrowth } from './meta-follower-growth';
+import { MetaAudienceDemographics } from './meta-audience-demographics';
 
 interface MetaPost extends InstagramPostMetrics {
     reach?: number;
@@ -102,7 +106,7 @@ function TypeIcon({ type }: { type: string }) {
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } };
 
-type InternalTab = 'overview' | 'charts' | 'posts' | 'hashtags' | 'strategy';
+type InternalTab = 'overview' | 'charts' | 'posts' | 'hashtags' | 'strategy' | 'audience';
 
 const INTERNAL_TABS: { key: InternalTab; label: string; icon: React.ElementType }[] = [
     { key: 'overview', label: 'Visão Geral', icon: TrendingUp },
@@ -110,6 +114,7 @@ const INTERNAL_TABS: { key: InternalTab; label: string; icon: React.ElementType 
     { key: 'posts', label: 'Melhores Posts', icon: BarChart2 },
     { key: 'hashtags', label: 'Hashtags', icon: Hash },
     { key: 'strategy', label: 'Estratégia IA', icon: Sparkles },
+    { key: 'audience', label: 'Audiência', icon: Users },
 ];
 
 interface Props {
@@ -127,6 +132,30 @@ export function MinhaContaView({ token, username }: Props) {
     const [activeTab, setActiveTab] = useState<InternalTab>('overview');
     const [sortBy, setSortBy] = useState<'reach' | 'likes' | 'saves' | 'shares' | 'date'>('reach');
 
+    const [accountProfile, setAccountProfile] = useState<{ followersCount?: number, name?: string } | undefined>();
+    const [insightsData, setInsightsData] = useState<{ accountInsights: any[], demographics: any } | null>(null);
+    const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+
+    // Fetch Insights when Audience tab is active
+    useEffect(() => {
+        if (activeTab === 'audience' && !insightsData && !isLoadingInsights && token) {
+            setIsLoadingInsights(true);
+            fetch('/api/meta-account-insights', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, days: 30 })
+            })
+            .then(res => res.json())
+            .then(json => {
+                if (json.success) {
+                    setInsightsData({ accountInsights: json.accountInsights, demographics: json.demographics });
+                }
+            })
+            .catch(console.error)
+            .finally(() => setIsLoadingInsights(false));
+        }
+    }, [activeTab, insightsData, isLoadingInsights, token]);
+
     // Carrega cache do banco na montagem
     useEffect(() => {
         if (!username) { setIsLoadingCache(false); return; }
@@ -137,6 +166,13 @@ export function MinhaContaView({ token, username }: Props) {
                 setIsFromCache(true);
             }
         }).catch(() => { /* silencioso */ }).finally(() => setIsLoadingCache(false));
+        
+        // Fetch Account fields from the database
+        import('@/app/actions/account.actions').then(({ getAccountByUsernameAction }) => {
+            getAccountByUsernameAction(username).then((acc) => {
+                if (acc) setAccountProfile(acc);
+            });
+        }).catch(console.error);
     }, [username]);
 
     const hasFetched = posts.length > 0;
@@ -281,27 +317,7 @@ export function MinhaContaView({ token, username }: Props) {
                                 <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                     Visão Geral — {summary.totalPosts} posts
                                 </h3>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                                    {[
-                                        { label: 'Alcance Total', value: fmt(summary.totalReach), sub: `~${fmt(summary.avgReach)} por post`, icon: Eye, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-                                        { label: 'Total Likes', value: fmt(summary.totalLikes), sub: `~${fmt(Math.round(summary.totalLikes / summary.totalPosts))} por post`, icon: Heart, color: 'text-pink-400', bg: 'bg-pink-500/10' },
-                                        { label: 'Total Saves', value: fmt(summary.totalSaves), sub: `~${fmt(Math.round(summary.totalSaves / summary.totalPosts))} por post`, icon: Bookmark, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-                                        { label: 'Compartilhamentos', value: fmt(summary.totalShares), sub: `~${fmt(Math.round(summary.totalShares / summary.totalPosts))} por post`, icon: Share2, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-                                        { label: 'Tx. Eng. Real', value: `${summary.avgEngagementRate}%`, sub: 'baseado em alcance', icon: TrendingUp, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-                                        { label: 'Comentários', value: fmt(summary.totalComments), sub: `~${fmt(Math.round(summary.totalComments / summary.totalPosts))} por post`, icon: Users, color: 'text-orange-400', bg: 'bg-orange-500/10' },
-                                    ].map((kpi) => (
-                                        <div key={kpi.label} className="rounded-xl v2-glass v2-glass-hover p-3 space-y-2">
-                                            <div className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${kpi.bg}`}>
-                                                <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-                                            </div>
-                                            <div>
-                                                <p className="text-xl font-bold v2-number">{kpi.value}</p>
-                                                <p className="text-[10px] font-medium text-[var(--v2-text-secondary)] uppercase tracking-wider leading-tight v2-label">{kpi.label}</p>
-                                                <p className="text-[10px] text-[var(--v2-text-tertiary)]">{kpi.sub}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                <MetaKpiCards posts={posts} accountProfile={accountProfile} />
                             </motion.div>
 
                             {/* Breakdown by type */}
@@ -509,6 +525,49 @@ export function MinhaContaView({ token, username }: Props) {
                                 posts={posts}
                                 summary={{ avgReach: summary.avgReach, avgEngagementRate: summary.avgEngagementRate }}
                             />
+                        </motion.div>
+                    )}
+
+                    {/* ── TAB: Audiência ── */}
+                    {activeTab === 'audience' && (
+                        <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+                            {isLoadingInsights ? (
+                                <div className="p-12 text-center rounded-xl border border-dashed border-zinc-800 v2-glass">
+                                    <RefreshCw className="h-6 w-6 text-[var(--v2-text-tertiary)] mx-auto mb-3 animate-spin" />
+                                    <p className="text-sm text-muted-foreground">Buscando métricas demográficas...</p>
+                                </div>
+                            ) : insightsData ? (
+                                <>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
+                                            <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
+                                                Tendência da Conta (30 dias)
+                                            </h4>
+                                            <MetaAccountTrends data={insightsData.accountInsights} />
+                                        </motion.div>
+                                        <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
+                                            <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
+                                                Crescimento
+                                            </h4>
+                                            <MetaFollowerGrowth data={insightsData.accountInsights} />
+                                        </motion.div>
+                                    </div>
+                                    <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
+                                        <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
+                                            Demografia
+                                        </h4>
+                                        <MetaAudienceDemographics 
+                                            demographics={insightsData.demographics} 
+                                            followersCount={accountProfile?.followersCount} 
+                                        />
+                                    </motion.div>
+                                </>
+                            ) : (
+                                <div className="p-12 text-center rounded-xl border border-dashed border-zinc-800 v2-glass">
+                                    <AlertCircle className="h-6 w-6 text-destructive mx-auto mb-3" />
+                                    <p className="text-sm text-muted-foreground">Não foi possível carregar os dados de audiência.</p>
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </>

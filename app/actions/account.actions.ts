@@ -63,3 +63,21 @@ export async function deleteAccountAction(id: string) {
         return { success: false, error: e.message };
     }
 }
+
+export async function getAccountByUsernameAction(username: string) {
+    try {
+        const handle = username.replace('@', '').toLowerCase();
+        const account = await db.account.findUnique({
+            where: { providerAccountId: handle }
+        });
+        if (!account) return null;
+        return {
+            name: (account as any).name || account.username || account.providerAccountId,
+            followersCount: (account as any).followers_count || undefined,
+            mediaCount: (account as any).media_count || undefined,
+            biography: (account as any).biography || undefined,
+        };
+    } catch (e) {
+        return null;
+    }
+}

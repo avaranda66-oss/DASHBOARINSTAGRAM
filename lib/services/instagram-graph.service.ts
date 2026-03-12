@@ -290,3 +290,160 @@ export async function refreshMetaToken(token: string): Promise<{ access_token: s
         return null;
     }
 }
+
+export interface AccountDailyMetric {
+    date: string;
+    reach: number;
+    views: number;
+    accountsEngaged: number;
+    totalInteractions: number;
+    likes: number;
+    comments: number;
+    saves: number;
+    shares: number;
+    followsNet: number;
+    profileLinksTaps: number;
+}
+
+export interface DemographicEntry {
+    label: string;
+    count: number;
+}
+
+export interface AudienceDemographics {
+    followers: {
+        age: DemographicEntry[];
+        gender: DemographicEntry[];
+        city: DemographicEntry[];
+        country: DemographicEntry[];
+    };
+    engaged: {
+        age: DemographicEntry[];
+        gender: DemographicEntry[];
+        city: DemographicEntry[];
+        country: DemographicEntry[];
+    };
+}
+
+export async function fetchAccountInsights(token: string, userId: string, days = 30): Promise<AccountDailyMetric[]> {
+    const unixNow = Math.floor(Date.now() / 1000);
+    const unixSince = Math.floor((Date.now() - days * 86400000) / 1000);
+    const metrics = 'reach,views,accounts_engaged,total_interactions,likes,comments,saves,shares,follows_and_unfollows,profile_links_taps';
+
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/insights?metric=${metrics}&period=day&since=${unixSince}&until=${unixNow}&access_token=${token}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.error) {
+        console.error('[Meta API Account Insights] Erro:', data.error);
+        return [];
+    }
+
+    if (!data.data || !Array.isArray(data.data)) {
+        return [];
+    }
+
+    const dailyMap: Record<string, AccountDailyMetric> = {};
+
+    data.data.forEach((metricGroup: any) => {
+        const metricName = metricGroup.name; // ex: 'reach'
+        metricGroup.values?.forEach((val: any) => {
+            // val.end_time é formato ISO, ex: 2026-03-01T08:00:00+0000
+            // Usaremos a porsão da data para agrupar (YYYY-MM-DD)
+            const dateOnly = val.end_time.substring(0, 10);
+            if (!dailyMap[dateOnly]) {
+                dailyMap[dateOnly] = {
+                    date: dateOnly,
+                    reach: 0,
+                    views: 0,
+                    accountsEngaged: 0,
+                    totalInteractions: 0,
+                    likes: 0,
+                    comments: 0,
+                    saves: 0,
+                    shares: 0,
+                    followsNet: 0,
+                    profileLinksTaps: 0,
+                };
+            }
+
+            const value = val.value ?? 0;
+
+            switch (metricName) {
+                case 'reach': dailyMap[dateOnly].reach = value; break;
+                case 'views': dailyMap[dateOnly].views = value; break;
+                case 'accounts_engaged': dailyMap[dateOnly].accountsEngaged = value; break;
+                case 'total_interactions': dailyMap[dateOnly].totalInteractions = value; break;
+                case 'likes': dailyMap[dateOnly].likes = value; break;
+                case 'comments': dailyMap[dateOnly].comments = value; break;
+                case 'saves': dailyMap[dateOnly].saves = value; break;
+                case 'shares': dailyMap[dateOnly].shares = value; break;
+                case 'follows_and_unfollows': dailyMap[dateOnly].followsNet = value; break; // pode ter breakdown no futuro, se não, usamos value
+                case 'profile_links_taps': dailyMap[dateOnly].profileLinksTaps = value; break;
+            }
+        });
+    });
+
+    const result = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
+    return result;
+}
+
+async function fetchDemographicBreakdown(token: string, userId: string, metric: string, breakdown: string): Promise<DemographicEntry[]> {
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/insights?metric=${metric}&period=lifetime&timeframe=last_30_days&breakdown=${breakdown}&access_token=${token}`;
+    
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (data.error || !data.data || data.data.length === 0) {
+            return [];
+        }
+        
+        const metricData = data.data[0];
+        const breakdowns = metricData.total_value?.breakdowns;
+        if (!breakdowns || breakdowns.length === 0) return [];
+        
+        const results = breakdowns[0].results;
+        if (!results || !Array.isArray(results)) return [];
+        
+        return results.map((r: any) => ({
+            label: r.dimension_values?.join(', ') ?? 'Desconhecido',
+            count: r.value ?? 0
+        })).sort((a: any, b: any) => b.count - a.count);
+    } catch {
+        return [];
+    }
+}
+
+export async function fetchAudienceDemographics(token: string, userId: string): Promise<AudienceDemographics> {
+    const empty: AudienceDemographics = {
+        followers: { age: [], gender: [], city: [], country: [] },
+        engaged: { age: [], gender: [], city: [], country: [] }
+    };
+
+    try {
+        // Demographics operations are independent
+        const [
+            fAge, fGender, fCity, fCountry,
+            eAge, eGender, eCity, eCountry
+        ] = await Promise.all([
+            fetchDemographicBreakdown(token, userId, 'follower_demographics', 'age'),
+            fetchDemographicBreakdown(token, userId, 'follower_demographics', 'gender'),
+            fetchDemographicBreakdown(token, userId, 'follower_demographics', 'city'),
+            fetchDemographicBreakdown(token, userId, 'follower_demographics', 'country'),
+            fetchDemographicBreakdown(token, userId, 'engaged_audience_demographics', 'age'),
+            fetchDemographicBreakdown(token, userId, 'engaged_audience_demographics', 'gender'),
+            fetchDemographicBreakdown(token, userId, 'engaged_audience_demographics', 'city'),
+            fetchDemographicBreakdown(token, userId, 'engaged_audience_demographics', 'country'),
+        ]);
+
+        return {
+            followers: { age: fAge, gender: fGender, city: fCity, country: fCountry },
+            engaged: { age: eAge, gender: eGender, city: eCity, country: eCountry }
+        };
+    } catch (err) {
+        console.warn('[Meta API Demographics] Erro ao buscar dados demográficos:', err);
+        return empty; // não lançar erro para não quebrar requests parciais
+    }
+}

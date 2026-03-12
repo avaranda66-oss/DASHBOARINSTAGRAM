@@ -2,13 +2,26 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Eye, TrendingUp, Image as ImageIcon, Film, Layers, Star, Smile, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import type { AnalyticsSummary, InstagramPostMetrics } from '@/types/analytics';
-import { descriptiveStats, linearTrend, performanceBadge } from '@/lib/utils/statistics';
+import { Heart, MessageCircle, Eye, TrendingUp, Users, Bookmark, Share2, Clock, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import type { InstagramPostMetrics } from '@/types/analytics';
+import { linearTrend } from '@/lib/utils/statistics';
+import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 
-interface KpiCardsProps {
-    summary: AnalyticsSummary;
-    posts?: InstagramPostMetrics[];
+export interface MetaPost extends InstagramPostMetrics {
+    reach?: number;
+    saved?: number;
+    shares?: number;
+    totalInteractions?: number;
+    ig_reels_avg_watch_time?: number;
+    source?: 'meta';
+}
+
+export interface MetaKpiCardsProps {
+    posts: MetaPost[];
+    accountProfile?: {
+        followersCount?: number;
+        name?: string;
+    };
 }
 
 const item = {
@@ -17,186 +30,214 @@ const item = {
 };
 
 function formatNumber(n: number): string {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-    return n.toLocaleString('pt-BR');
+    return new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(n);
 }
 
-/** Mini sparkline SVG */
-function Sparkline({ data, color = 'currentColor' }: { data: number[]; color?: string }) {
+function SimpleSparkline({ data, color }: { data: number[], color: string }) {
     if (data.length < 2) return null;
-    const max = Math.max(...data);
-    const min = Math.min(...data);
-    const range = max - min || 1;
-    const path = data
-        .map((v, i) => {
-            const x = (i / (data.length - 1)) * 100;
-            const y = 100 - ((v - min) / range) * 100;
-            return `${i === 0 ? 'M' : 'L'}${x},${y}`;
-        })
-        .join(' ');
-
+    const chartData = data.map((value, i) => ({ i, value }));
     return (
-        <svg viewBox="0 -5 100 110" preserveAspectRatio="none" className="w-full h-6 opacity-30 group-hover:opacity-70 transition-opacity">
-            <path d={path} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-        </svg>
+        <div className="mt-2 h-6 w-full opacity-30 group-hover:opacity-70 transition-opacity">
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                    <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke={color}
+                        fill="none"
+                        strokeWidth={2}
+                        dot={false}
+                        isAnimationActive={false}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
+        </div>
     );
 }
 
-export function KpiCards({ summary, posts = [] }: KpiCardsProps) {
-    // Statistical analysis
-    const statsData = useMemo(() => {
-        if (!posts.length) return null;
-        const likes = posts.map(p => p.likesCount ?? 0);
-        const comments = posts.map(p => p.commentsCount ?? 0);
-        const likesTrend = linearTrend(likes);
-        const commentsTrend = linearTrend(comments);
-        const likesStats = descriptiveStats(likes);
-        const commentsStats = descriptiveStats(comments);
+export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
+    const kpis = useMemo(() => {
+        const sortedPosts = [...posts].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        
+        let totalReach = 0;
+        let totalLikes = 0;
+        let totalSaves = 0;
+        let totalShares = 0;
+        let totalComments = 0;
+        let reachSumForEng = 0;
+        let engSumForEng = 0;
+        
+        let reelsWatchTimeSum = 0;
+        let reelsCount = 0;
 
-        return { likes, comments, likesTrend, commentsTrend, likesStats, commentsStats };
+        const reachHistory: number[] = [];
+        const likesHistory: number[] = [];
+        const savesHistory: number[] = [];
+        const sharesHistory: number[] = [];
+        const commentsHistory: number[] = [];
+        const engRateHistory: number[] = [];
+
+        sortedPosts.forEach((post) => {
+            const reach = post.reach ?? 0;
+            const likes = post.likesCount ?? 0;
+            const saves = post.saved ?? 0;
+            const shares = post.shares ?? 0;
+            const comments = post.commentsCount ?? 0;
+
+            totalReach += reach;
+            totalLikes += likes;
+            totalSaves += saves;
+            totalShares += shares;
+            totalComments += comments;
+
+            reachHistory.push(reach);
+            likesHistory.push(likes);
+            savesHistory.push(saves);
+            sharesHistory.push(shares);
+            commentsHistory.push(comments);
+
+            if (reach > 0) {
+                reachSumForEng += reach;
+                const eng = likes + comments + saves + shares;
+                engSumForEng += eng;
+                engRateHistory.push((eng / reach) * 100);
+            }
+
+            if ((post.type === 'Video' || (post as any).mediaProductType === 'REELS') && (post as any).ig_reels_avg_watch_time != null) {
+                reelsWatchTimeSum += (post as any).ig_reels_avg_watch_time;
+                reelsCount++;
+            }
+        });
+
+        const avgEngRate = reachSumForEng > 0 ? (engSumForEng / reachSumForEng) * 100 : 0;
+        const avgWatchTime = reelsCount > 0 ? reelsWatchTimeSum / reelsCount : null;
+
+        return {
+            totalReach, reachHistory,
+            totalLikes, likesHistory,
+            totalSaves, savesHistory,
+            totalShares, sharesHistory,
+            totalComments, commentsHistory,
+            avgEngRate, engRateHistory,
+            avgWatchTime
+        };
     }, [posts]);
 
     const cards = [
         {
-            label: 'Total de Likes',
-            value: formatNumber(summary.totalLikes),
-            sub: `${formatNumber(summary.avgLikesPerPost)}/post`,
-            icon: Heart,
-            accentColor: '#FF7350',
-            sparkData: statsData?.likes,
-            trend: statsData?.likesTrend,
-            volatility: statsData?.likesStats.cv != null
-                ? statsData.likesStats.cv > 1 ? 'Alta variab.' : statsData.likesStats.cv > 0.5 ? 'Méd. variab.' : 'Estável'
-                : null,
+            label: 'Seguidores',
+            value: accountProfile?.followersCount != null ? formatNumber(accountProfile.followersCount) : 'N/D',
+            sub: accountProfile?.name ?? 'Dados do perfil',
+            icon: Users,
+            accentColor: 'var(--v2-accent)',
         },
         {
-            label: 'Total de Comentários',
-            value: formatNumber(summary.totalComments),
-            sub: `${formatNumber(summary.avgCommentsPerPost)}/post`,
-            icon: MessageCircle,
-            accentColor: '#746C7E',
-            sparkData: statsData?.comments,
-            trend: statsData?.commentsTrend,
-        },
-        {
-            label: 'Views (Reels)',
-            value: summary.videosWithViews > 0 ? formatNumber(summary.totalViews) : 'N/D',
-            sub: summary.videosWithViews > 0 ? `${summary.videosWithViews} vídeos com dados` : 'Sem dados',
+            label: 'Alcance Total',
+            value: formatNumber(kpis.totalReach),
+            sub: 'Soma de todos os posts',
             icon: Eye,
-            accentColor: '#6B8E70',
+            accentColor: '#3b82f6', // blue
+            sparkData: kpis.reachHistory,
+            trend: linearTrend(kpis.reachHistory),
         },
         {
-            label: 'Engajamento',
-            value: summary.videosWithViews > 0 ? `${summary.avgEngagementRate}%` : 'N/D',
-            sub: summary.videosWithViews > 0 ? `(likes+coments)/views` : 'Requer Reels',
+            label: 'Total Likes',
+            value: formatNumber(kpis.totalLikes),
+            sub: 'Soma de todos os posts',
+            icon: Heart,
+            accentColor: '#ec4899', // pink
+            sparkData: kpis.likesHistory,
+            trend: linearTrend(kpis.likesHistory),
+        },
+        {
+            label: 'Total Saves',
+            value: formatNumber(kpis.totalSaves),
+            sub: 'Soma de todos os posts',
+            icon: Bookmark,
+            accentColor: '#f59e0b', // amber
+            sparkData: kpis.savesHistory,
+            trend: linearTrend(kpis.savesHistory),
+        },
+        {
+            label: 'Total Shares',
+            value: formatNumber(kpis.totalShares),
+            sub: 'Soma de todos os posts',
+            icon: Share2,
+            accentColor: '#10b981', // emerald
+            sparkData: kpis.sharesHistory,
+            trend: linearTrend(kpis.sharesHistory),
+        },
+        {
+            label: 'Total Comentários',
+            value: formatNumber(kpis.totalComments),
+            sub: 'Soma de todos os posts',
+            icon: MessageCircle,
+            accentColor: '#f97316', // orange
+            sparkData: kpis.commentsHistory,
+            trend: linearTrend(kpis.commentsHistory),
+        },
+        {
+            label: 'Eng. Rate',
+            value: kpis.avgEngRate > 0 ? `${kpis.avgEngRate.toFixed(2)}%` : '0%',
+            sub: '(Interações / Alcance)',
             icon: TrendingUp,
-            accentColor: '#B38654',
+            accentColor: '#a855f7', // purple
+            sparkData: kpis.engRateHistory,
+            trend: linearTrend(kpis.engRateHistory),
         },
         {
-            label: 'Engaj. Qualificado',
-            value: summary.qualifiedEngagement > 0 ? summary.qualifiedEngagement.toLocaleString('pt-BR') : 'N/D',
-            sub: 'Ajustado por sentimento',
-            icon: Star,
-            accentColor: '#FF7350',
-        },
-        {
-            label: 'Sentimento',
-            value: summary.commentSentiment.total > 0 ? `${summary.commentSentiment.pctPos}%` : 'N/D',
-            sub: summary.commentSentiment.total > 0
-                ? `${summary.commentSentiment.pctNeu}% Neutro · ${summary.commentSentiment.pctNeg}% Neg`
-                : 'Sem dados',
-            icon: Smile,
-            accentColor: '#6B8E70',
+            label: 'Avg Watch Time',
+            value: kpis.avgWatchTime != null ? `${kpis.avgWatchTime.toFixed(1)}s` : 'Sem Reels',
+            sub: 'Tempo médio (Reels)',
+            icon: Clock,
+            accentColor: '#ef4444', // red
         },
     ];
 
     return (
-        <div className="space-y-3">
-            {/* Main KPI grid — V2 Glassmorphism */}
-            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                {cards.map((card) => (
-                    <motion.div
-                        key={card.label}
-                        variants={item}
-                        className="group relative overflow-hidden rounded-xl p-4 transition-all duration-300 v2-glass v2-glass-hover"
-                    >
-                        {/* Grain */}
-                        <div className="v2-grain pointer-events-none absolute inset-0 z-[1]" />
-
-                        {/* Subtle accent glow on hover */}
-                        <div
-                            className="absolute -top-4 -right-4 w-16 h-16 rounded-full blur-2xl opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none"
-                            style={{ background: card.accentColor }}
-                        />
-
-                        <div className="relative z-[2]">
-                            <div className="flex items-center justify-between">
-                                <span className="v2-label">{card.label}</span>
-                                <card.icon className="h-3.5 w-3.5" style={{ color: card.accentColor, opacity: 0.6 }} />
-                            </div>
-                            <p className="mt-2 text-2xl font-mono v2-number font-bold tracking-tight" style={{ color: 'var(--v2-text-primary)' }}>
-                                {card.value}
-                            </p>
-                            <p className="mt-0.5 text-[10px] leading-tight" style={{ color: 'var(--v2-text-tertiary)' }}>{card.sub}</p>
-
-                            {/* Trend indicator */}
-                            {card.trend && (
-                                <div className="mt-2 flex items-center gap-1.5">
-                                    {card.trend.direction === 'rising' ? (
-                                        <ArrowUpRight className="h-3 w-3" style={{ color: 'var(--v2-success)' }} />
-                                    ) : card.trend.direction === 'falling' ? (
-                                        <ArrowDownRight className="h-3 w-3" style={{ color: 'var(--v2-danger)' }} />
-                                    ) : null}
-                                    <span className="text-[9px] font-mono" style={{ color: card.trend.direction === 'rising' ? 'var(--v2-success)' : card.trend.direction === 'falling' ? 'var(--v2-danger)' : 'var(--v2-text-tertiary)' }}>
-                                        {card.trend.direction === 'rising' ? 'Crescendo' : card.trend.direction === 'falling' ? 'Caindo' : 'Estável'}
-                                        {card.trend.r2 > 0.5 && ` (R²: ${card.trend.r2.toFixed(2)})`}
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* Volatility badge */}
-                            {card.volatility && (
-                                <span className="mt-1 inline-block text-[8px] font-mono px-1.5 py-0.5 rounded-full" style={{ background: 'var(--v2-border)', color: 'var(--v2-text-tertiary)' }}>
-                                    {card.volatility}
-                                </span>
-                            )}
-
-                            {/* Sparkline */}
-                            {card.sparkData && card.sparkData.length > 1 && (
-                                <div className="mt-2">
-                                    <Sparkline data={card.sparkData} color={card.accentColor} />
-                                </div>
-                            )}
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+            {cards.map((card) => (
+                <motion.div
+                    key={card.label}
+                    variants={item}
+                    className="group relative overflow-hidden rounded-xl p-4 transition-all duration-300 v2-glass v2-glass-hover"
+                >
+                    <div className="v2-grain pointer-events-none absolute inset-0 z-[1]" />
+                    <div
+                        className="absolute -top-4 -right-4 w-16 h-16 rounded-full blur-2xl opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none"
+                        style={{ background: card.accentColor }}
+                    />
+                    <div className="relative z-[2]">
+                        <div className="flex items-center justify-between">
+                            <span className="v2-label">{card.label}</span>
+                            <card.icon className="h-3.5 w-3.5" style={{ color: card.accentColor, opacity: 0.8 }} />
                         </div>
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* Per-type breakdown — V2 style */}
-            {(summary.imageCount > 0 || summary.videoCount > 0 || summary.carouselCount > 0) && (
-                <div className="grid gap-2 grid-cols-3">
-                    {[
-                        { count: summary.imageCount, label: 'Post', icon: ImageIcon, avg: summary.avgLikesImage, color: '#746C7E' },
-                        { count: summary.videoCount, label: 'Reel', icon: Film, avg: summary.avgLikesVideo, color: '#FF7350' },
-                        { count: summary.carouselCount, label: 'Carrossel', icon: Layers, avg: summary.avgLikesCarousel, color: '#B38654' },
-                    ]
-                        .filter(t => t.count > 0)
-                        .map((t) => (
-                            <div key={t.label} className="v2-glass rounded-lg p-2.5 flex items-center gap-2.5">
-                                <t.icon className="h-3.5 w-3.5 shrink-0" style={{ color: t.color }} />
-                                <div>
-                                    <p className="text-xs font-medium" style={{ color: 'var(--v2-text-primary)' }}>
-                                        {t.count} {t.label}{t.count !== 1 ? (t.label === 'Carrossel' ? 'éis' : 's') : ''}
-                                    </p>
-                                    <p className="text-[10px] font-mono" style={{ color: 'var(--v2-text-tertiary)' }}>
-                                        ~{formatNumber(t.avg)} likes/{t.label.toLowerCase().slice(0, 4)}
-                                    </p>
-                                </div>
+                        <p className="mt-2 text-2xl font-mono v2-number font-bold tracking-tight" style={{ color: 'var(--v2-text-primary)' }}>
+                            {card.value}
+                        </p>
+                        <p className="mt-0.5 text-[10px] leading-tight" style={{ color: 'var(--v2-text-tertiary)' }}>{card.sub}</p>
+                        
+                        {card.trend && (
+                            <div className="mt-2 flex items-center gap-1.5">
+                                {card.trend.direction === 'rising' ? (
+                                    <ArrowUpRight className="h-3 w-3" style={{ color: 'var(--v2-success)' }} />
+                                ) : card.trend.direction === 'falling' ? (
+                                    <ArrowDownRight className="h-3 w-3" style={{ color: 'var(--v2-danger)' }} />
+                                ) : (
+                                    <Minus className="h-3 w-3" style={{ color: 'var(--v2-text-tertiary)' }} />
+                                )}
+                                <span className="text-[9px] font-mono" style={{ color: card.trend.direction === 'rising' ? 'var(--v2-success)' : card.trend.direction === 'falling' ? 'var(--v2-danger)' : 'var(--v2-text-tertiary)' }}>
+                                    {card.trend.direction === 'rising' ? 'Crescendo' : card.trend.direction === 'falling' ? 'Caindo' : 'Estável'}
+                                </span>
                             </div>
-                        ))}
-                </div>
-            )}
+                        )}
+                        
+                        {card.sparkData && card.sparkData.length > 1 && (
+                            <SimpleSparkline data={card.sparkData.slice(-10)} color={card.accentColor} />
+                        )}
+                    </div>
+                </motion.div>
+            ))}
         </div>
     );
 }
