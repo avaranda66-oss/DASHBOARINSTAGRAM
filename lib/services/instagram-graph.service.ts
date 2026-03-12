@@ -447,3 +447,46 @@ export async function fetchAudienceDemographics(token: string, userId: string): 
         return empty; // não lançar erro para não quebrar requests parciais
     }
 }
+
+export interface BusinessDiscoveryResult {
+    username: string;
+    name?: string;
+    biography?: string;
+    followersCount: number;
+    followsCount: number;
+    mediaCount: number;
+    profilePictureUrl?: string;
+    posts: any[];
+}
+
+export async function fetchBusinessDiscovery(token: string, userId: string, targetUsername: string): Promise<BusinessDiscoveryResult | null> {
+    const fields = 'username,name,biography,followers_count,follows_count,media_count,profile_picture_url,media.limit(25){id,caption,media_type,like_count,comments_count,timestamp,permalink,media_url}';
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}?fields=business_discovery.username(${targetUsername}){${fields}}&access_token=${token}`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (data.error) {
+            console.error('[Meta API Business Discovery] Erro:', data.error);
+            return null;
+        }
+        
+        const bd = data.business_discovery;
+        if (!bd) return null;
+        
+        return {
+            username: bd.username,
+            name: bd.name,
+            biography: bd.biography,
+            followersCount: bd.followers_count || 0,
+            followsCount: bd.follows_count || 0,
+            mediaCount: bd.media_count || 0,
+            profilePictureUrl: bd.profile_picture_url,
+            posts: bd.media?.data || []
+        };
+    } catch (err) {
+        console.error('[Meta API Business Discovery] Erro de rede:', err);
+        return null;
+    }
+}

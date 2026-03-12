@@ -27,6 +27,7 @@ import { getAnalyticsAction } from '@/app/actions/analytics.actions';
 import { useAnalyticsStore } from '@/stores';
 import type { CompetitorProfile } from '@/types/competitor';
 import { MinhaContaView } from '@/features/analytics/components/minha-conta-view';
+import { MetaDiscoveryCard } from '@/features/analytics/components/meta-discovery-card';
 
 type DataSource = 'apify' | 'meta';
 type ViewMode = 'individual' | 'vs' | 'minha-conta';
@@ -69,6 +70,12 @@ export default function AnalyticsPage() {
     const [vsCompetitors, setVsCompetitors] = useState<string[]>([]);
     const [vsData, setVsData] = useState<{ client: ProfileData; competitors: ProfileData[] } | null>(null);
     const [isLoadingVs, setIsLoadingVs] = useState(false);
+
+    // Business Discovery state
+    const [discoveryHandle, setDiscoveryHandle] = useState('');
+    const [isDiscovering, setIsDiscovering] = useState(false);
+    const [discoveryData, setDiscoveryData] = useState<{profile: any, posts: any[], fetchedAt: string} | null>(null);
+    const [discoveryError, setDiscoveryError] = useState<string | null>(null);
 
     // Derive current competitor for avatar fallback
     const currentHandleForAvatar = profileUrl.trim().replace(/\/+$/, '').split('/').filter(Boolean).pop()?.replace(/^@/, '').toLowerCase();
@@ -260,6 +267,45 @@ export default function AnalyticsPage() {
         setIsLoadingVs(false);
     };
 
+    const handleDiscovery = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!discoveryHandle.trim()) return;
+        const metaToken = settingsStore.settings?.metaAccessToken;
+        if (!metaToken) {
+            setDiscoveryError("Meta API não configurada. Adicione o token na aba Configurações.");
+            return;
+        }
+
+        setIsDiscovering(true);
+        setDiscoveryError(null);
+        setDiscoveryData(null);
+
+        let clean = discoveryHandle.trim().replace(/^@/, '');
+        try {
+            const parsed = new URL(clean.startsWith('http') ? clean : `https://instagram.com/${clean}`);
+            clean = parsed.pathname.split('/').filter(Boolean)[0] ?? clean;
+        } catch { /* ignore */ }
+
+        try {
+            const res = await fetch('/api/meta-discovery', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: metaToken, targetUsername: clean })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                setDiscoveryError(data.error);
+            } else {
+                setDiscoveryData(data);
+                setDiscoveryHandle('');
+            }
+        } catch (e: any) {
+            setDiscoveryError(e.message || "Erro de rede na busca.");
+        } finally {
+            setIsDiscovering(false);
+        }
+    };
+
     // All available handles for VS selection
     const allHandles = [
         ...accounts.map((a) => ({ handle: a.handle.replace(/^@/, ''), type: 'client' as const })),
@@ -435,6 +481,55 @@ export default function AnalyticsPage() {
                             <ComparisonView client={vsData.client} competitors={vsData.competitors} />
                         </motion.div>
                     )}
+
+                    {/* Meta Business Discovery */}
+                    <motion.div variants={item} className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-sm font-semibold flex items-center gap-2 text-blue-400">
+                                    <ShieldCheck className="h-4 w-4" />
+                                    Business Discovery
+                                </h3>
+                                <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
+                                    Busque dados públicos em tempo real de qualquer concorrente (apenas contas Business/Creator) direto do Meta. Útil caso você não tenha créditos no Apify.
+                                </p>
+                            </div>
+                            <form onSubmit={handleDiscovery} className="flex items-center gap-2 w-full sm:w-auto">
+                                <input
+                                    type="text"
+                                    value={discoveryHandle}
+                                    onChange={(e) => setDiscoveryHandle(e.target.value)}
+                                    placeholder="@concorrente"
+                                    className="h-9 px-3 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue-500/50 w-full sm:w-48"
+                                />
+                                <Button
+                                    type="submit"
+                                    disabled={!discoveryHandle.trim() || isDiscovering}
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white shrink-0 h-9"
+                                >
+                                    {isDiscovering ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Descobrir'}
+                                </Button>
+                            </form>
+                        </div>
+                        
+                        {discoveryError && (
+                            <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
+                                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                                <p>{discoveryError}</p>
+                            </div>
+                        )}
+
+                        {discoveryData && (
+                            <div className="mt-4">
+                                <MetaDiscoveryCard 
+                                    profile={discoveryData.profile} 
+                                    posts={discoveryData.posts} 
+                                    fetchedAt={discoveryData.fetchedAt} 
+                                />
+                            </div>
+                        )}
+                    </motion.div>
                 </>
             )}
 
