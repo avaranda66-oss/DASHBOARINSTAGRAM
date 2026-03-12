@@ -492,3 +492,48 @@ export async function fetchBusinessDiscovery(token: string, userId: string, targ
         return null;
     }
 }
+
+export async function replyToComment(token: string, commentId: string, message: string): Promise<{ success: boolean; id?: string; error?: string }> {
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${commentId}/replies?access_token=${token}`;
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        
+        if (data.error) {
+            console.error('[Meta API] Erro ao responder comentário:', data.error);
+            return { success: false, error: data.error.message };
+        }
+        
+        return { success: true, id: data.id };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}
+
+export async function hideComment(token: string, commentId: string): Promise<{ success: boolean; error?: string }> {
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${commentId}?hide=true&access_token=${token}`;
+    try {
+        const res = await fetch(url, { method: 'POST' });
+        const data = await res.json();
+        if (data.error) return { success: false, error: data.error.message };
+        return { success: true };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}
+
+export async function deleteComment(token: string, commentId: string): Promise<{ success: boolean; error?: string }> {
+    const url = `${GRAPH_BASE}/${GRAPH_VERSION}/${commentId}?access_token=${token}`;
+    try {
+        const res = await fetch(url, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.error) return { success: false, error: data.error.message };
+        return { success: true };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}

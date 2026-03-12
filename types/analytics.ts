@@ -8,6 +8,7 @@ export interface PostComment {
     aiOpinion?: string;
     aiReplySuggestion?: string;
     replyStatus?: 'pending' | 'sent' | 'error';
+    replyMethod?: 'api' | 'playwright';
     replyError?: string;
 }
 

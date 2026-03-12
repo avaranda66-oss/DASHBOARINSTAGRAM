@@ -289,7 +289,7 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                                         commentId: c.id,
                                         text: c.aiReplySuggestion!,
                                         ownerUsername: c.ownerUsername
-                                    })));
+                                    })), !!metaToken, metaToken);
                                 }
                             }}
                             disabled={isLoadingInsights || !displayedComments.some(c => {
@@ -394,7 +394,7 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                                                 </span>
                                                 <div className="flex items-center gap-1.5">
                                                     {comment.replyStatus === 'sent' && (
-                                                        <span className="text-[9px] text-green-400 font-bold flex items-center gap-0.5"> ✅ Enviada</span>
+                                                        <span className="text-[9px] text-green-400 font-bold flex items-center gap-0.5 bg-green-500/10 px-1 rounded" title={comment.replyMethod === 'api' ? 'Enviado via API rápido' : 'Enviado via Automação'}> ✅ Enviada {comment.replyMethod === 'api' && '(API)'}</span>
                                                     )}
                                                     {comment.replyStatus === 'error' && (
                                                         <span className="text-[9px] text-red-400 font-bold flex items-center gap-0.5" title={comment.replyError}> ❌ Erro</span>

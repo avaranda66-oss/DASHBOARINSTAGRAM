@@ -33,7 +33,7 @@ interface AnalyticsSlice {
     updateCommentAiOpinion: (postShortCode: string, commentId: string, opinion: string) => Promise<void>;
     generateReplySuggestions: (postShortCodes: string[]) => Promise<void>;
     clearReplySuggestion: (postShortCode: string, commentId: string) => void;
-    executeAutoReplies: (replies: { postShortCode: string, commentId: string, text: string, ownerUsername?: string }[]) => Promise<void>;
+    executeAutoReplies: (replies: { postShortCode: string, commentId: string, text: string, ownerUsername?: string }[], useApiFallback?: boolean, metaToken?: string) => Promise<void>;
     isRefreshingComments: boolean;
     refreshCommentsViaMeta: (token: string) => Promise<{ added: number; updated: number } | null>;
 }
@@ -559,32 +559,75 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
         }));
     },
 
-    executeAutoReplies: async (replies: { postShortCode: string, commentId: string, text: string, ownerUsername?: string }[]) => {
+    executeAutoReplies: async (replies: { postShortCode: string, commentId: string, text: string, ownerUsername?: string }[], useApiFallback?: boolean, metaToken?: string) => {
         const { selectedAccountHandle } = get();
         if (!selectedAccountHandle) return;
 
         set({ isLoadingInsights: true });
 
         try {
-            const res = await fetch('/api/automation/respond-comments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    replies,
-                    accountHandle: selectedAccountHandle
-                })
-            });
+            const finalResults: any[] = [];
+            const remainingForPlaywright: typeof replies = [];
 
-            const json = await res.json();
-            if (json.success && json.results) {
+            // Se usarmos API, tenta responder um por um
+            if (useApiFallback && metaToken) {
+                for (const reply of replies) {
+                    try {
+                        const res = await fetch('/api/meta-comments', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token: metaToken, commentId: reply.commentId, message: reply.text })
+                        });
+                        const json = await res.json();
+                        if (json.success) {
+                            finalResults.push({ commentId: reply.commentId, status: 'sent', method: 'api' });
+                        } else {
+                            // Se falhou por algum motivo (ex: rate limit, token expirado), joga pro fallback
+                            console.warn(`[API] Erro ao responder comentário ${reply.commentId}: ${json.error}, caindo para Playwright...`);
+                            remainingForPlaywright.push(reply);
+                        }
+                    } catch (err) {
+                        console.error(`[API] Erro de rede coment ${reply.commentId}, caindo para Playwright...`);
+                        remainingForPlaywright.push(reply);
+                    }
+                }
+            } else {
+                remainingForPlaywright.push(...replies);
+            }
+
+            // Excecuta o Playwright para os que restaram (ou todos)
+            if (remainingForPlaywright.length > 0) {
+                const res = await fetch('/api/automation/respond-comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        replies: remainingForPlaywright,
+                        accountHandle: selectedAccountHandle
+                    })
+                });
+
+                const json = await res.json();
+                if (json.success && json.results) {
+                    finalResults.push(...json.results.map((r: any) => ({ ...r, method: 'playwright' })));
+                } else {
+                    // Se falhou tudo na automação
+                    remainingForPlaywright.forEach(r => {
+                        finalResults.push({ commentId: r.commentId, status: 'error', error: json.error || 'Erro generalizado via Playwright' });
+                    });
+                }
+            }
+
+            // Atualiza a store com os resultados finais
+            if (finalResults.length > 0) {
                 const updatedPosts = [...get().posts];
 
-                json.results.forEach((res: any) => {
+                finalResults.forEach((resItem: any) => {
                     updatedPosts.forEach(p => {
-                        const cIdx = p.latestComments?.findIndex(c => c.id === res.commentId);
+                        const cIdx = p.latestComments?.findIndex((c: any) => c.id === resItem.commentId);
                         if (cIdx !== undefined && cIdx !== -1) {
-                            p.latestComments[cIdx].replyStatus = res.status === 'sent' ? 'sent' : 'error';
-                            if (res.error) p.latestComments[cIdx].replyError = res.error;
+                            p.latestComments[cIdx].replyStatus = resItem.status === 'sent' ? 'sent' : 'error';
+                            if (resItem.method) p.latestComments[cIdx].replyMethod = resItem.method;
+                            if (resItem.error) p.latestComments[cIdx].replyError = resItem.error;
                         }
                     });
                 });
@@ -600,10 +643,10 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
                 await saveAnalyticsAction(cached, type);
                 set({ posts: updatedPosts, isLoadingInsights: false });
             } else {
-                set({ isLoadingInsights: false, error: json.error || 'Erro ao executar automação' });
+                set({ isLoadingInsights: false, error: 'Nenhum resultado processado' });
             }
         } catch (error) {
-            set({ isLoadingInsights: false, error: 'Falha na conexão com a API de automação' });
+            set({ isLoadingInsights: false, error: 'Falha na conexão com os serviços de resposta' });
         }
     },
 
