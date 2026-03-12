@@ -4,7 +4,7 @@ import { generateAIContent, resolveAIConfig } from '@/lib/services/ai-adapter';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { posts, summary } = body;
+        const { posts, summary, accountInsights, demographics } = body;
 
         if (!posts || !Array.isArray(posts) || posts.length === 0) {
             return NextResponse.json(
@@ -66,6 +66,28 @@ export async function POST(req: NextRequest) {
             }))
             .sort((a, b) => b.avgReach - a.avgReach);
 
+        let extraData = '';
+        if (demographics && demographics.cities && demographics.ageGenders) {
+            const topCity = demographics.cities[0];
+            const topAge = demographics.ageGenders[0];
+            extraData += `
+=== DADOS DE AUDIÊNCIA ===
+- Principal Cidade: ${topCity ? `${topCity.name} (${topCity.percentage}%)` : 'N/A'}
+- Principal Faixa Etária/Gênero: ${topAge ? `${topAge.name} (${topAge.percentage}%)` : 'N/A'}
+- Seguidores (resumo local): ${demographics.cities.length > 0 ? 'Mapeados' : 'N/A'}
+`;
+        }
+
+        if (accountInsights && accountInsights.length > 0) {
+            const latest = accountInsights[accountInsights.length - 1];
+            extraData += `
+=== TENDÊNCIA DA CONTA (Últimos 30 Dias) ===
+- Reach Geral: ${latest.reach || 'N/A'}
+- Profile Views: ${latest.profile_views || 'N/A'}
+- Entender a tendência: os números gerais estão ${latest.reach > 0 ? 'ativos' : 'estagnados'}.
+`;
+        }
+
         const contextData = `
 === DADOS DO INSTAGRAM (${posts.length} posts analisados) ===
 
@@ -89,6 +111,7 @@ ${topByReach.map((p: any, i: number) => `${i + 1}. "${(p.caption ?? '').slice(0,
 
 TOP 3 POSTS POR SAVES:
 ${topBySaves.map((p: any, i: number) => `${i + 1}. "${(p.caption ?? '').slice(0, 80)}..." — Saves: ${p.saved ?? 0}, Alcance: ${p.reach ?? 0}`).join('\n')}
+${extraData}
 `;
 
         const prompt = `Você é um estrategista sênior de Instagram com 10 anos de experiência em crescimento orgânico.
@@ -96,7 +119,16 @@ Analise os dados abaixo e gere um relatório estratégico PRÁTICO e DIRETO.
 
 ${contextData}
 
-Gere exatamente nesta estrutura:
+Gere exatamente nesta estrutura (e pule qualquer seção que não houver dados suficientes):
+
+## 👥 Quem é seu Público (Novo)
+(Analise a faixa etária, gênero e localização. O que eles buscam?)
+
+## 📈 Tendência da Conta (Novo)
+(A conta está crescendo, estagnada ou caindo? O que fazer sobre isso?)
+
+## 🆚 Reels vs Feed (Novo)
+(Qual formato domina e por que? Use dados de alcance e saves)
 
 ## 🏆 Melhor Formato de Conteúdo
 (qual tipo performa melhor e por quê, com dados concretos)
@@ -113,7 +145,7 @@ Gere exatamente nesta estrutura:
 ## ✅ 3 Ações Concretas para as Próximas 4 Semanas
 (seja específico: "poste X tipo de conteúdo Y vezes por semana com hashtag Z")
 
-Use bullets, números e emojis. Seja direto. Máximo 600 palavras. Português brasileiro.`;
+Use bullets, números e emojis. Seja direto. Máximo 800 palavras. Português brasileiro.`;
 
         const text = await generateAIContent(prompt, config);
 

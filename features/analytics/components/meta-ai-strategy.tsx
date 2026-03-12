@@ -24,9 +24,11 @@ interface MetaSummary {
 interface Props {
     posts: MetaPost[];
     summary?: MetaSummary;
+    accountInsights?: any[];
+    demographics?: Record<string, any>;
 }
 
-export function MetaAiStrategy({ posts, summary }: Props) {
+export function MetaAiStrategy({ posts, summary, accountInsights, demographics }: Props) {
     const [report, setReport] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function MetaAiStrategy({ posts, summary }: Props) {
             const res = await fetch('/api/meta-ai-strategy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ posts, summary }),
+                body: JSON.stringify({ posts, summary, accountInsights, demographics }),
             });
             const json = await res.json();
             if (!json.success) {

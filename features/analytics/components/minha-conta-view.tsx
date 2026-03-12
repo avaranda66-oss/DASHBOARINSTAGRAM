@@ -545,6 +545,8 @@ export function MinhaContaView({ token, username }: Props) {
                             <MetaAiStrategy
                                 posts={posts}
                                 summary={{ avgReach: summary.avgReach, avgEngagementRate: summary.avgEngagementRate }}
+                                accountInsights={insightsData?.accountInsights}
+                                demographics={insightsData?.demographics}
                             />
                         </motion.div>
                     )}
