@@ -22,6 +22,8 @@ import { MetaKpiCards } from './kpi-cards';
 import { MetaAccountTrends } from './meta-account-trends';
 import { MetaFollowerGrowth } from './meta-follower-growth';
 import { MetaAudienceDemographics } from './meta-audience-demographics';
+import { MetaBestHourChart } from './meta-best-hour-chart';
+import { MetaReelsChart } from './meta-reels-chart';
 
 interface MetaPost extends InstagramPostMetrics {
     reach?: number;
@@ -495,6 +497,22 @@ export function MinhaContaView({ token, username }: Props) {
                                         Alcance Médio por Dia da Semana
                                     </h4>
                                     <MetaPostingDayChart posts={posts} />
+                                </motion.div>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
+                                    <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
+                                        Melhor Horário para Postar
+                                    </h4>
+                                    <MetaBestHourChart posts={posts as any[]} />
+                                </motion.div>
+
+                                <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
+                                    <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
+                                        Performance de Reels
+                                    </h4>
+                                    <MetaReelsChart posts={posts as any[]} />
                                 </motion.div>
                             </div>
                         </motion.div>
