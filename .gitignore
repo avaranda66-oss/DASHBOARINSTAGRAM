@@ -122,3 +122,9 @@ scripts/fix-db.*
 
 # Public highlights cache
 public/ig-highlights/
+
+# Reorganização 2026-03-13
+archive/
+design_outputs/
+LIXO/
+tsconfig.tsbuildinfo
