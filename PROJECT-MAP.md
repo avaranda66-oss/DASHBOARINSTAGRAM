@@ -128,6 +128,74 @@ npm run tunnel     # Expõe localhost via Cloudflared (necessário para Meta API
 
 ---
 
+## Frontend vs Backend — Onde está cada coisa
+
+### FRONTEND — O que o usuário vê e clica no browser
+```
+app/dashboard/*/page.tsx     ← Telas: analytics, storyboard, ads, calendar...
+components/layout/           ← Navbar, Sidebar, Header, menu mobile
+components/ui/               ← Botões, cards, inputs, modais (shadcn/ui)
+components/shared/           ← Filtros, busca, paleta de comandos
+features/*/components/       ← Componentes específicos de cada tela
+features/*/hooks/            ← Lógica de interação (cliques, formulários)
+stores/                      ← Estado visual: o que está aberto, filtros ativos
+app/globals.css              ← Estilos globais
+```
+
+### BACKEND — Roda no servidor, usuário nunca vê diretamente
+```
+app/api/*/route.ts           ← APIs: recebem requisições, chamam serviços
+app/actions/                 ← Server Actions: operações diretas no banco
+lib/services/                ← Integrações: Meta API, Gemini AI, Apify, Playwright
+lib/utils/                   ← Motor estatístico e matemático
+lib/db.ts                    ← Conexão com banco de dados
+prisma/                      ← Schema e banco SQLite
+scripts/                     ← Workers: agendador, publicação automática
+```
+
+### Zona cinzenta do Next.js (depende do contexto)
+```
+features/*/schemas/          ← Validação de formulários (client + server)
+lib/constants.ts             ← Constantes compartilhadas entre os dois
+types/                       ← Tipagens TypeScript (compilação apenas)
+```
+
+---
+
+## Como Dados Sensíveis São Guardados
+
+O projeto usa **dois lugares** para guardar segredos — veja a lógica:
+
+### Lugar 1: Arquivo `.env` (apenas o mínimo de infraestrutura)
+```env
+DATABASE_URL="file:./dev.db"          # Caminho do banco — necessário para iniciar
+INSTAGRAM_APP_ID=                     # ID do App no Meta Developer (OAuth)
+INSTAGRAM_APP_SECRET=                 # Secret do App no Meta Developer (OAuth)
+NEXT_PUBLIC_APP_URL=http://localhost:3000  # URL pública do app
+```
+Esses dois campos do Meta ficam aqui porque são necessários **antes** do usuário fazer login — são usados para iniciar o fluxo OAuth do Instagram.
+
+### Lugar 2: Banco de Dados SQLite — `prisma/dev.db` (a maioria dos segredos)
+Os demais tokens e chaves ficam **dentro do banco**, configurados pela interface gráfica:
+
+| Onde configurar na UI | Chave no banco | O que guarda |
+|----------------------|----------------|-------------|
+| Gerenciar Contas → Editar | `Account.access_token` | Token Meta API (~60 dias) |
+| Gerenciar Contas → Editar | `Account.ads_token` | Token Meta Ads |
+| Gerenciar Contas → Editar | `Account.ads_account_id` | ID da conta de anúncios |
+| Configurações → Geral | `Setting['global-settings']` | Chaves Gemini, Apify, Firecrawl |
+| Configurações → Tunnel | `Setting['tunnel_url']` | URL do Cloudflared tunnel |
+
+### Por que esse design?
+- `.env` é para o **sistema funcionar** (banco, OAuth)
+- O banco é para **dados de usuário** (tokens das contas, API keys dos serviços)
+- Assim você configura tudo pela **interface gráfica** sem precisar editar arquivos
+
+### ⚠️ Risco atual: tokens sem criptografia
+Os tokens ficam em **texto puro** no SQLite. Para uso local isso é aceitável. Para produção/nuvem, precisaria criptografar antes de salvar.
+
+---
+
 ## Fluxo de Publicação de Posts
 
 ```
