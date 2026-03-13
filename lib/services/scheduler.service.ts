@@ -3,6 +3,52 @@ import { InstagramService } from './instagram.service';
 import path from 'path';
 import fs from 'fs';
 
+/**
+ * Otimiza uma imagem local para publicação via Meta API.
+ * Converte PNG→JPEG, comprime com mozjpeg quality 92, chroma 4:4:4.
+ * Retorna a URL do tunnel para o arquivo otimizado, ou a URL original se não precisar.
+ */
+async function optimizeImageForMeta(
+    localRelPath: string,
+    tunnelUrl: string,
+    targetWidth: number,
+    targetHeight: number,
+    suffix: string = '_opt'
+): Promise<{ optimizedTunnelUrl: string; originalSize: number; newSize: number } | null> {
+    try {
+        const localAbsPath = path.join(process.cwd(), 'public', localRelPath);
+        if (!fs.existsSync(localAbsPath)) return null;
+        const stats = fs.statSync(localAbsPath);
+        const isPng = localAbsPath.toLowerCase().endsWith('.png');
+        // Otimizar se > 1MB ou se for PNG
+        if (stats.size <= 1 * 1024 * 1024 && !isPng) return null;
+        const sharp = (await import('sharp')).default;
+        const optimizedRelPath = localRelPath.replace(/\.[^.]+$/, `${suffix}.jpg`);
+        const optimizedAbsPath = path.join(process.cwd(), 'public', optimizedRelPath);
+        await sharp(localAbsPath)
+            .resize(targetWidth, targetHeight, {
+                fit: 'cover',
+                kernel: 'lanczos3',
+                fastShrinkOnLoad: false,
+            })
+            .toColorspace('srgb')
+            .jpeg({
+                quality: 92,
+                mozjpeg: true,
+                chromaSubsampling: '4:4:4',
+            })
+            .toFile(optimizedAbsPath);
+        const newSize = fs.statSync(optimizedAbsPath).size;
+        return {
+            optimizedTunnelUrl: `${tunnelUrl.replace(/\/$/, '')}${optimizedRelPath}`,
+            originalSize: stats.size,
+            newSize,
+        };
+    } catch {
+        return null;
+    }
+}
+
 export class SchedulerService {
     private static isRunning = false;
     private static CHECK_INTERVAL = 1 * 60 * 1000; // 1 minuto para ser mais responsivo sem pesar o PC
@@ -168,32 +214,26 @@ export class SchedulerService {
                                         });
                                     }
 
-                                    if (normalizedType === 'story') {
-                                        // Otimizar imagens grandes para Stories (Meta API: max 8MB, 1440x2560)
-                                        const storyUrl = finalMediaUrls[0];
-                                        const isStoryVideo = storyUrl.toLowerCase().match(/\.(mp4|mov|avi|wmv|m4v)$/i);
-                                        if (!isStoryVideo && hasLocalMedia) {
-                                            try {
-                                                const localRelPath = mediaArr[0];
-                                                const localAbsPath = path.join(process.cwd(), 'public', localRelPath);
-                                                const stats = fs.statSync(localAbsPath);
-                                                if (stats.size > 8 * 1024 * 1024) {
-                                                    const sharp = (await import('sharp')).default;
-                                                    const optimizedRelPath = localRelPath.replace(/\.[^.]+$/, '_story.jpg');
-                                                    const optimizedAbsPath = path.join(process.cwd(), 'public', optimizedRelPath);
-                                                    await sharp(localAbsPath)
-                                                        .resize(1080, 1920, { fit: 'inside', withoutEnlargement: true })
-                                                        .jpeg({ quality: 85 })
-                                                        .toFile(optimizedAbsPath);
-                                                    const newSize = fs.statSync(optimizedAbsPath).size;
-                                                    finalMediaUrls[0] = `${tunnelUrl!.replace(/\/$/, '')}${optimizedRelPath}`;
-                                                    console.log(`[Scheduler] Imagem otimizada para Story: ${(stats.size / 1024 / 1024).toFixed(1)}MB → ${(newSize / 1024 / 1024).toFixed(1)}MB (JPEG 1080x1920)`);
-                                                }
-                                            } catch (optErr: any) {
-                                                console.warn(`[Scheduler] Falha ao otimizar imagem para story: ${optErr.message}`);
+                                    // Otimizar imagens locais antes de enviar via tunnel
+                                    if (hasLocalMedia && tunnelUrl) {
+                                        for (let i = 0; i < finalMediaUrls.length; i++) {
+                                            const origUrl = mediaArr[i];
+                                            const isLocal = origUrl?.startsWith('/uploads/') || origUrl?.startsWith('/creatives/');
+                                            const isVid = finalMediaUrls[i]?.toLowerCase().match(/\.(mp4|mov|avi|wmv|m4v)$/i);
+                                            if (!isLocal || isVid) continue;
+
+                                            const isStory = normalizedType === 'story';
+                                            const w = isStory ? 1080 : 1080;
+                                            const h = isStory ? 1920 : 1350; // Story 9:16, Feed 4:5
+                                            const result = await optimizeImageForMeta(origUrl, tunnelUrl, w, h, `_opt${i}`);
+                                            if (result) {
+                                                finalMediaUrls[i] = result.optimizedTunnelUrl;
+                                                console.log(`[Scheduler] Imagem ${i} otimizada: ${(result.originalSize / 1024 / 1024).toFixed(1)}MB → ${(result.newSize / 1024 / 1024).toFixed(1)}MB`);
                                             }
                                         }
+                                    }
 
+                                    if (normalizedType === 'story') {
                                         const res = await publishStory(metaToken, userId, finalMediaUrls[0]);
                                         success = res.success;
                                         if (!res.success) console.warn(`[Scheduler] Meta API Story falhou: ${res.error}`);

@@ -6,6 +6,8 @@ export interface Account {
     notes: string | null;
     password?: string | null;
     oauthToken: string | null;
+    adsToken?: string | null;
+    adsAccountId?: string | null;
     isAutomationConnected?: boolean;
     createdAt: string;
 }

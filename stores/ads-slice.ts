@@ -1,0 +1,205 @@
+'use client';
+
+import { create } from 'zustand';
+import type {
+    AdCampaign, AdSet, Ad, AdAccount, AdInsight,
+    AdsKpiSummary, DailyAdInsight, AdsDatePreset, AdsFilters,
+} from '@/types/ads';
+
+interface AdsSlice {
+    // Data
+    account: AdAccount | null;
+    campaigns: AdCampaign[];
+    adSets: AdSet[];
+    ads: Ad[];
+    insights: AdInsight[];
+    dailyInsights: DailyAdInsight[];
+    kpiSummary: AdsKpiSummary | null;
+
+    // State
+    isLoading: boolean;
+    error: string | null;
+    lastFetchedAt: string | null;
+    selectedCampaignId: string | null;
+    expandedCampaignId: string | null;
+    filters: AdsFilters;
+
+    // Actions
+    fetchAll: (token: string, accountId: string) => Promise<void>;
+    fetchInsights: (token: string, accountId: string) => Promise<void>;
+    setFilters: (filters: Partial<AdsFilters>) => void;
+    setSelectedCampaign: (id: string | null) => void;
+    setExpandedCampaign: (id: string | null) => void;
+    updateCampaignStatus: (token: string, campaignId: string, status: 'ACTIVE' | 'PAUSED') => Promise<boolean>;
+    updateCampaignBudget: (token: string, campaignId: string, dailyBudget: number) => Promise<boolean>;
+    clearAll: () => void;
+}
+
+export const useAdsStore = create<AdsSlice>((set, get) => ({
+    account: null,
+    campaigns: [],
+    adSets: [],
+    ads: [],
+    insights: [],
+    dailyInsights: [],
+    kpiSummary: null,
+    isLoading: false,
+    error: null,
+    lastFetchedAt: null,
+    selectedCampaignId: null,
+    expandedCampaignId: null,
+    filters: {
+        datePreset: 'last_30d',
+        statusFilter: 'all',
+    },
+
+    fetchAll: async (token, accountId) => {
+        set({ isLoading: true, error: null });
+        try {
+            const { filters } = get();
+            const statusFilter = filters.statusFilter === 'all'
+                ? undefined
+                : [filters.statusFilter];
+
+            // Buscar campanhas + insights em paralelo
+            const [campRes, insightRes] = await Promise.all([
+                fetch('/api/ads-campaigns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token,
+                        accountId,
+                        statusFilter,
+                        datePreset: filters.datePreset,
+                        includeSets: true,
+                    }),
+                }).then(r => r.json()),
+                fetch('/api/ads-insights', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token,
+                        accountId,
+                        datePreset: filters.datePreset,
+                    }),
+                }).then(r => r.json()),
+            ]);
+
+            if (!campRes.success) throw new Error(campRes.error);
+            if (!insightRes.success) throw new Error(insightRes.error);
+
+            set({
+                account: campRes.account,
+                campaigns: campRes.campaigns || [],
+                adSets: campRes.adSets || [],
+                ads: campRes.ads || [],
+                insights: insightRes.insights || [],
+                dailyInsights: insightRes.daily || [],
+                kpiSummary: insightRes.kpiSummary || null,
+                lastFetchedAt: new Date().toISOString(),
+                isLoading: false,
+            });
+        } catch (e: any) {
+            console.error('[AdsStore] fetchAll erro:', e);
+            set({ error: e.message || 'Erro ao buscar campanhas.', isLoading: false });
+        }
+    },
+
+    fetchInsights: async (token, accountId) => {
+        try {
+            const { filters } = get();
+            const res = await fetch('/api/ads-insights', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token,
+                    accountId,
+                    datePreset: filters.datePreset,
+                }),
+            }).then(r => r.json());
+
+            if (!res.success) throw new Error(res.error);
+
+            set({
+                dailyInsights: res.daily || [],
+                insights: res.insights || [],
+                kpiSummary: res.kpiSummary || null,
+            });
+        } catch (e: any) {
+            console.error('[AdsStore] fetchInsights erro:', e);
+        }
+    },
+
+    setFilters: (partial) => {
+        const { filters } = get();
+        set({ filters: { ...filters, ...partial } });
+    },
+
+    setSelectedCampaign: (id) => set({ selectedCampaignId: id }),
+    setExpandedCampaign: (id) => {
+        const current = get().expandedCampaignId;
+        set({ expandedCampaignId: current === id ? null : id });
+    },
+
+    updateCampaignStatus: async (token, campaignId, status) => {
+        try {
+            const res = await fetch('/api/ads-actions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, action: 'campaign_status', targetId: campaignId, status }),
+            }).then(r => r.json());
+
+            if (res.success) {
+                // Atualizar localmente
+                const { campaigns } = get();
+                set({
+                    campaigns: campaigns.map(c =>
+                        c.id === campaignId ? { ...c, status, effective_status: status } : c
+                    ),
+                });
+            }
+            return res.success;
+        } catch (e) {
+            console.error('[AdsStore] updateStatus erro:', e);
+            return false;
+        }
+    },
+
+    updateCampaignBudget: async (token, campaignId, dailyBudget) => {
+        try {
+            const res = await fetch('/api/ads-actions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, action: 'campaign_budget', targetId: campaignId, dailyBudget }),
+            }).then(r => r.json());
+
+            if (res.success) {
+                const { campaigns } = get();
+                set({
+                    campaigns: campaigns.map(c =>
+                        c.id === campaignId
+                            ? { ...c, daily_budget: Math.round(dailyBudget * 100).toString() }
+                            : c
+                    ),
+                });
+            }
+            return res.success;
+        } catch (e) {
+            console.error('[AdsStore] updateBudget erro:', e);
+            return false;
+        }
+    },
+
+    clearAll: () => set({
+        account: null,
+        campaigns: [],
+        adSets: [],
+        ads: [],
+        insights: [],
+        dailyInsights: [],
+        kpiSummary: null,
+        error: null,
+        lastFetchedAt: null,
+        selectedCampaignId: null,
+    }),
+}));

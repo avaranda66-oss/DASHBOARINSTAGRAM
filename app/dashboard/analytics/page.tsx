@@ -35,6 +35,7 @@ import { ptBR } from 'date-fns/locale';
 import { getCompetitorsAction, saveCompetitorAction, deleteCompetitorAction } from '@/app/actions/competitor.actions';
 import { getAnalyticsAction, getMetaAnalyticsAction, saveMetaAnalyticsAction } from '@/app/actions/analytics.actions';
 import type { CompetitorProfile } from '@/types/competitor';
+import type { InstagramPostMetrics, PostComment } from '@/types/analytics';
 import { MinhaContaView } from '@/features/analytics/components/minha-conta-view';
 import { MetaDiscoveryCard } from '@/features/analytics/components/meta-discovery-card';
 
@@ -94,12 +95,25 @@ export default function AnalyticsPage() {
     useEffect(() => { getCompetitorsAction().then(setCompetitors); }, []);
     useEffect(() => { setFixedInsights(null); }, [posts]);
 
-    // Token Meta: prioridade para token salvo na conta, fallback para settings global
-    const accountWithToken = accounts.find(a => !!a.oauthToken);
-    const metaTokenResolved = settingsStore.settings?.metaAccessToken || accountWithToken?.oauthToken || null;
-    const metaUsernameResolved = settingsStore.settings?.metaUsername || (accountWithToken ? accountWithToken.handle.replace('@', '') : null);
+    // Token Meta: resolve dinamicamente baseado no perfil visualizado
+    const allAccountsWithToken = accounts.filter(a => !!a.oauthToken);
+    const currentOwner = posts[0]?.ownerUsername?.toLowerCase();
+    // Tenta encontrar a conta com token que corresponde ao perfil atualmente visualizado
+    const matchingAccount = currentOwner
+        ? allAccountsWithToken.find(a => a.handle.replace('@', '').toLowerCase() === currentOwner)
+        : null;
+    // Fallback: primeira conta com token ou settings global
+    const accountWithToken = matchingAccount || allAccountsWithToken[0] || null;
+    const metaTokenResolved = matchingAccount?.oauthToken || settingsStore.settings?.metaAccessToken || accountWithToken?.oauthToken || null;
+    const metaUsernameResolved = matchingAccount
+        ? matchingAccount.handle.replace('@', '')
+        : settingsStore.settings?.metaUsername || (accountWithToken ? accountWithToken.handle.replace('@', '') : null);
     const metaConnected = !!metaTokenResolved;
     const metaUsername = metaUsernameResolved;
+    // Verifica se o perfil visualizado é uma das contas com token (para mostrar botão Enriquecer)
+    const isViewingOwnAccount = currentOwner
+        ? allAccountsWithToken.some(a => a.handle.replace('@', '').toLowerCase() === currentOwner)
+        : false;
 
     // Carrega dados Meta do DB para não resetar no F5
     // + Limpa dados contaminados que foram salvos erroneamente com type='account'
@@ -149,6 +163,45 @@ export default function AnalyticsPage() {
             analyticsStore.setPostsFromMeta(json.data, metaUser);
             // Persistir no cache Meta separado (type='meta'), sem tocar no cache Apify (type='account')
             saveMetaAnalyticsAction(metaUser, json.data).catch(console.error);
+
+            // Buscar comentários via Meta API em background (não bloqueia o loading)
+            // Enriquece os posts já exibidos com comentários frescos
+            fetch('/api/meta-comments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token }),
+            })
+                .then((r) => r.json())
+                .then((commentsJson) => {
+                    if (commentsJson.success && Array.isArray(commentsJson.data)) {
+                        const commentMap = new Map<string, typeof commentsJson.data[0]>();
+                        for (const entry of commentsJson.data) {
+                            commentMap.set(entry.shortCode, entry);
+                        }
+                        // Atualizar posts no store com os comentários buscados
+                        const currentPosts = useAnalyticsStore.getState().posts;
+                        let updated = false;
+                        const enrichedPosts = currentPosts.map((p: InstagramPostMetrics) => {
+                            const match = commentMap.get(p.shortCode ?? '');
+                            if (match && match.comments.length > 0) {
+                                // Merge: manter comentários existentes + adicionar novos (dedup por id)
+                                const existingIds = new Set((p.latestComments ?? []).map((c: PostComment) => c.id));
+                                const newComments = match.comments.filter((c: PostComment) => !existingIds.has(c.id));
+                                if (newComments.length > 0 || (p.latestComments ?? []).length === 0) {
+                                    updated = true;
+                                    return { ...p, latestComments: [...(p.latestComments ?? []), ...newComments] };
+                                }
+                            }
+                            return p;
+                        });
+                        if (updated) {
+                            analyticsStore.setPostsFromMeta(enrichedPosts, metaUser);
+                            saveMetaAnalyticsAction(metaUser, enrichedPosts).catch(console.error);
+                        }
+                    }
+                })
+                .catch(() => {}); // Falha silenciosa — comentários do Apify já foram preservados pelo merge
+
             // Salvar followers/nome/bio/foto no perfil da conta
             if (json.followersCount != null || json.name || json.biography) {
                 setMetaProfile({ followersCount: json.followersCount, name: json.name });
@@ -455,6 +508,13 @@ export default function AnalyticsPage() {
                         <MinhaContaView
                             token={metaTokenResolved!}
                             username={metaUsername ?? undefined}
+                            allAccounts={accounts.filter(a => !!a.oauthToken).map(a => ({
+                                id: a.id,
+                                username: a.handle.replace('@', ''),
+                                name: a.name,
+                                picture: a.avatarUrl,
+                                oauthToken: a.oauthToken!,
+                            }))}
                         />
                     )}
                 </motion.div>
@@ -768,8 +828,7 @@ export default function AnalyticsPage() {
                             )}
 
                             {/* Botão Meta API — APENAS para a própria conta do usuário, nunca para concorrentes */}
-                            {metaConnected && summary && metaUsername &&
-                             posts[0]?.ownerUsername?.toLowerCase() === metaUsername.toLowerCase() && (
+                            {metaConnected && summary && isViewingOwnAccount && (
                                 <motion.div variants={item} className="flex items-center gap-3 rounded-xl border border-[var(--v2-accent)]/20 bg-[var(--v2-accent)]/5 px-4 py-3">
                                     <Zap className="h-4 w-4 text-[var(--v2-accent)] shrink-0" />
                                     <div className="flex-1 min-w-0">
@@ -789,21 +848,30 @@ export default function AnalyticsPage() {
                             {metaError && <p className="text-xs text-destructive px-1">{metaError}</p>}
 
                             {summary && (
-                                <motion.div variants={item}>
-                                    {filteredPosts.length > 0 && filteredPosts[0]?.source === 'meta' ? (
-                                        <MetaKpiCards
-                                            posts={filteredPosts as any[]}
-                                            accountProfile={
-                                                metaProfile && metaUsername &&
-                                                filteredPosts[0]?.ownerUsername?.toLowerCase() === metaUsername.toLowerCase()
-                                                    ? metaProfile
-                                                    : undefined
-                                            }
-                                        />
-                                    ) : (
-                                        <ApifyStatsPanel posts={filteredPosts} />
+                                <>
+                                    {/* KPI Cards: Meta-exclusivos quando enriquecido, Apify quando não */}
+                                    <motion.div variants={item}>
+                                        {filteredPosts.length > 0 && filteredPosts[0]?.source === 'meta' ? (
+                                            <MetaKpiCards
+                                                posts={filteredPosts as any[]}
+                                                accountProfile={
+                                                    metaProfile && isViewingOwnAccount
+                                                        ? metaProfile
+                                                        : undefined
+                                                }
+                                            />
+                                        ) : (
+                                            <ApifyStatsPanel posts={filteredPosts} />
+                                        )}
+                                    </motion.div>
+                                    {/* Painéis analíticos (Viral, Melhor Dia, Evolução, Sentimento, Hook, Score, Hashtags) */}
+                                    {/* Sempre visíveis — quando Meta, aparece ABAIXO dos KPIs exclusivos */}
+                                    {filteredPosts.length > 0 && filteredPosts[0]?.source === 'meta' && (
+                                        <motion.div variants={item} className="mt-4">
+                                            <ApifyStatsPanel posts={filteredPosts} isMeta />
+                                        </motion.div>
                                     )}
-                                </motion.div>
+                                </>
                             )}
 
                             {/* Alertas & Anomalias */}

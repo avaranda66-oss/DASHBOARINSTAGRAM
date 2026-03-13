@@ -307,10 +307,26 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
     },
 
     setPostsFromMeta: (posts: InstagramPostMetrics[], username: string) => {
-        const { filterPeriod, customDateRange } = get();
+        const { filterPeriod, customDateRange, posts: existingPosts } = get();
+
+        // Indexar posts Apify existentes por shortCode E id para merge de comentários
+        const apifyByShortCode = new Map<string, InstagramPostMetrics>();
+        const apifyById = new Map<string, InstagramPostMetrics>();
+        for (const p of existingPosts) {
+            if (p.shortCode) apifyByShortCode.set(p.shortCode, p);
+            if (p.id) apifyById.set(p.id, p);
+        }
+
         // Dedup por id para evitar duplicacao em chamadas repetidas
         const postMap = new Map<string, InstagramPostMetrics>();
-        for (const p of posts) postMap.set(p.id, p);
+        for (const p of posts) {
+            // MERGE: preservar latestComments do Apify se o Meta não trouxe
+            const apifyMatch = apifyByShortCode.get(p.shortCode ?? '') ?? apifyById.get(p.id);
+            if (apifyMatch && (!p.latestComments || p.latestComments.length === 0) && apifyMatch.latestComments && apifyMatch.latestComments.length > 0) {
+                p.latestComments = apifyMatch.latestComments;
+            }
+            postMap.set(p.id, p);
+        }
         const dedupedPosts = Array.from(postMap.values());
         const summary = computeSummary(dedupedPosts, filterPeriod, customDateRange);
         set({

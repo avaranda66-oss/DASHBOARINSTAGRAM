@@ -128,12 +128,28 @@ const INTERNAL_TABS: { key: InternalTab; label: string; icon: React.ElementType 
     { key: 'feed-preview', label: 'Feed Preview', icon: Smartphone },
 ];
 
+interface AccountOption {
+    id: string;
+    username: string;
+    name: string | null;
+    picture: string | null;
+    oauthToken: string;
+}
+
 interface Props {
     token: string;
     username?: string;
+    allAccounts?: AccountOption[];
 }
 
-export function MinhaContaView({ token, username }: Props) {
+export function MinhaContaView({ token: initialToken, username: initialUsername, allAccounts }: Props) {
+    const [activeAccountIdx, setActiveAccountIdx] = useState(0);
+
+    // Se temos múltiplas contas, usar a conta selecionada
+    const hasMultipleAccounts = (allAccounts?.length ?? 0) > 1;
+    const selectedAccount = allAccounts?.[activeAccountIdx];
+    const token = selectedAccount?.oauthToken ?? initialToken;
+    const username = selectedAccount?.username ?? initialUsername;
     const [posts, setPosts] = useState<MetaPost[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingCache, setIsLoadingCache] = useState(true);
@@ -160,6 +176,21 @@ export function MinhaContaView({ token, username }: Props) {
     const [competitorData, setCompetitorData] = useState<{ profile: any; posts: any[]; fetchedAt: string } | null>(null);
     const [isLoadingCompetitor, setIsLoadingCompetitor] = useState(false);
     const [competitorError, setCompetitorError] = useState<string | null>(null);
+
+    // Reset dados quando troca de conta
+    const handleSwitchAccount = (idx: number) => {
+        if (idx === activeAccountIdx) return;
+        setActiveAccountIdx(idx);
+        setPosts([]);
+        setFetchedAt(null);
+        setIsFromCache(false);
+        setError(null);
+        setAccountProfile(undefined);
+        setInsightsData(null);
+        setCompetitorData(null);
+        setCompetitorError(null);
+        setIsLoadingCache(true);
+    };
 
     // BUG FIX: Fetch Insights when Audience OR Strategy tab is active (ambas usam esses dados)
     useEffect(() => {
@@ -334,11 +365,25 @@ export function MinhaContaView({ token, username }: Props) {
             <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <Zap className="h-4 w-4 text-[var(--v2-accent)]" />
-                            <span className="font-semibold text-sm text-[var(--v2-text-primary)]">
-                                {username ? `@${username}` : 'Sua Conta'}
-                            </span>
+                            {hasMultipleAccounts ? (
+                                <select
+                                    value={activeAccountIdx}
+                                    onChange={(e) => handleSwitchAccount(Number(e.target.value))}
+                                    className="bg-transparent border border-zinc-700 rounded-lg px-2 py-1 text-sm font-semibold text-[var(--v2-text-primary)] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--v2-accent)]"
+                                >
+                                    {allAccounts!.map((acc, idx) => (
+                                        <option key={acc.id} value={idx} className="bg-zinc-900 text-white">
+                                            @{acc.username}{acc.name ? ` (${acc.name})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <span className="font-semibold text-sm text-[var(--v2-text-primary)]">
+                                    {username ? `@${username}` : 'Sua Conta'}
+                                </span>
+                            )}
                             <span className="inline-flex items-center rounded-full bg-[var(--v2-accent)]/10 border border-[var(--v2-accent)]/20 px-2 py-0.5 text-[10px] font-bold text-[var(--v2-accent)]">
                                 META API
                             </span>

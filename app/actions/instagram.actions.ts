@@ -125,10 +125,54 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
             const userId = await getInstagramUserId(token);
             if (!userId) throw new Error("ID do Instagram não encontrado para o token fornecido.");
 
+            // Otimizar todas as imagens locais (PNG ou > 1MB) antes de enviar
+            if (tunnelUrl) {
+                const pathMod = (await import('path')).default;
+                const fsMod = (await import('fs')).default;
+                const isStory = normalizedType === 'story';
+                const targetW = 1080;
+                const targetH = isStory ? 1920 : 1350; // Story 9:16, Feed 4:5
+
+                for (let i = 0; i < finalImageUrls.length; i++) {
+                    const origUrl = imageUrls[i];
+                    const isLocal = origUrl?.startsWith('/uploads/') || origUrl?.startsWith('/creatives/');
+                    const isVid = finalImageUrls[i]?.toLowerCase().match(/\.(mp4|mov|avi|wmv|m4v)$/i);
+                    if (!isLocal || isVid) continue;
+
+                    try {
+                        const localAbsPath = pathMod.join(process.cwd(), 'public', origUrl);
+                        const stats = fsMod.statSync(localAbsPath);
+                        const isPng = localAbsPath.toLowerCase().endsWith('.png');
+                        if (stats.size > 1 * 1024 * 1024 || isPng) {
+                            const sharp = (await import('sharp')).default;
+                            const optimizedRelPath = origUrl.replace(/\.[^.]+$/, `_opt${i}.jpg`);
+                            const optimizedAbsPath = pathMod.join(process.cwd(), 'public', optimizedRelPath);
+                            await sharp(localAbsPath)
+                                .resize(targetW, targetH, {
+                                    fit: 'cover',
+                                    kernel: 'lanczos3',
+                                    fastShrinkOnLoad: false,
+                                })
+                                .toColorspace('srgb')
+                                .jpeg({
+                                    quality: 92,
+                                    mozjpeg: true,
+                                    chromaSubsampling: '4:4:4',
+                                })
+                                .toFile(optimizedAbsPath);
+                            const newSize = fsMod.statSync(optimizedAbsPath).size;
+                            finalImageUrls[i] = `${tunnelUrl.replace(/\/$/, '')}${optimizedRelPath}`;
+                            console.log(`[Action] Imagem ${i} otimizada: ${(stats.size / 1024 / 1024).toFixed(1)}MB → ${(newSize / 1024 / 1024).toFixed(1)}MB`);
+                        }
+                    } catch (optErr: any) {
+                        console.warn(`[Action] Falha ao otimizar imagem ${i}: ${optErr.message}`);
+                    }
+                }
+            }
+
             if (normalizedType === 'story') {
-                const url = finalImageUrls[0];
-                console.log(`[Action] Postando STORY via Meta API: ${url}`);
-                const res = await publishStory(token, userId, url);
+                console.log(`[Action] Postando STORY via Meta API: ${finalImageUrls[0]}`);
+                const res = await publishStory(token, userId, finalImageUrls[0]);
                 success = res.success;
                 if (!success) throw new Error(`Meta API Story: ${res.error}`);
             } else if (finalImageUrls.length > 1) {

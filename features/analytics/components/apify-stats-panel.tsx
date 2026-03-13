@@ -7,7 +7,7 @@ import {
     FileText, Hash, ArrowUpRight, ArrowDownRight, Minus, Zap,
     Activity, Target, Clock
 } from 'lucide-react';
-import type { InstagramPostMetrics } from '@/types/analytics';
+import type { InstagramPostMetrics, MetaPostMetrics } from '@/types/analytics';
 import {
     linearTrend,
     detectOutliers,
@@ -17,6 +17,7 @@ import {
     hookQualityScore,
     postSentimentRanking,
     apifyEngagementScore,
+    engagementScore,
     performanceBadge,
     hashtagEfficiency,
     postingConsistencyIndex,
@@ -27,6 +28,8 @@ import { PostTooltip, PostMiniCard, PostImage } from './post-detail-card';
 
 export interface ApifyStatsPanelProps {
     posts: InstagramPostMetrics[];
+    /** Quando true, esconde os KPI cards (já exibidos pelo MetaKpiCards) e mostra apenas os painéis analíticos */
+    isMeta?: boolean;
 }
 
 const container = {
@@ -69,11 +72,22 @@ function TrendBadge({ direction, label }: { direction: 'rising' | 'falling' | 's
     );
 }
 
-export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
+export function ApifyStatsPanel({ posts, isMeta = false }: ApifyStatsPanelProps) {
     const stats = useMemo(() => {
         if (posts.length === 0) return null;
 
         const sorted = [...posts].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+        // Helper: engagement completo (com saves/shares quando Meta disponível)
+        const postEng = (p: InstagramPostMetrics): number => {
+            const base = p.likesCount + p.commentsCount;
+            if (!isMeta) return base;
+            const mp = p as any;
+            return base + (mp.saved ?? 0) + (mp.shares ?? 0);
+        };
+
+        // Helper: reach do post (só Meta)
+        const postReach = (p: InstagramPostMetrics): number => isMeta ? ((p as any).reach ?? 0) : 0;
 
         // Basic aggregations
         const totalLikes = sorted.reduce((s, p) => s + p.likesCount, 0);
@@ -83,16 +97,16 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
 
         const likesHistory = sorted.map(p => p.likesCount);
         const commentsHistory = sorted.map(p => p.commentsCount);
-        const engHistory = sorted.map(p => p.likesCount + p.commentsCount);
+        const engHistory = sorted.map(p => postEng(p));
 
         // Content mix winner
         const images = sorted.filter(p => p.type === 'Image');
         const videos = sorted.filter(p => p.type === 'Video');
         const carousels = sorted.filter(p => p.type === 'Sidecar');
 
-        const avgEngImage = images.length > 0 ? images.reduce((s, p) => s + p.likesCount + p.commentsCount, 0) / images.length : 0;
-        const avgEngVideo = videos.length > 0 ? videos.reduce((s, p) => s + p.likesCount + p.commentsCount, 0) / videos.length : 0;
-        const avgEngCarousel = carousels.length > 0 ? carousels.reduce((s, p) => s + p.likesCount + p.commentsCount, 0) / carousels.length : 0;
+        const avgEngImage = images.length > 0 ? images.reduce((s, p) => s + postEng(p), 0) / images.length : 0;
+        const avgEngVideo = videos.length > 0 ? videos.reduce((s, p) => s + postEng(p), 0) / videos.length : 0;
+        const avgEngCarousel = carousels.length > 0 ? carousels.reduce((s, p) => s + postEng(p), 0) / carousels.length : 0;
 
         const typeWinner = [
             { type: 'Imagem', avg: avgEngImage, count: images.length },
@@ -103,8 +117,8 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
         // Posting consistency
         const consistency = postingConsistencyIndex(sorted);
 
-        // Outliers / viral coefficient
-        const engValues = sorted.map(p => p.likesCount + p.commentsCount);
+        // Outliers / viral coefficient — usa engagement completo
+        const engValues = sorted.map(p => postEng(p));
         const outlierResult = detectOutliers(engValues);
         const viralPosts = outlierResult.outliers.filter(o => o.type === 'high');
         const avgNormal = engValues.length > 0
@@ -112,25 +126,33 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
             : 0;
         const avgViral = viralPosts.length > 0 ? viralPosts.reduce((a, b) => a + b.value, 0) / viralPosts.length : 0;
 
-        // Best day
+        // Meta-exclusive: Viral Spread Rate (shares/reach) — mede difusão real
+        let viralSpreadRate: number | null = null;
+        if (isMeta) {
+            const totalShares = sorted.reduce((s, p) => s + ((p as any).shares ?? 0), 0);
+            const totalReach = sorted.reduce((s, p) => s + postReach(p), 0);
+            viralSpreadRate = totalReach > 0 ? (totalShares / totalReach) * 100 : 0;
+        }
+
+        // Best day — usa engagement completo
         const bestDay = bestTimeToPost(sorted.map(p => ({
             date: p.timestamp,
-            engagement: p.likesCount + p.commentsCount,
+            engagement: postEng(p),
         })));
 
-        // Period comparison (temporal inteligente: 30d vs 30d, fallback 14d, fallback split)
+        // Period comparison — usa engagement completo
         const temporalComp = temporalPeriodComparison(
-            sorted.map(p => ({ timestamp: p.timestamp, engagement: p.likesCount + p.commentsCount }))
+            sorted.map(p => ({ timestamp: p.timestamp, engagement: postEng(p) }))
         );
 
-        // Caption segment analysis (substitui correlacao de Pearson)
+        // Caption segment analysis — usa engagement completo
         const captionSegments = captionSegmentAnalysis(
-            sorted.map(p => ({ caption: p.caption ?? '', engagement: p.likesCount + p.commentsCount }))
+            sorted.map(p => ({ caption: p.caption ?? '', engagement: postEng(p) }))
         );
 
-        // Hook quality
+        // Hook quality — usa engagement completo
         const hookQuality = hookQualityScore(
-            sorted.map(p => ({ caption: p.caption ?? '', engagement: p.likesCount + p.commentsCount }))
+            sorted.map(p => ({ caption: p.caption ?? '', engagement: postEng(p) }))
         );
 
         // Hook post examples — best post for each hook type
@@ -146,7 +168,7 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
             else if (/^[\d]|^\d/.test(hook)) hookType = 'número/lista';
             else if (/!/.test(hook)) hookType = 'exclamação';
             else hookType = 'narrativo';
-            const eng = p.likesCount + p.commentsCount;
+            const eng = postEng(p);
             if (eng > (hookPostBestEng.get(hookType) ?? 0)) {
                 hookPostBestEng.set(hookType, eng);
                 hookPostExamples.set(hookType, p);
@@ -156,16 +178,38 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
         // Sentiment ranking per post
         const sentimentRank = postSentimentRanking(sorted);
 
-        // Per-post scores
-        const allScores = sorted.map(p => apifyEngagementScore({ likes: p.likesCount, comments: p.commentsCount, views: p.videoViewCount ?? 0 }));
+        // Per-post scores — usa score completo com saves/shares quando Meta
+        const allScores = isMeta
+            ? sorted.map(p => engagementScore({ likes: p.likesCount, comments: p.commentsCount, views: p.videoViewCount ?? 0, saves: (p as any).saved ?? 0, shares: (p as any).shares ?? 0 }))
+            : sorted.map(p => apifyEngagementScore({ likes: p.likesCount, comments: p.commentsCount, views: p.videoViewCount ?? 0 }));
         const scoredPosts = sorted.map((p, i) => ({
             post: p,
             score: allScores[i],
             badge: performanceBadge(allScores[i], allScores),
         })).sort((a, b) => b.score - a.score);
 
-        // Hashtag efficiency
+        // Hashtag efficiency — usa engagement completo
+        // Quando Meta, recalcula com reach para medir amplificação real
         const hashtagEff = hashtagEfficiency(sorted);
+        let hashtagReachEff: { hashtag: string; avgReach: number; count: number }[] | null = null;
+        if (isMeta) {
+            const hashtagReachMap = new Map<string, { totalReach: number; count: number }>();
+            for (const p of sorted) {
+                const reach = postReach(p);
+                for (const tag of p.hashtags ?? []) {
+                    const t = tag.toLowerCase().replace('#', '');
+                    if (!t) continue;
+                    const existing = hashtagReachMap.get(t) ?? { totalReach: 0, count: 0 };
+                    existing.totalReach += reach;
+                    existing.count++;
+                    hashtagReachMap.set(t, existing);
+                }
+            }
+            hashtagReachEff = Array.from(hashtagReachMap.entries())
+                .filter(([, v]) => v.count >= 2)
+                .map(([hashtag, v]) => ({ hashtag, avgReach: Math.round(v.totalReach / v.count), count: v.count }))
+                .sort((a, b) => b.avgReach - a.avgReach);
+        }
 
         // Engagement stats
         const engStats = descriptiveStats(engValues);
@@ -206,10 +250,12 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
             sentimentRank,
             scoredPosts,
             hashtagEff,
+            hashtagReachEff,
+            viralSpreadRate,
             engStats,
-            avgEngPerPost: sorted.length > 0 ? Math.round((totalLikes + totalComments) / sorted.length) : 0,
+            avgEngPerPost: sorted.length > 0 ? Math.round(engValues.reduce((a, b) => a + b, 0) / sorted.length) : 0,
         };
-    }, [posts]);
+    }, [posts, isMeta]);
 
     if (!stats) {
         return (
@@ -255,25 +301,27 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
 
     return (
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-            {/* ─── Section A: KPI Cards ─── */}
-            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 relative z-40">
-                {kpiCards.map((card) => (
-                    <motion.div key={card.label} variants={item} className="group relative overflow-hidden rounded-xl p-4 transition-all duration-300 v2-glass v2-glass-hover">
-                        <div className="v2-grain pointer-events-none absolute inset-0 z-[1]" />
-                        <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full blur-2xl opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none" style={{ background: card.color }} />
-                        <div className="relative z-[2]">
-                            <div className="flex items-center justify-between">
-                                <span className="v2-label">{card.label}</span>
-                                <card.icon className="h-3.5 w-3.5" style={{ color: card.color, opacity: 0.8 }} />
+            {/* ─── Section A: KPI Cards (esconde quando isMeta pois MetaKpiCards já exibe) ─── */}
+            {!isMeta && (
+                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 relative z-40">
+                    {kpiCards.map((card) => (
+                        <motion.div key={card.label} variants={item} className="group relative overflow-hidden rounded-xl p-4 transition-all duration-300 v2-glass v2-glass-hover">
+                            <div className="v2-grain pointer-events-none absolute inset-0 z-[1]" />
+                            <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full blur-2xl opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none" style={{ background: card.color }} />
+                            <div className="relative z-[2]">
+                                <div className="flex items-center justify-between">
+                                    <span className="v2-label">{card.label}</span>
+                                    <card.icon className="h-3.5 w-3.5" style={{ color: card.color, opacity: 0.8 }} />
+                                </div>
+                                <p className="mt-2 text-2xl font-mono v2-number font-bold tracking-tight" style={{ color: 'var(--v2-text-primary)' }}>{card.value}</p>
+                                {'sub' in card && card.sub && <p className="mt-0.5 text-[10px] leading-tight" style={{ color: 'var(--v2-text-tertiary)' }}>{card.sub}</p>}
+                                {'trend' in card && card.trend && <div className="mt-1"><TrendBadge direction={card.trend.direction} /></div>}
+                                {'spark' in card && card.spark && <SimpleSparkline data={(card.spark as number[]).slice(-10)} color={card.color} />}
                             </div>
-                            <p className="mt-2 text-2xl font-mono v2-number font-bold tracking-tight" style={{ color: 'var(--v2-text-primary)' }}>{card.value}</p>
-                            {'sub' in card && card.sub && <p className="mt-0.5 text-[10px] leading-tight" style={{ color: 'var(--v2-text-tertiary)' }}>{card.sub}</p>}
-                            {'trend' in card && card.trend && <div className="mt-1"><TrendBadge direction={card.trend.direction} /></div>}
-                            {'spark' in card && card.spark && <SimpleSparkline data={(card.spark as number[]).slice(-10)} color={card.color} />}
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
 
             {/* ─── Section B: Statistical Insights (2x2 grid) ─── */}
             <div className="grid gap-4 sm:grid-cols-2 relative z-30">
@@ -309,6 +357,17 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
                                     Tipo que mais viraliza: <strong style={{ color: 'var(--v2-text-primary)' }}>
                                         {stats.viralByType[0].type === 'Video' ? 'Reel' : stats.viralByType[0].type === 'Sidecar' ? 'Carrossel' : 'Imagem'}
                                     </strong> ({stats.viralByType[0].count} viral{stats.viralByType[0].count > 1 ? 'is' : ''})
+                                </p>
+                            )}
+                            {stats.viralSpreadRate != null && (
+                                <p className="text-[10px]" style={{ color: 'var(--v2-text-tertiary)' }}>
+                                    Taxa de Difusão: <strong style={{ color: '#f59e0b' }}>{stats.viralSpreadRate.toFixed(2)}%</strong>
+                                    <span className="ml-1">(shares / alcance total)</span>
+                                </p>
+                            )}
+                            {isMeta && (
+                                <p className="text-[9px] mt-1 px-2 py-1 rounded-md" style={{ background: 'rgba(245,158,11,0.08)', color: 'var(--v2-text-tertiary)' }}>
+                                    Dados enriquecidos com saves + shares da Meta API
                                 </p>
                             )}
                             {stats.viralPostData.length > 0 && (
@@ -480,6 +539,7 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
                 <div className="flex items-center gap-2 mb-4">
                     <Target className="h-4 w-4" style={{ color: '#ec4899' }} />
                     <span className="v2-label text-sm font-semibold">Score de Engajamento por Post</span>
+                    {isMeta && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-mono" style={{ background: 'rgba(139,92,246,0.15)', color: '#a855f7' }}>Meta Enhanced</span>}
                     <span className="text-[10px] ml-auto" style={{ color: 'var(--v2-text-tertiary)' }}>
                         Média: {stats.engStats.mean.toFixed(0)} | Mediana: {stats.engStats.median.toFixed(0)} | σ: {stats.engStats.stdDev.toFixed(0)}
                     </span>
@@ -495,6 +555,8 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
                                 <th className="text-left py-1 pr-2">Badge</th>
                                 <th className="text-right py-1 pr-2">Likes</th>
                                 <th className="text-right py-1 pr-2">Comments</th>
+                                {isMeta && <th className="text-right py-1 pr-2">Saves</th>}
+                                {isMeta && <th className="text-right py-1 pr-2">Shares</th>}
                                 <th className="text-right py-1">Data</th>
                             </tr>
                         </thead>
@@ -528,6 +590,8 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
                                     </td>
                                     <td className="py-1.5 pr-2 text-right font-mono" style={{ color: 'var(--v2-text-secondary)' }}>{formatNumber(sp.post.likesCount)}</td>
                                     <td className="py-1.5 pr-2 text-right font-mono" style={{ color: 'var(--v2-text-secondary)' }}>{formatNumber(sp.post.commentsCount)}</td>
+                                    {isMeta && <td className="py-1.5 pr-2 text-right font-mono" style={{ color: '#f59e0b' }}>{formatNumber((sp.post as any).saved ?? 0)}</td>}
+                                    {isMeta && <td className="py-1.5 pr-2 text-right font-mono" style={{ color: '#10b981' }}>{formatNumber((sp.post as any).shares ?? 0)}</td>}
                                     <td className="py-1.5 text-right font-mono" style={{ color: 'var(--v2-text-tertiary)' }}>
                                         {sp.post.timestamp ? new Date(sp.post.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '-'}
                                     </td>
@@ -544,12 +608,16 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
                     <div className="flex items-center gap-2 mb-4">
                         <Hash className="h-4 w-4" style={{ color: '#10b981' }} />
                         <span className="v2-label text-sm font-semibold">Eficiência de Hashtags</span>
-                        <span className="text-[10px] ml-auto" style={{ color: 'var(--v2-text-tertiary)' }}>Mínimo 2 posts por hashtag</span>
+                        <span className="text-[10px] ml-auto" style={{ color: 'var(--v2-text-tertiary)' }}>
+                            {isMeta ? 'Engagement completo (likes+comments+saves+shares)' : 'Mínimo 2 posts por hashtag'}
+                        </span>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {stats.hashtagEff.slice(0, 15).map((h, i) => {
                             const allAvgs = stats.hashtagEff.map(x => x.avgEngagement);
                             const badge = performanceBadge(h.avgEngagement, allAvgs);
+                            // Buscar reach correspondente quando Meta
+                            const reachData = stats.hashtagReachEff?.find(r => r.hashtag === h.hashtag);
                             return (
                                 <div key={h.hashtag} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
                                     <div className="flex items-center gap-2 min-w-0">
@@ -558,6 +626,11 @@ export function ApifyStatsPanel({ posts }: ApifyStatsPanelProps) {
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         <span className="text-xs font-mono font-bold" style={{ color: 'var(--v2-text-primary)' }}>{formatNumber(h.avgEngagement)}</span>
+                                        {reachData && (
+                                            <span className="text-[9px] font-mono" style={{ color: '#3b82f6' }} title="Alcance médio por post com esta hashtag">
+                                                {formatNumber(reachData.avgReach)}r
+                                            </span>
+                                        )}
                                         <span className={`text-[9px] ${badge.color}`}>{badge.emoji}</span>
                                         <span className="text-[10px]" style={{ color: 'var(--v2-text-tertiary)' }}>({h.count})</span>
                                     </div>

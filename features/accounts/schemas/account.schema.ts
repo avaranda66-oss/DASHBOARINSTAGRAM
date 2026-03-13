@@ -16,6 +16,8 @@ export const accountSchema = z.object({
     handle: z.string().min(1, 'Handle (@) é obrigatório').max(50),
     password: z.string().nullable().optional(),
     oauthToken: z.string().nullable().optional(),
+    adsToken: z.string().nullable().optional(),
+    adsAccountId: z.string().nullable().optional(),
     avatarUrl: z.string().url('URL inválida').or(z.literal('')).nullable(),
     notes: z.string().max(2000).nullable().optional(),
     businessInfo: businessInfoSchema.optional(),

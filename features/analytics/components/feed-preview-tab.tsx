@@ -109,6 +109,18 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
             .finally(() => setIsLoadingHighlights(false));
     }, [account.username]);
 
+    // Carregar análise visual do feed do cache (persiste entre F5)
+    useEffect(() => {
+        if (!account.username) return;
+        import('@/app/actions/analytics.actions').then(({ getFeedAnalysisAction }) => {
+            getFeedAnalysisAction(account.username).then(cached => {
+                if (cached?.analysis) {
+                    setAnalysisResult(cached.analysis);
+                }
+            }).catch(() => {});
+        }).catch(() => {});
+    }, [account.username]);
+
     // Buscar thumbnails do Apify como fallback (dados salvos na aba individual)
     useEffect(() => {
         if (!account.username) return;
@@ -432,6 +444,11 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
             }
 
             setAnalysisResult(json.analysis);
+
+            // Persistir no banco para carregar no próximo F5
+            import('@/app/actions/analytics.actions').then(({ saveFeedAnalysisAction }) => {
+                saveFeedAnalysisAction(account.username, json.analysis).catch(console.error);
+            });
         } catch (err: any) {
             setAnalysisError(err.message ?? 'Erro de rede.');
         } finally {

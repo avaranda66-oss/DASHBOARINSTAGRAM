@@ -14,6 +14,8 @@ export async function getAccountsAction(): Promise<Account[]> {
         notes: acc.notes ?? null,
         password: acc.password,
         oauthToken: acc.access_token,
+        adsToken: acc.ads_token ?? null,
+        adsAccountId: acc.ads_account_id ?? null,
         isAutomationConnected: false, // Will be checked by store
         createdAt: acc.createdAt.toISOString()
     }));
@@ -34,6 +36,8 @@ export async function saveAccountAction(account: Account) {
                 password: account.password || null,
                 picture: account.avatarUrl || null,
                 access_token: account.oauthToken || null,
+                ads_token: account.adsToken || null,
+                ads_account_id: account.adsAccountId || null,
                 notes: account.notes ?? null,
             },
             update: {
@@ -41,6 +45,8 @@ export async function saveAccountAction(account: Account) {
                 password: account.password || undefined,
                 picture: account.avatarUrl || undefined,
                 access_token: account.oauthToken || undefined,
+                ads_token: account.adsToken || undefined,
+                ads_account_id: account.adsAccountId || undefined,
                 notes: account.notes ?? null,
             }
         });

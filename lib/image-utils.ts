@@ -13,7 +13,8 @@ export async function formatStoryImage(inputBuffer: Buffer): Promise<Buffer> {
         const background = await sharp(inputBuffer)
             .resize(TARGET_WIDTH, TARGET_HEIGHT, {
                 fit: 'cover',
-                position: 'center'
+                position: 'center',
+                kernel: 'lanczos3',
             })
             .blur(20)
             .modulate({ brightness: 0.5 }) // Darken background slightly to make foreground pop
@@ -24,14 +25,22 @@ export async function formatStoryImage(inputBuffer: Buffer): Promise<Buffer> {
         const foreground = await sharp(inputBuffer)
             .resize(TARGET_WIDTH, TARGET_HEIGHT, {
                 fit: 'contain',
+                kernel: 'lanczos3',
                 background: { r: 0, g: 0, b: 0, alpha: 0 }
             })
             .toBuffer();
 
         // Composite the foreground over the blurred background
+        // Qualidade otimizada: mozjpeg + 4:4:4 chroma para máxima fidelidade de cor
+        // Instagram recomprime tudo — quality 92 + mozjpeg é o sweet spot
         return await sharp(background)
             .composite([{ input: foreground }])
-            .toFormat('jpeg', { quality: 90 }) // Convert to standardized format and optimize
+            .toColorspace('srgb')
+            .jpeg({
+                quality: 92,
+                mozjpeg: true,
+                chromaSubsampling: '4:4:4',
+            })
             .toBuffer();
     } catch (e: any) {
         console.error('Erro ao processar imagem de Story no sharp:', e);

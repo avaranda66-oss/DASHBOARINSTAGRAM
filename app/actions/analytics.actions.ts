@@ -73,6 +73,38 @@ export async function cleanupMetaContaminationAction(username: string): Promise<
     } catch { return false; }
 }
 
+// ===== Feed Visual Analysis Cache =====
+
+export async function getFeedAnalysisAction(username: string): Promise<{ analysis: any; fetchedAt: string } | null> {
+    const key = `feed-analysis:${username.toLowerCase().trim()}`;
+    const record = await prisma.analytics.findUnique({
+        where: { targetId_type: { targetId: key, type: 'meta' } }
+    });
+    if (!record) return null;
+    return { analysis: JSON.parse(record.data), fetchedAt: record.updatedAt.toISOString() };
+}
+
+export async function saveFeedAnalysisAction(username: string, analysis: any): Promise<void> {
+    const key = `feed-analysis:${username.toLowerCase().trim()}`;
+    await prisma.analytics.upsert({
+        where: { targetId_type: { targetId: key, type: 'meta' } },
+        update: { data: JSON.stringify(analysis), updatedAt: new Date() },
+        create: { targetId: key, type: 'meta', data: JSON.stringify(analysis), updatedAt: new Date() }
+    });
+}
+
+// ===== Accounts with Meta Token =====
+
+export async function getAccountsWithTokenAction(): Promise<{ id: string; username: string; name: string | null; picture: string | null; oauthToken: string }[]> {
+    const accounts = await prisma.account.findMany({
+        where: { access_token: { not: null } },
+        select: { id: true, username: true, name: true, picture: true, access_token: true }
+    });
+    return accounts
+        .filter(a => a.access_token && a.access_token.length > 10)
+        .map(a => ({ id: a.id, username: a.username || a.id, name: a.name, picture: a.picture, oauthToken: a.access_token! }));
+}
+
 export async function saveAnalyticsAction(analytics: CachedAnalytics, type: 'account' | 'competitor'): Promise<void> {
     const cleanHandle = analytics.accountHandle.toLowerCase().trim();
     await prisma.analytics.upsert({

@@ -15,6 +15,7 @@ import {
     Instagram,
     BarChart3,
     Radar,
+    Megaphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
     { href: '/dashboard/collections', label: 'Coleções', icon: FolderOpen },
     { href: '/dashboard/accounts', label: 'Contas', icon: Users },
     { href: '/dashboard/analytics', label: 'Métricas Instagram', icon: BarChart3 },
+    { href: '/dashboard/ads', label: 'Métricas Campanhas', icon: Megaphone },
     { href: '/dashboard/intelligence', label: 'Métricas Google Maps', icon: Radar },
     { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
 ] as const;
