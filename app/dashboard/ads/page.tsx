@@ -5,12 +5,13 @@ import { useAdsStore, useAccountStore, useSettingsStore } from '@/stores';
 import { AdsKpiCards } from '@/features/ads/components/ads-kpi-cards';
 import { CampaignsTable } from '@/features/ads/components/campaigns-table';
 import { AdsCharts } from '@/features/ads/components/ads-charts';
-import { AdsAiPanel } from '@/features/ads/components/ads-ai-panel';
+import { AdsIntelligencePanelV2 } from '@/features/ads/components/ads-intelligence-panel-v2';
 import { CreativesGallery } from '@/features/ads/components/creatives-gallery';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
-    Megaphone, RefreshCw, Loader2, AlertCircle,
+    Megaphone, RefreshCw, Loader2, AlertCircle, Info,
     BarChart3, Table, Brain, Clock, CalendarDays, Filter, X,
     Image as ImageIcon,
 } from 'lucide-react';
@@ -186,7 +187,23 @@ export default function AdsDashboardPage() {
             totalReach += reach;
             weightedCpc += (parseFloat(i.cpc || '0') || 0) * clicks;
             weightedCtr += (parseFloat(i.ctr || '0') || 0) * impressions;
+
+            // Conversões: somar action types relevantes
+            if (i.actions) {
+                const convTypes = ['offsite_conversion', 'lead', 'purchase', 'complete_registration'];
+                for (const a of i.actions) {
+                    if (convTypes.some(t => a.action_type.includes(t))) {
+                        totalConversions += parseInt(a.value) || 0;
+                    }
+                }
+            }
+            // ROAS: purchase_roas * spend = revenue
+            const roasVal = parseFloat(i.purchase_roas?.[0]?.value || '0') || 0;
+            totalConversionValue += roasVal * spend;
         }
+
+        const roas = totalSpend > 0 ? totalConversionValue / totalSpend : 0;
+        const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
 
         return {
             ...kpiSummary,
@@ -198,12 +215,12 @@ export default function AdsDashboardPage() {
             avgCtr: totalImpressions > 0 ? weightedCtr / totalImpressions : 0,
             totalConversions,
             totalConversionValue,
-            roas: 0,
-            cpa: 0,
+            roas,
+            cpa,
             activeCampaigns: filtered.filter(c => c.effective_status === 'ACTIVE').length,
             pausedCampaigns: filtered.filter(c => c.effective_status === 'PAUSED').length,
         };
-    }, [filteredCampaigns, kpiSummary, selectedCampaignFilter]);
+    }, [filteredCampaigns, kpiSummary, selectedCampaignFilter, filters.statusFilter]);
 
     const filteredDailyInsights = useMemo(() => {
         // Daily insights are account-level, so we can't filter by campaign client-side perfectly
@@ -399,6 +416,16 @@ export default function AdsDashboardPage() {
             {/* Conteúdo principal */}
             {filteredKpiSummary && (
                 <>
+                    {/* Aviso: sem dados para o período selecionado */}
+                    {!isLoading && filteredKpiSummary.totalSpend === 0 && filteredKpiSummary.totalImpressions === 0 && filteredKpiSummary.totalClicks === 0 && (
+                        <Card className="p-3 border-amber-500/30 bg-amber-500/5 flex items-center gap-3">
+                            <Info className="h-4 w-4 text-amber-500 shrink-0" />
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
+                                Nenhum dado retornado pela Meta API para o período selecionado. As campanhas podem não ter veiculado nesse intervalo, ou os dados ainda estão sendo processados.
+                            </p>
+                        </Card>
+                    )}
+
                     {/* KPI Cards */}
                     <AdsKpiCards kpi={filteredKpiSummary} />
 
@@ -427,41 +454,47 @@ export default function AdsDashboardPage() {
 
                     {/* Tab Content */}
                     {activeTab === 'overview' && (
-                        <CampaignsTable
-                            campaigns={filteredCampaigns}
-                            adSets={filteredAdSets}
-                            currency={currency}
-                            onToggleStatus={handleToggleCampaignStatus}
-                            onExpandCampaign={setExpandedCampaign}
-                            expandedCampaignId={expandedCampaignId}
-                        />
+                        <ErrorBoundary>
+                            <CampaignsTable
+                                campaigns={filteredCampaigns}
+                                adSets={filteredAdSets}
+                                currency={currency}
+                                onToggleStatus={handleToggleCampaignStatus}
+                                onExpandCampaign={setExpandedCampaign}
+                                expandedCampaignId={expandedCampaignId}
+                            />
+                        </ErrorBoundary>
                     )}
 
                     {activeTab === 'creatives' && (
-                        <CreativesGallery
-                            ads={creativeAds}
-                            currency={currency}
-                            isLoading={isLoadingCreatives}
-                            error={creativesError}
-                            onFetchCreatives={handleFetchCreatives}
-                        />
+                        <ErrorBoundary>
+                            <CreativesGallery
+                                ads={creativeAds}
+                                currency={currency}
+                                isLoading={isLoadingCreatives}
+                                error={creativesError}
+                                onFetchCreatives={handleFetchCreatives}
+                            />
+                        </ErrorBoundary>
                     )}
 
                     {activeTab === 'charts' && (
-                        <AdsCharts
-                            daily={filteredDailyInsights}
-                            campaigns={filteredCampaigns}
-                            currency={currency}
-                        />
+                        <ErrorBoundary>
+                            <AdsCharts
+                                daily={filteredDailyInsights}
+                                campaigns={filteredCampaigns}
+                                currency={currency}
+                            />
+                        </ErrorBoundary>
                     )}
 
                     {activeTab === 'intelligence' && (
-                        <AdsAiPanel
-                            kpi={filteredKpiSummary}
-                            campaigns={filteredCampaigns}
-                            daily={filteredDailyInsights}
-                            currency={currency}
-                        />
+                        <ErrorBoundary>
+                            <AdsIntelligencePanelV2
+                                token={adsToken}
+                                accountId={adsAccountId}
+                            />
+                        </ErrorBoundary>
                     )}
                 </>
             )}

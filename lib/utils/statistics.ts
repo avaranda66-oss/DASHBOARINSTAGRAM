@@ -96,8 +96,9 @@ export function descriptiveStats(values: number[]): {
   const n = s.length;
   const avg = mean(values);
 
-  // Desvio padrao populacional (small data, nao amostral)
-  const variance = values.reduce((acc, v) => acc + (v - avg) ** 2, 0) / n;
+  // Desvio padrao amostral (Bessel's correction: n-1)
+  // Para n < 2, stdDev = 0 (impossivel estimar variancia com 1 ponto)
+  const variance = n < 2 ? 0 : values.reduce((acc, v) => acc + (v - avg) ** 2, 0) / (n - 1);
   const stdDev = Math.sqrt(variance);
 
   const med = quantile(s, 0.5);
@@ -1786,5 +1787,63 @@ export function postSentimentRanking(
     mostEmotional: emotional.sort((a, b) => b.score - a.score).slice(0, 10),
     mostInterest: interest.sort((a, b) => b.commentRate - a.commentRate).slice(0, 10),
     mostActiveInterest: activeInterest.sort((a, b) => b.longCommentRatio - a.longCommentRatio).slice(0, 10),
+  };
+}
+
+// =============================================================================
+// 34. Shannon Entropy — Content Mix Diversity
+// =============================================================================
+
+/**
+ * Calcula a entropia de Shannon para medir diversidade de um mix de conteudo.
+ *
+ * Valores proximos de 0 = mix homogeneo (pouca diversidade).
+ * Valores proximos de log2(n) = mix equilibrado (maxima diversidade).
+ *
+ * Retorna valor normalizado entre 0 e 1 (dividido por log2(n)).
+ *
+ * @param categories - Map de categoria para contagem (ex: { reels: 10, carousel: 5, static: 3 })
+ * @returns { entropy, normalizedEntropy, maxEntropy, dominantCategory, categoryShares }
+ */
+export function shannonEntropy(categories: Record<string, number>): {
+  entropy: number;
+  normalizedEntropy: number;
+  maxEntropy: number;
+  dominantCategory: string;
+  categoryShares: Record<string, number>;
+} {
+  const entries = Object.entries(categories).filter(([, count]) => count > 0);
+  const k = entries.length;
+
+  if (k === 0) {
+    return { entropy: 0, normalizedEntropy: 0, maxEntropy: 0, dominantCategory: '', categoryShares: {} };
+  }
+
+  if (k === 1) {
+    const [cat] = entries[0];
+    return { entropy: 0, normalizedEntropy: 0, maxEntropy: 0, dominantCategory: cat, categoryShares: { [cat]: 1 } };
+  }
+
+  const total = entries.reduce((acc, [, c]) => acc + c, 0);
+  const shares: Record<string, number> = {};
+  let H = 0;
+
+  for (const [cat, count] of entries) {
+    const p = count / total;
+    shares[cat] = Math.round(p * 10000) / 10000; // 4 decimal places
+    if (p > 0) {
+      H -= p * Math.log2(p);
+    }
+  }
+
+  const maxH = Math.log2(k);
+  const dominant = entries.reduce((best, curr) => curr[1] > best[1] ? curr : best)[0];
+
+  return {
+    entropy: Math.round(H * 10000) / 10000,
+    normalizedEntropy: Math.round((H / maxH) * 10000) / 10000,
+    maxEntropy: Math.round(maxH * 10000) / 10000,
+    dominantCategory: dominant,
+    categoryShares: shares,
   };
 }

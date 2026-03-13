@@ -27,6 +27,8 @@ export async function POST(req: NextRequest) {
             getCampaigns(token, accountId),
         ]);
 
+        console.log(`[ads-insights] datePreset=${datePreset}, timeRange=${JSON.stringify(timeRange)}, daily=${dailyData.length}, insights=${insights.length}, campaigns=${campaigns.length}`);
+
         // Computar KPIs resumidos
         const kpiSummary = computeKpiSummary(insights, campaigns);
 

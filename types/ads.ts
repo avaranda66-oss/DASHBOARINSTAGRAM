@@ -161,3 +161,105 @@ export interface AdsFilters {
     statusFilter: 'all' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
     accountId?: string;
 }
+
+// ─── Intelligence Metrics Types ─────────────────────────────────────────────
+
+export type FatigueLevel = 'healthy' | 'early' | 'moderate' | 'severe';
+export type SaturationLevel = 'underexplored' | 'optimal' | 'saturated';
+export type HealthLevel = 'excellent' | 'good' | 'attention' | 'critical';
+
+export interface CreativeFatigueScore {
+    adId: string;
+    adName: string;
+    score: number; // 0-1, higher = healthier
+    level: FatigueLevel;
+    daysActive: number;
+    totalImpressions: number;
+    decayRatios: {
+        ctr: number | null;
+        cpm: number | null;
+        cr: number | null;
+        cpa: number | null;
+    };
+    trend: number[]; // daily CTR values for sparkline
+    recommendation: string;
+    thumbnailUrl?: string;
+}
+
+export interface AudienceSaturationIndex {
+    adsetId: string;
+    adsetName: string;
+    frequency: number;
+    optimalFrequency: number;
+    saturationIndex: number; // frequency / optimalFrequency
+    level: SaturationLevel;
+    reachPercent: number;
+    recommendation: string;
+}
+
+export interface ABTestResult {
+    adsetId: string;
+    adsetName: string;
+    variants: {
+        adId: string;
+        adName: string;
+        impressions: number;
+        clicks: number;
+        ctr: number;
+        spend: number;
+        conversions: number;
+    }[];
+    status: 'inconclusive' | 'trending' | 'significant';
+    confidence: number; // 0-100
+    leadingVariantId: string | null;
+    sampleProgress: number; // 0-100, percent toward significance
+    minSampleNeeded: number;
+    disclaimer: string;
+}
+
+export interface AccountHealthScore {
+    score: number; // 0-100
+    level: HealthLevel;
+    subScores: {
+        fatigueMean: number;
+        roasScore: number;
+        saturationMean: number;
+        budgetUtilization: number;
+    };
+}
+
+export interface IntelligenceMetrics {
+    healthScore: AccountHealthScore | null;
+    fatigueScores: CreativeFatigueScore[];
+    saturationIndexes: AudienceSaturationIndex[];
+    abTests: ABTestResult[];
+    benchmarkComparison: BenchmarkComparison | null;
+    computedAt: string;
+}
+
+export interface BenchmarkEntry {
+    metric: string;
+    label: string;
+    clientValue: number;
+    benchmarkValue: number;
+    indexRatio: number; // clientValue / benchmarkValue
+    status: 'below' | 'average' | 'above';
+}
+
+export interface BenchmarkComparison {
+    entries: BenchmarkEntry[];
+    industry: string;
+    mode: 'sector' | 'historical';
+}
+
+export interface CreativeScore {
+    creativeId: string;
+    total: number; // 0-100
+    composition: number; // 0-25
+    contrast: number; // 0-25
+    textRatio: number; // 0-25
+    hierarchy: number; // 0-25
+    label: string;
+    suggestions: string[];
+    analyzedAt: string;
+}

@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
             timeRange,
         });
 
+        console.log(`[ads-campaigns] datePreset=${datePreset}, timeRange=${JSON.stringify(timeRange)}, insights returned: ${campaignInsights.length}, campaigns: ${campaigns.length}`);
+
         // Merge insights nas campanhas
         const insightMap = new Map(campaignInsights.map(i => [i.campaign_id, i]));
         const enrichedCampaigns = campaigns.map(c => ({

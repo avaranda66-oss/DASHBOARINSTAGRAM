@@ -38,20 +38,21 @@
 8. [Filtros Avancados](#filtros-avancados)
 9. [Meta Ads Manager](#meta-ads-manager)
 10. [Analytics e Metricas](#analytics-e-metricas)
-11. [Inteligencia Artificial](#inteligencia-artificial-google-gemini)
-12. [Feed Preview](#feed-preview)
-13. [Contas Instagram](#contas-instagram)
-14. [Colecoes e Campanhas](#colecoes-e-campanhas)
-15. [Intelligence Hub](#intelligence-hub)
-16. [Configuracoes](#configuracoes)
-17. [Automacao e Publicacao](#automacao-e-publicacao)
-18. [Arquitetura Tecnica](#arquitetura-tecnica)
-19. [Banco de Dados](#banco-de-dados)
-20. [Estrutura de Pastas](#estrutura-de-pastas)
-21. [Instalacao](#instalacao)
-22. [Seguranca](#seguranca)
-23. [Creditos](#creditos)
-24. [Licenca](#licenca)
+11. [Motor Estatistico Avancado](#motor-estatistico-avancado)
+12. [Inteligencia Artificial](#inteligencia-artificial-google-gemini)
+13. [Feed Preview](#feed-preview)
+14. [Contas Instagram](#contas-instagram)
+15. [Colecoes e Campanhas](#colecoes-e-campanhas)
+16. [Intelligence Hub](#intelligence-hub)
+17. [Configuracoes](#configuracoes)
+18. [Automacao e Publicacao](#automacao-e-publicacao)
+19. [Arquitetura Tecnica](#arquitetura-tecnica)
+20. [Banco de Dados](#banco-de-dados)
+21. [Estrutura de Pastas](#estrutura-de-pastas)
+22. [Instalacao](#instalacao)
+23. [Seguranca](#seguranca)
+24. [Creditos](#creditos)
+25. [Licenca](#licenca)
 
 ---
 
@@ -295,10 +296,15 @@ Esta e a nova aba de **Storyboard de Campanhas**:
 - Impressoes e cliques por dia
 - Comparacao de performance entre campanhas
 
-#### 4. Inteligencia (IA)
+#### 4. Inteligencia (IA + Estatistica Avancada)
 - Analise automatica dos dados de campanha via Gemini
 - Recomendacoes de otimizacao de budget
 - Insights de performance por campanha
+- **Fadiga Criativa**: Score por anuncio com deteccao de esgotamento (exponential decay)
+- **Saturacao de Audiencia**: Indice de frequencia vs benchmark por vertical
+- **Saude da Conta**: Score 0-100 com CTR, CPC, frequencia e diversidade
+- **A/B Testing**: Deteccao automatica de testes com significancia estatistica (Z-test)
+- **Benchmark Comparativo**: Performance vs benchmarks da industria (Food & Beverage)
 
 ### Infraestrutura Tecnica de Ads
 
@@ -388,6 +394,69 @@ Dados **privados e precisos** (alcance real, saves, shares). Cache automatico co
 - Busca de dados publicos de contas Business/Creator via API oficial
 
 **8. Feed Preview** (ver secao abaixo)
+
+---
+
+## Motor Estatistico Avancado
+
+O dashboard possui um motor de analytics proprio, implementado em TypeScript puro (zero dependencias externas), com funcoes de nivel academico para analise de dados de marketing digital.
+
+### Modulos
+
+#### `statistics.ts` — 34 funcoes exportadas
+
+Motor principal com estatisticas descritivas, correlacao, tendencia, deteccao de outliers, analise temporal e mais:
+
+| Funcao | Descricao |
+|--------|-----------|
+| `descriptiveStats` | Media, mediana, desvio padrao amostral (Bessel), quartis, IQR, CV |
+| `linearTrend` | Regressao linear com slope, R-squared e predicao |
+| `pearsonCorrelation` | Correlacao entre duas variaveis |
+| `engagementScore` | Score ponderado de engajamento |
+| `detectOutliers` | Deteccao de outliers via IQR |
+| `bestTimeToPost` | Melhor dia/hora baseado em historico |
+| `movingAverage` | Media movel com janela configuravel |
+| `zScores` | Z-scores para identificar performance anomala |
+| `paretoAnalysis` | Analise 80/20 de conteudo |
+| `shannonEntropy` | **Entropia de Shannon** para diversidade de mix de conteudo (0 = homogeneo, 1 = maximo diverso) |
+| `contentVelocityScore` | Velocidade de engajamento pos-publicacao |
+| `variableRewardScore` | Imprevisibilidade de conteudo (reward variavel) |
+| + 22 outras | Consistencia de postagem, identidade de conteudo, comparacao temporal, etc. |
+
+#### `math-core.ts` — Primitivas matematicas reutilizaveis
+
+| Funcao | Descricao |
+|--------|-----------|
+| `normalCDF(z)` | CDF da normal padrao (Abramowitz & Stegun, erro < 7.5e-8) |
+| `bootstrapCI(values, options)` | Intervalo de confianca via bootstrap (percentile method, B=1000) |
+| `olsSimple(x, y)` | Regressao linear OLS com alpha, beta, R-squared e residuos |
+
+#### `forecasting.ts` — Previsao de series temporais
+
+| Funcao | Descricao |
+|--------|-----------|
+| `holtWinters(data, options)` | Triple Exponential Smoothing (aditivo) com tendencia + sazonalidade semanal. Ideal para prever metricas de engajamento nos proximos 7 dias. |
+| `cusumDetect(data, options)` | Deteccao de change-points via CUSUM. Identifica quando uma metrica mudou de regime (ex: alcance caiu significativamente apos mudanca de algoritmo). |
+
+#### `advanced-indicators.ts` — Indicadores avancados de marketing
+
+| Funcao | O que responde | Metodo |
+|--------|----------------|--------|
+| `advertisingElasticity(spend, revenue)` | "Cada R$1 a mais em ads gera quanto a mais de resultado?" | Regressao log-log (elasticidade economica) |
+| `creativeHalfLife(dailyCTRs)` | "Em quantos dias meu criativo perde metade da eficacia?" | Decaimento exponencial (meia-vida) |
+| `diminishingReturns(spend, result)` | "Estou na zona de saturacao ou ainda posso escalar?" | Curva de Michaelis-Menten (retornos decrescentes) |
+
+### Inteligencia de Ads (Intelligence Panel v2)
+
+O painel de inteligencia de ads calcula automaticamente:
+
+| Metrica | Descricao | Como interpreta |
+|---------|-----------|-----------------|
+| **Creative Fatigue Score** | Detecta esgotamento de criativos por CTR declinante | Verde (Fresh) / Amarelo (Aging) / Vermelho (Fatigued) |
+| **Audience Saturation Index** | Frequencia vs frequencia otima por vertical | Baixo / Medio / Alto / Critico |
+| **Account Health Score** | Score 0-100 combinando CTR, CPC, frequencia, diversidade | Excelente / Bom / Precisa Atencao / Critico |
+| **A/B Test Detection** | Identifica testes automaticamente por nome de campanha | Significancia estatistica via Z-test |
+| **Benchmark Comparison** | Compara metricas vs benchmark da industria | Acima / Na media / Abaixo |
 
 ---
 
@@ -529,7 +598,7 @@ Central de pesquisa com **3 abas**:
 | **Automacao** | Playwright (browser automation) |
 | **Imagem** | Sharp (composicao, resize, thumbnails) |
 
-### API Routes (25+)
+### API Routes (36)
 
 | Rota | Funcao |
 |------|--------|
@@ -538,6 +607,8 @@ Central de pesquisa com **3 abas**:
 | `POST /api/ads-creatives` | Ads com criativos (imagens) + insights por ad |
 | `POST /api/ads-actions` | Toggle status de campanha (Ativa/Pausada) |
 | `POST /api/ads-ai-analysis` | Analise IA de performance de campanhas |
+| `POST /api/ads-intelligence` | Metricas de inteligencia (fadiga, saturacao, saude, A/B tests) |
+| `POST /api/ads-creative-score` | Score de qualidade de criativos |
 | `POST /api/meta-insights` | Metricas privadas da conta (token refresh + circuit breaker) |
 | `POST /api/meta-publish` | Publicacao via Meta API |
 | `POST /api/meta-discovery` | Business Discovery de concorrentes |
@@ -559,7 +630,11 @@ Central de pesquisa com **3 abas**:
 | `POST /api/firecrawl` | Web scraping |
 | `POST /api/image-proxy` | Proxy de imagens externas |
 | `POST /api/upload` | Upload de midia |
+| `POST /api/import-md` | Importacao de conteudo via Markdown |
+| `POST /api/ai-import` | Importacao inteligente via IA |
 | `GET /api/instagram-highlights` | Highlights do perfil |
+| `POST /api/automation/auth` | Autenticacao de automacao Playwright |
+| `POST /api/automation/respond-comments` | Resposta automatica a comentarios |
 | `POST /api/auth/instagram` | OAuth Instagram |
 | `GET /api/auth/instagram/callback` | Callback OAuth |
 
@@ -610,25 +685,32 @@ instagram-dashboard/
 │   │   ├── collections/          # Colecoes/Campanhas
 │   │   ├── intelligence/         # Hub de Inteligencia
 │   │   └── settings/             # Configuracoes
-│   ├── api/                      # 25+ API Routes
+│   ├── api/                      # 36 API Routes
 │   └── actions/                  # 9 Server Actions
 ├── features/                     # Modulos de funcionalidade
-│   ├── ads/components/           # Ads: tabela, graficos, criativos, IA
+│   ├── ads/components/           # Ads: tabela, graficos, criativos, inteligencia v2
 │   ├── analytics/components/     # 30+ componentes de analytics
 │   ├── content/components/       # Editor + TagInput
 │   ├── storyboard/components/    # Board + Cards draggable
 │   ├── calendar/components/      # Month/Week/Day views
 │   ├── collections/components/   # List + Form
 │   └── accounts/components/      # List + Form com business info
-├── lib/services/                 # Servicos de backend
-│   ├── facebook-ads.service.ts   # Meta Ads API v25.0 (campaigns, insights, creatives)
-│   ├── instagram-graph.service.ts  # Meta Graph API completa
-│   ├── instagram.service.ts        # Playwright automation
-│   ├── apify.service.ts            # Scraping Apify
-│   ├── ai-adapter.ts              # Gemini/OpenRouter adapter
-│   ├── maps-playwright.service.ts  # Google Maps scraper
-│   └── scheduler.service.ts        # Fila de publicacao
-├── stores/                       # Zustand (9 slices incluindo ads-slice)
+├── lib/
+│   ├── services/                   # Servicos de backend
+│   │   ├── facebook-ads.service.ts   # Meta Ads API v25.0 (campaigns, insights, creatives, intelligence)
+│   │   ├── instagram-graph.service.ts  # Meta Graph API completa
+│   │   ├── instagram.service.ts        # Playwright automation
+│   │   ├── apify.service.ts            # Scraping Apify
+│   │   ├── ai-adapter.ts              # Gemini/OpenRouter adapter
+│   │   ├── maps-playwright.service.ts  # Google Maps scraper
+│   │   └── scheduler.service.ts        # Fila de publicacao
+│   └── utils/                      # Motor estatistico (pure TypeScript)
+│       ├── statistics.ts             # 34 funcoes: descritivas, tendencia, outliers, Shannon entropy
+│       ├── math-core.ts              # Primitivas: normalCDF, bootstrap CI, OLS regression
+│       ├── forecasting.ts            # Holt-Winters, CUSUM change-point detection
+│       ├── advanced-indicators.ts    # Elasticidade, meia-vida criativa, retornos decrescentes
+│       └── sentiment.ts              # Analise de sentimento em portugues
+├── stores/                       # Zustand (9 slices: account, ads, analytics, automation, calendar, collection, content, settings, ui)
 ├── components/                   # UI (Shadcn/UI) + Layout + Shared
 ├── hooks/                        # Custom hooks
 ├── types/                        # TypeScript interfaces

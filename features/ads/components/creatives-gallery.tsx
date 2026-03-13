@@ -8,8 +8,9 @@ import type { Ad } from '@/types/ads';
 import {
     Image as ImageIcon, Eye, MousePointerClick, DollarSign,
     TrendingUp, Loader2, AlertCircle, LayoutGrid, List,
-    ExternalLink, Search,
+    ExternalLink, Search, Sparkles, X,
 } from 'lucide-react';
+import type { CreativeScore } from '@/types/ads';
 
 interface Props {
     ads: Ad[];
@@ -57,7 +58,11 @@ function getMetric(ad: Ad, key: string): number {
     return parseFloat(val || '0') || 0;
 }
 
-function CreativeCard({ ad, currency, viewMode }: { ad: Ad; currency: string; viewMode: ViewMode }) {
+function CreativeCard({ ad, currency, viewMode, score, isAnalyzing, onAnalyze, onShowScore }: {
+    ad: Ad; currency: string; viewMode: ViewMode;
+    score?: CreativeScore; isAnalyzing?: boolean;
+    onAnalyze?: () => void; onShowScore?: (s: CreativeScore) => void;
+}) {
     const imageUrl = ad.creative?.image_url || ad.creative?.thumbnail_url;
     const spend = getMetric(ad, 'spend');
     const impressions = getMetric(ad, 'impressions');
@@ -89,6 +94,21 @@ function CreativeCard({ ad, currency, viewMode }: { ad: Ad; currency: string; vi
                     )}
                     <div className="flex items-center gap-2 mt-1">
                         {statusBadge(ad.effective_status)}
+                        {score && (
+                            <button onClick={() => onShowScore?.(score)}>
+                                <ScoreBadge score={score} />
+                            </button>
+                        )}
+                        {!score && (ad.creative?.image_url || ad.creative?.thumbnail_url) && (
+                            <button
+                                onClick={() => onAnalyze?.()}
+                                disabled={isAnalyzing}
+                                className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 disabled:opacity-50"
+                                title="Analisar criativo com IA"
+                            >
+                                {isAnalyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -138,9 +158,26 @@ function CreativeCard({ ad, currency, viewMode }: { ad: Ad; currency: string; vi
                 )}
 
                 {/* Status overlay */}
-                <div className="absolute top-2 left-2">
+                <div className="absolute top-2 left-2 flex flex-col gap-1">
                     {statusBadge(ad.effective_status)}
+                    {score && (
+                        <button onClick={() => onShowScore?.(score)}>
+                            <ScoreBadge score={score} />
+                        </button>
+                    )}
                 </div>
+
+                {/* Analyze button overlay */}
+                {!score && (ad.creative?.image_url || ad.creative?.thumbnail_url) && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onAnalyze?.(); }}
+                        disabled={isAnalyzing}
+                        className="absolute bottom-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                        title="Analisar criativo com IA"
+                    >
+                        {isAnalyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    </button>
+                )}
 
                 {/* Link overlay */}
                 {ad.creative?.link_url && (
@@ -194,11 +231,97 @@ function CreativeCard({ ad, currency, viewMode }: { ad: Ad; currency: string; vi
     );
 }
 
+function ScoreBadge({ score }: { score: CreativeScore }) {
+    const color = score.total >= 80 ? 'text-green-400 bg-green-500/10 border-green-500/30'
+        : score.total >= 60 ? 'text-blue-400 bg-blue-500/10 border-blue-500/30'
+        : score.total >= 40 ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30'
+        : 'text-red-400 bg-red-500/10 border-red-500/30';
+    return (
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${color}`}>
+            <Sparkles className="h-2.5 w-2.5" />
+            {score.total}/100
+        </span>
+    );
+}
+
+function ScoreModal({ score, onClose }: { score: CreativeScore; onClose: () => void }) {
+    const bars = [
+        { label: 'Composição', value: score.composition, max: 25 },
+        { label: 'Contraste', value: score.contrast, max: 25 },
+        { label: 'Texto', value: score.textRatio, max: 25 },
+        { label: 'Hierarquia', value: score.hierarchy, max: 25 },
+    ];
+    const barColor = (v: number) => v >= 20 ? '#22c55e' : v >= 15 ? '#3b82f6' : v >= 10 ? '#eab308' : '#ef4444';
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+            <div className="bg-background border rounded-xl p-6 w-full max-w-sm space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-purple-400" />
+                        <h3 className="font-semibold">Score do Criativo</h3>
+                    </div>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+                </div>
+                <div className="text-center">
+                    <span className="text-4xl font-bold">{score.total}</span>
+                    <span className="text-lg text-muted-foreground">/100</span>
+                    <p className="text-sm mt-1 font-medium">{score.label}</p>
+                </div>
+                <div className="space-y-2">
+                    {bars.map(b => (
+                        <div key={b.label} className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground w-20">{b.label}</span>
+                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full rounded-full" style={{ width: `${(b.value / b.max) * 100}%`, backgroundColor: barColor(b.value) }} />
+                            </div>
+                            <span className="text-xs font-mono w-8 text-right">{b.value}/{b.max}</span>
+                        </div>
+                    ))}
+                </div>
+                {score.suggestions.length > 0 && (
+                    <div className="space-y-1 pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground">Sugestões:</p>
+                        {score.suggestions.map((s, i) => (
+                            <p key={i} className="text-xs text-muted-foreground">• {s}</p>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function CreativesGallery({ ads, currency, isLoading, error, onFetchCreatives }: Props) {
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
     const [sortBy, setSortBy] = useState<SortBy>('spend');
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [scores, setScores] = useState<Record<string, CreativeScore>>({});
+    const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+    const [selectedScore, setSelectedScore] = useState<CreativeScore | null>(null);
+
+    const analyzeCreative = async (ad: Ad) => {
+        const imageUrl = ad.creative?.image_url || ad.creative?.thumbnail_url;
+        if (!imageUrl) return;
+        setAnalyzingId(ad.id);
+        try {
+            const res = await fetch('/api/ads-creative-score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageUrl, adName: ad.name }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data.success && data.score) {
+                const s: CreativeScore = { ...data.score, creativeId: ad.id };
+                setScores(prev => ({ ...prev, [ad.id]: s }));
+            }
+        } catch (e) {
+            console.error('[CreativesGallery] analyzeCreative error:', e);
+        } finally {
+            setAnalyzingId(null);
+        }
+    };
 
     // Filtrar somente ads com criativos ou imagens
     const adsWithCreatives = useMemo(() => {
@@ -358,15 +481,30 @@ export function CreativesGallery({ ads, currency, isLoading, error, onFetchCreat
             ) : viewMode === 'grid' ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {adsWithCreatives.map(ad => (
-                        <CreativeCard key={ad.id} ad={ad} currency={currency} viewMode="grid" />
+                        <CreativeCard
+                            key={ad.id} ad={ad} currency={currency} viewMode="grid"
+                            score={scores[ad.id]} isAnalyzing={analyzingId === ad.id}
+                            onAnalyze={() => analyzeCreative(ad)}
+                            onShowScore={setSelectedScore}
+                        />
                     ))}
                 </div>
             ) : (
                 <div className="space-y-2">
                     {adsWithCreatives.map(ad => (
-                        <CreativeCard key={ad.id} ad={ad} currency={currency} viewMode="list" />
+                        <CreativeCard
+                            key={ad.id} ad={ad} currency={currency} viewMode="list"
+                            score={scores[ad.id]} isAnalyzing={analyzingId === ad.id}
+                            onAnalyze={() => analyzeCreative(ad)}
+                            onShowScore={setSelectedScore}
+                        />
                     ))}
                 </div>
+            )}
+
+            {/* Score Modal */}
+            {selectedScore && (
+                <ScoreModal score={selectedScore} onClose={() => setSelectedScore(null)} />
             )}
         </div>
     );

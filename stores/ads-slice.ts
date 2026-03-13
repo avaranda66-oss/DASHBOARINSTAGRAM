@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import type {
     AdCampaign, AdSet, Ad, AdAccount, AdInsight,
     AdsKpiSummary, DailyAdInsight, AdsDatePreset, AdsFilters,
+    IntelligenceMetrics,
 } from '@/types/ads';
 
 interface AdsSlice {
@@ -21,6 +22,12 @@ interface AdsSlice {
     isLoadingCreatives: boolean;
     creativesError: string | null;
 
+    // Intelligence
+    intelligenceMetrics: IntelligenceMetrics | null;
+    isLoadingIntelligence: boolean;
+    intelligenceError: string | null;
+    creativeScores: Record<string, import('@/types/ads').CreativeScore>;
+
     // State
     isLoading: boolean;
     error: string | null;
@@ -33,6 +40,7 @@ interface AdsSlice {
     fetchAll: (token: string, accountId: string) => Promise<void>;
     fetchInsights: (token: string, accountId: string) => Promise<void>;
     fetchCreatives: (token: string, accountId: string) => Promise<void>;
+    fetchIntelligence: (token: string, accountId: string) => Promise<void>;
     setFilters: (filters: Partial<AdsFilters>) => void;
     setSelectedCampaign: (id: string | null) => void;
     setExpandedCampaign: (id: string | null) => void;
@@ -52,6 +60,10 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
     creativeAds: [],
     isLoadingCreatives: false,
     creativesError: null,
+    intelligenceMetrics: null,
+    isLoadingIntelligence: false,
+    intelligenceError: null,
+    creativeScores: {},
     isLoading: false,
     error: null,
     lastFetchedAt: null,
@@ -83,7 +95,10 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                         ...dateParams,
                         includeSets: true,
                     }),
-                }).then(r => r.json()),
+                }).then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                }),
                 fetch('/api/ads-insights', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -92,7 +107,10 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                         accountId,
                         ...dateParams,
                     }),
-                }).then(r => r.json()),
+                }).then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                }),
             ]);
 
             if (!campRes.success) throw new Error(campRes.error);
@@ -126,7 +144,10 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                     accountId,
                     datePreset: filters.datePreset,
                 }),
-            }).then(r => r.json());
+            }).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            });
 
             if (!res.success) throw new Error(res.error);
 
@@ -152,7 +173,10 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token, accountId, ...dateParams }),
-            }).then(r => r.json());
+            }).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            });
 
             if (!res.success) throw new Error(res.error);
 
@@ -164,6 +188,36 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
             console.error('[AdsStore] fetchCreatives erro:', e);
             const message = e instanceof Error ? e.message : 'Erro ao buscar criativos.';
             set({ creativesError: message, isLoadingCreatives: false });
+        }
+    },
+
+    fetchIntelligence: async (token, accountId) => {
+        set({ isLoadingIntelligence: true, intelligenceError: null });
+        try {
+            const { filters, kpiSummary } = get();
+            const dateParams = filters.customRange
+                ? { timeRange: filters.customRange }
+                : { datePreset: filters.datePreset };
+
+            const res = await fetch('/api/ads-intelligence', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, accountId, ...dateParams, kpiSummary }),
+            }).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            });
+
+            if (!res.success) throw new Error(res.error);
+
+            set({
+                intelligenceMetrics: res.metrics,
+                isLoadingIntelligence: false,
+            });
+        } catch (e: unknown) {
+            console.error('[AdsStore] fetchIntelligence erro:', e);
+            const message = e instanceof Error ? e.message : 'Erro ao carregar inteligência.';
+            set({ intelligenceError: message, isLoadingIntelligence: false });
         }
     },
 
@@ -184,7 +238,10 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token, action: 'campaign_status', targetId: campaignId, status }),
-            }).then(r => r.json());
+            }).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            });
 
             if (res.success) {
                 // Atualizar localmente
@@ -208,7 +265,10 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token, action: 'campaign_budget', targetId: campaignId, dailyBudget }),
-            }).then(r => r.json());
+            }).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            });
 
             if (res.success) {
                 const { campaigns } = get();
@@ -238,6 +298,10 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
         creativeAds: [],
         isLoadingCreatives: false,
         creativesError: null,
+        intelligenceMetrics: null,
+        isLoadingIntelligence: false,
+        intelligenceError: null,
+        creativeScores: {},
         error: null,
         lastFetchedAt: null,
         selectedCampaignId: null,
