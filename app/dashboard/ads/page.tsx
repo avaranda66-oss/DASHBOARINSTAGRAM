@@ -1,21 +1,23 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAdsStore, useAccountStore, useSettingsStore } from '@/stores';
 import { AdsKpiCards } from '@/features/ads/components/ads-kpi-cards';
 import { CampaignsTable } from '@/features/ads/components/campaigns-table';
 import { AdsCharts } from '@/features/ads/components/ads-charts';
 import { AdsAiPanel } from '@/features/ads/components/ads-ai-panel';
+import { CreativesGallery } from '@/features/ads/components/creatives-gallery';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
     Megaphone, RefreshCw, Loader2, AlertCircle,
-    BarChart3, Table, Brain, Clock,
+    BarChart3, Table, Brain, Clock, CalendarDays, Filter, X,
+    Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AdsDatePreset } from '@/types/ads';
 
-type ViewTab = 'overview' | 'charts' | 'intelligence';
+type ViewTab = 'overview' | 'charts' | 'intelligence' | 'creatives';
 
 const DATE_PRESETS: { value: AdsDatePreset; label: string }[] = [
     { value: 'today', label: 'Hoje' },
@@ -44,13 +46,23 @@ export default function AdsDashboardPage() {
     const {
         campaigns, adSets, kpiSummary, dailyInsights, account,
         isLoading, error, lastFetchedAt, filters, expandedCampaignId,
-        fetchAll, setFilters, setExpandedCampaign, updateCampaignStatus,
+        creativeAds, isLoadingCreatives, creativesError,
+        fetchAll, fetchCreatives, setFilters, setExpandedCampaign, updateCampaignStatus,
     } = adsStore;
 
     // Encontrar conta com ads_token
     const [adsToken, setAdsToken] = useState<string | null>(null);
     const [adsAccountId, setAdsAccountId] = useState<string | null>(null);
     const [accountName, setAccountName] = useState<string>('');
+
+    // Custom date range state
+    const [showCustomRange, setShowCustomRange] = useState(false);
+    const [customSince, setCustomSince] = useState('');
+    const [customUntil, setCustomUntil] = useState('');
+    const [isCustomRangeActive, setIsCustomRangeActive] = useState(false);
+
+    // Campaign filter state
+    const [selectedCampaignFilter, setSelectedCampaignFilter] = useState<string>('all');
 
     useEffect(() => {
         if (!accountStore.isLoaded) accountStore.loadAccounts();
@@ -82,26 +94,129 @@ export default function AdsDashboardPage() {
     }, [adsToken, adsAccountId, fetchAll]);
 
     const handleDateChange = useCallback((preset: AdsDatePreset) => {
-        setFilters({ datePreset: preset });
+        setIsCustomRangeActive(false);
+        setShowCustomRange(false);
+        setFilters({ datePreset: preset, customRange: undefined });
         if (adsToken && adsAccountId) {
-            // Pequeno delay para state atualizar
+            setTimeout(() => fetchAll(adsToken, adsAccountId), 50);
+        }
+    }, [adsToken, adsAccountId, setFilters, fetchAll]);
+
+    const handleCustomRangeApply = useCallback(() => {
+        if (!customSince || !customUntil) {
+            toast.error('Selecione as duas datas.');
+            return;
+        }
+        if (customSince > customUntil) {
+            toast.error('A data inicial deve ser anterior à data final.');
+            return;
+        }
+        setIsCustomRangeActive(true);
+        setShowCustomRange(false);
+        setFilters({ customRange: { since: customSince, until: customUntil } });
+        if (adsToken && adsAccountId) {
+            setTimeout(() => fetchAll(adsToken, adsAccountId), 50);
+        }
+    }, [customSince, customUntil, adsToken, adsAccountId, setFilters, fetchAll]);
+
+    const handleClearCustomRange = useCallback(() => {
+        setIsCustomRangeActive(false);
+        setCustomSince('');
+        setCustomUntil('');
+        setFilters({ customRange: undefined, datePreset: 'last_30d' });
+        if (adsToken && adsAccountId) {
             setTimeout(() => fetchAll(adsToken, adsAccountId), 50);
         }
     }, [adsToken, adsAccountId, setFilters, fetchAll]);
 
     const handleStatusFilter = useCallback((status: string) => {
         setFilters({ statusFilter: status as any });
+        // Status filter is client-side only — no API refetch needed
+    }, [setFilters]);
+
+    const handleFetchCreatives = useCallback(() => {
         if (adsToken && adsAccountId) {
-            setTimeout(() => fetchAll(adsToken, adsAccountId), 50);
+            fetchCreatives(adsToken, adsAccountId);
         }
-    }, [adsToken, adsAccountId, setFilters, fetchAll]);
+    }, [adsToken, adsAccountId, fetchCreatives]);
 
     const handleToggleCampaignStatus = useCallback(async (campaignId: string, newStatus: 'ACTIVE' | 'PAUSED') => {
         if (!adsToken) return false;
         return updateCampaignStatus(adsToken, campaignId, newStatus);
     }, [adsToken, updateCampaignStatus]);
 
+    // Filter data by selected campaign + status
+    const filteredCampaigns = useMemo(() => {
+        let result = campaigns;
+        if (filters.statusFilter !== 'all') {
+            result = result.filter(c => c.effective_status === filters.statusFilter);
+        }
+        if (selectedCampaignFilter !== 'all') {
+            result = result.filter(c => c.id === selectedCampaignFilter);
+        }
+        return result;
+    }, [campaigns, selectedCampaignFilter, filters.statusFilter]);
+
+    const filteredAdSets = useMemo(() => {
+        const campaignIds = new Set(filteredCampaigns.map(c => c.id));
+        if (filters.statusFilter === 'all' && selectedCampaignFilter === 'all') return adSets;
+        return adSets.filter(s => campaignIds.has(s.campaign_id));
+    }, [adSets, filteredCampaigns, filters.statusFilter, selectedCampaignFilter]);
+
+    const filteredKpiSummary = useMemo(() => {
+        if (!kpiSummary) return kpiSummary;
+        // If both filters are "all", return raw KPIs
+        if (selectedCampaignFilter === 'all' && filters.statusFilter === 'all') return kpiSummary;
+        // Recompute KPIs from filtered campaign insights
+        const filtered = filteredCampaigns;
+        let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalReach = 0;
+        let totalConversions = 0, totalConversionValue = 0;
+        let weightedCpc = 0, weightedCtr = 0;
+
+        for (const c of filtered) {
+            const i = c.insights;
+            if (!i) continue;
+            const spend = parseFloat(i.spend) || 0;
+            const impressions = parseInt(i.impressions) || 0;
+            const clicks = parseInt(i.clicks) || 0;
+            const reach = parseInt(i.reach || '0') || 0;
+            totalSpend += spend;
+            totalImpressions += impressions;
+            totalClicks += clicks;
+            totalReach += reach;
+            weightedCpc += (parseFloat(i.cpc || '0') || 0) * clicks;
+            weightedCtr += (parseFloat(i.ctr || '0') || 0) * impressions;
+        }
+
+        return {
+            ...kpiSummary,
+            totalSpend,
+            totalImpressions,
+            totalClicks,
+            totalReach,
+            avgCpc: totalClicks > 0 ? weightedCpc / totalClicks : 0,
+            avgCtr: totalImpressions > 0 ? weightedCtr / totalImpressions : 0,
+            totalConversions,
+            totalConversionValue,
+            roas: 0,
+            cpa: 0,
+            activeCampaigns: filtered.filter(c => c.effective_status === 'ACTIVE').length,
+            pausedCampaigns: filtered.filter(c => c.effective_status === 'PAUSED').length,
+        };
+    }, [filteredCampaigns, kpiSummary, selectedCampaignFilter]);
+
+    const filteredDailyInsights = useMemo(() => {
+        // Daily insights are account-level, so we can't filter by campaign client-side perfectly
+        // But when a campaign is selected, we show what we have
+        return dailyInsights;
+    }, [dailyInsights]);
+
     const currency = account?.currency || kpiSummary?.currency || 'BRL';
+
+    // Custom range display label
+    const customRangeLabel = isCustomRangeActive && customSince && customUntil
+        ? `${new Date(customSince + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} — ${new Date(customUntil + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`
+        : null;
 
     // Estado sem configuração
     if (!adsToken || !adsAccountId) {
@@ -144,33 +259,119 @@ export default function AdsDashboardPage() {
                 </Button>
             </div>
 
-            {/* Filtros */}
-            <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted-foreground mr-1">Período:</span>
-                {DATE_PRESETS.map(p => (
-                    <Button
-                        key={p.value}
-                        variant={filters.datePreset === p.value ? 'default' : 'outline'}
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleDateChange(p.value)}
-                    >
-                        {p.label}
-                    </Button>
-                ))}
-                <div className="w-px h-6 bg-border mx-2" />
-                <span className="text-xs text-muted-foreground mr-1">Status:</span>
-                {STATUS_FILTERS.map(s => (
-                    <Button
-                        key={s.value}
-                        variant={filters.statusFilter === s.value ? 'default' : 'outline'}
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleStatusFilter(s.value)}
-                    >
-                        {s.label}
-                    </Button>
-                ))}
+            {/* Filtros — Período */}
+            <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground mr-1">Período:</span>
+                    {DATE_PRESETS.map(p => (
+                        <Button
+                            key={p.value}
+                            variant={!isCustomRangeActive && filters.datePreset === p.value ? 'default' : 'outline'}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleDateChange(p.value)}
+                        >
+                            {p.label}
+                        </Button>
+                    ))}
+
+                    {/* Custom range toggle */}
+                    {!isCustomRangeActive ? (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            onClick={() => setShowCustomRange(!showCustomRange)}
+                        >
+                            <CalendarDays className="h-3 w-3" />
+                            Personalizado
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="default"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            onClick={handleClearCustomRange}
+                        >
+                            <CalendarDays className="h-3 w-3" />
+                            {customRangeLabel}
+                            <X className="h-3 w-3 ml-1" />
+                        </Button>
+                    )}
+                </div>
+
+                {/* Custom date range inputs */}
+                {showCustomRange && !isCustomRangeActive && (
+                    <div className="flex items-center gap-2 pl-[4.5rem]">
+                        <input
+                            type="date"
+                            value={customSince}
+                            onChange={e => setCustomSince(e.target.value)}
+                            className="h-8 px-2 text-xs border rounded-md bg-background"
+                        />
+                        <span className="text-xs text-muted-foreground">até</span>
+                        <input
+                            type="date"
+                            value={customUntil}
+                            onChange={e => setCustomUntil(e.target.value)}
+                            className="h-8 px-2 text-xs border rounded-md bg-background"
+                        />
+                        <Button size="sm" className="h-8 text-xs" onClick={handleCustomRangeApply}>
+                            Aplicar
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setShowCustomRange(false)}>
+                            Cancelar
+                        </Button>
+                    </div>
+                )}
+
+                {/* Filtros — Status + Campanha */}
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground mr-1">Status:</span>
+                    {STATUS_FILTERS.map(s => (
+                        <Button
+                            key={s.value}
+                            variant={filters.statusFilter === s.value ? 'default' : 'outline'}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleStatusFilter(s.value)}
+                        >
+                            {s.label}
+                        </Button>
+                    ))}
+
+                    {campaigns.length > 0 && (
+                        <>
+                            <div className="w-px h-6 bg-border mx-2" />
+                            <span className="text-xs text-muted-foreground mr-1">
+                                <Filter className="h-3 w-3 inline mr-1" />
+                                Campanha:
+                            </span>
+                            <select
+                                value={selectedCampaignFilter}
+                                onChange={e => setSelectedCampaignFilter(e.target.value)}
+                                className="h-7 px-2 text-xs border rounded-md bg-background text-foreground max-w-[240px]"
+                            >
+                                <option value="all">Todas as campanhas</option>
+                                {campaigns.map(c => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.name} ({c.effective_status === 'ACTIVE' ? 'Ativa' : c.effective_status === 'PAUSED' ? 'Pausada' : c.effective_status})
+                                    </option>
+                                ))}
+                            </select>
+                            {selectedCampaignFilter !== 'all' && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-xs px-2"
+                                    onClick={() => setSelectedCampaignFilter('all')}
+                                >
+                                    <X className="h-3 w-3" />
+                                </Button>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Erro */}
@@ -196,15 +397,16 @@ export default function AdsDashboardPage() {
             )}
 
             {/* Conteúdo principal */}
-            {kpiSummary && (
+            {filteredKpiSummary && (
                 <>
                     {/* KPI Cards */}
-                    <AdsKpiCards kpi={kpiSummary} />
+                    <AdsKpiCards kpi={filteredKpiSummary} />
 
                     {/* Tabs */}
                     <div className="flex items-center gap-1 border-b">
                         {([
                             { id: 'overview', label: 'Campanhas', icon: Table },
+                            { id: 'creatives', label: 'Criativos', icon: ImageIcon },
                             { id: 'charts', label: 'Gráficos', icon: BarChart3 },
                             { id: 'intelligence', label: 'Inteligência', icon: Brain },
                         ] as const).map(tab => (
@@ -226,8 +428,8 @@ export default function AdsDashboardPage() {
                     {/* Tab Content */}
                     {activeTab === 'overview' && (
                         <CampaignsTable
-                            campaigns={campaigns}
-                            adSets={adSets}
+                            campaigns={filteredCampaigns}
+                            adSets={filteredAdSets}
                             currency={currency}
                             onToggleStatus={handleToggleCampaignStatus}
                             onExpandCampaign={setExpandedCampaign}
@@ -235,19 +437,29 @@ export default function AdsDashboardPage() {
                         />
                     )}
 
+                    {activeTab === 'creatives' && (
+                        <CreativesGallery
+                            ads={creativeAds}
+                            currency={currency}
+                            isLoading={isLoadingCreatives}
+                            error={creativesError}
+                            onFetchCreatives={handleFetchCreatives}
+                        />
+                    )}
+
                     {activeTab === 'charts' && (
                         <AdsCharts
-                            daily={dailyInsights}
-                            campaigns={campaigns}
+                            daily={filteredDailyInsights}
+                            campaigns={filteredCampaigns}
                             currency={currency}
                         />
                     )}
 
                     {activeTab === 'intelligence' && (
                         <AdsAiPanel
-                            kpi={kpiSummary}
-                            campaigns={campaigns}
-                            daily={dailyInsights}
+                            kpi={filteredKpiSummary}
+                            campaigns={filteredCampaigns}
+                            daily={filteredDailyInsights}
                             currency={currency}
                         />
                     )}

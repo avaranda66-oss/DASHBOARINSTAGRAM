@@ -16,6 +16,11 @@ interface AdsSlice {
     dailyInsights: DailyAdInsight[];
     kpiSummary: AdsKpiSummary | null;
 
+    // Creatives
+    creativeAds: Ad[];
+    isLoadingCreatives: boolean;
+    creativesError: string | null;
+
     // State
     isLoading: boolean;
     error: string | null;
@@ -27,6 +32,7 @@ interface AdsSlice {
     // Actions
     fetchAll: (token: string, accountId: string) => Promise<void>;
     fetchInsights: (token: string, accountId: string) => Promise<void>;
+    fetchCreatives: (token: string, accountId: string) => Promise<void>;
     setFilters: (filters: Partial<AdsFilters>) => void;
     setSelectedCampaign: (id: string | null) => void;
     setExpandedCampaign: (id: string | null) => void;
@@ -43,6 +49,9 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
     insights: [],
     dailyInsights: [],
     kpiSummary: null,
+    creativeAds: [],
+    isLoadingCreatives: false,
+    creativesError: null,
     isLoading: false,
     error: null,
     lastFetchedAt: null,
@@ -57,11 +66,13 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
         set({ isLoading: true, error: null });
         try {
             const { filters } = get();
-            const statusFilter = filters.statusFilter === 'all'
-                ? undefined
-                : [filters.statusFilter];
 
-            // Buscar campanhas + insights em paralelo
+            // Build date params — custom range overrides preset
+            const dateParams = filters.customRange
+                ? { timeRange: filters.customRange }
+                : { datePreset: filters.datePreset };
+
+            // Buscar campanhas + insights em paralelo (status filter is client-side)
             const [campRes, insightRes] = await Promise.all([
                 fetch('/api/ads-campaigns', {
                     method: 'POST',
@@ -69,8 +80,7 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                     body: JSON.stringify({
                         token,
                         accountId,
-                        statusFilter,
-                        datePreset: filters.datePreset,
+                        ...dateParams,
                         includeSets: true,
                     }),
                 }).then(r => r.json()),
@@ -80,7 +90,7 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                     body: JSON.stringify({
                         token,
                         accountId,
-                        datePreset: filters.datePreset,
+                        ...dateParams,
                     }),
                 }).then(r => r.json()),
             ]);
@@ -127,6 +137,33 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
             });
         } catch (e: any) {
             console.error('[AdsStore] fetchInsights erro:', e);
+        }
+    },
+
+    fetchCreatives: async (token, accountId) => {
+        set({ isLoadingCreatives: true, creativesError: null });
+        try {
+            const { filters } = get();
+            const dateParams = filters.customRange
+                ? { timeRange: filters.customRange }
+                : { datePreset: filters.datePreset };
+
+            const res = await fetch('/api/ads-creatives', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, accountId, ...dateParams }),
+            }).then(r => r.json());
+
+            if (!res.success) throw new Error(res.error);
+
+            set({
+                creativeAds: res.ads || [],
+                isLoadingCreatives: false,
+            });
+        } catch (e: unknown) {
+            console.error('[AdsStore] fetchCreatives erro:', e);
+            const message = e instanceof Error ? e.message : 'Erro ao buscar criativos.';
+            set({ creativesError: message, isLoadingCreatives: false });
         }
     },
 
@@ -198,6 +235,9 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
         insights: [],
         dailyInsights: [],
         kpiSummary: null,
+        creativeAds: [],
+        isLoadingCreatives: false,
+        creativesError: null,
         error: null,
         lastFetchedAt: null,
         selectedCampaignId: null,
