@@ -149,7 +149,8 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
                             const optimizedAbsPath = pathMod.join(process.cwd(), 'public', optimizedRelPath);
                             await sharp(localAbsPath)
                                 .resize(targetW, targetH, {
-                                    fit: 'cover',
+                                    fit: 'inside',
+                                    withoutEnlargement: true,
                                     kernel: 'lanczos3',
                                     fastShrinkOnLoad: false,
                                 })

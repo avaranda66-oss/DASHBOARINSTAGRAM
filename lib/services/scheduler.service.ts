@@ -27,7 +27,8 @@ async function optimizeImageForMeta(
         const optimizedAbsPath = path.join(process.cwd(), 'public', optimizedRelPath);
         await sharp(localAbsPath)
             .resize(targetWidth, targetHeight, {
-                fit: 'cover',
+                fit: 'inside',
+                withoutEnlargement: true,
                 kernel: 'lanczos3',
                 fastShrinkOnLoad: false,
             })
