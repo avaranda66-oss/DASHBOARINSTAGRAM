@@ -77,63 +77,133 @@ O **Instagram Dashboard OSS** e uma plataforma completa para gerenciamento profi
 
 ## Screenshots
 
-### Central de Comando (Dashboard Home)
+### 1. Central de Comando (Dashboard Home)
 
 <p align="center">
   <img src="docs/screenshots/01-dashboard-home.png" alt="Dashboard Home" width="800" />
 </p>
 
-> KPIs em tempo real: total de conteudos, agendados, publicados, distribuicao por status e tipo (incluindo Campanha), proximos conteudos e acoes rapidas.
+> **Central de Comando** — Pagina principal com visao completa da operacao. No topo: 4 cards KPI animados (Total de Conteudos, Agendados, Esta Semana com variacao %, Publicados) com sparklines de tendencia. Abaixo a esquerda: grid de **6 status** (Ideia, Rascunho, Aprovado, Agendado, Publicado, Falhou) com contadores e barras de progresso coloridas. A direita: **Distribuicao por Tipo** com barras percentuais (Post 58%, Campanha 32%, Carrossel 11%, Story, Reel). No rodape: **Proximos Conteudos** com os 5 posts agendados (titulo, data, horario, badge de tipo) e **Acoes Rapidas** com botoes para Novo Conteudo, Storyboard, Calendario e Metricas. Header superior com barra de busca global (Cmd+K), seletor de conta, e indicadores de status das APIs (Gemini OK, Apify OK, Firecrawl OK).
 
 ---
 
-### Analytics — Busca de Perfil (Apify)
+### 2. Storyboard Kanban
 
 <p align="center">
-  <img src="docs/screenshots/02-analytics.png" alt="Analytics Search" width="800" />
+  <img src="docs/screenshots/02-storyboard-kanban.png" alt="Storyboard Kanban" width="800" />
 </p>
 
-> Analise qualquer perfil publico do Instagram. Insira a URL ou @handle, configure numero de posts e periodo, e clique "Analisar". Clientes em azul, concorrentes em laranja.
+> **Storyboard Kanban** — Board de planejamento visual com drag-and-drop (@dnd-kit). 6 colunas representando o workflow: **Ideia** (cinza), **Rascunho** (amarelo), **Aprovado** (verde), **Agendado** (roxo), **Publicado** (azul), **Falhou** (vermelho). Cada coluna tem contador de cards e botao "+" para adicionar direto naquele status. Cards mostram badge de tipo colorido (Post azul, Campanha verde, Carrossel laranja), titulo, descricao truncada, data/hora de agendamento e hashtags. Botao "Filtros" no topo para filtrar por tipo, conta ou colecao. No rodape: botoes "Arquivos MD" e "Importar Pasta" para importacao em massa de conteudo.
 
 ---
 
-### Analytics — Minha Conta: Visao Geral (Meta API)
+### 3. Calendario Editorial
 
 <p align="center">
-  <img src="docs/screenshots/tab-visao-geral.png" alt="Minha Conta - Visao Geral" width="800" />
+  <img src="docs/screenshots/03-calendario-editorial.png" alt="Calendario Editorial" width="800" />
 </p>
 
-> Dados **privados exclusivos** via Meta Graph API: alcance real, saves, compartilhamentos. KPIs com sparklines, top posts em destaque, tabela completa com metricas detalhadas.
+> **Calendario Editorial** — 3 visualizacoes (Mensal, Semanal, Diario) acessiveis por abas. Grid classico de 30 dias com navegacao por setas e botao "Hoje". Cada dia mostra os conteudos agendados com badges coloridos por tipo: azul (Post), laranja (Campanha/Carrossel), verde (Campanha). Contador de density no canto superior direito de cada celula (ex: "2", "3"). Clique em qualquer dia para ver detalhes ou adicionar conteudo. Design dark com bordas sutis separando cada celula do calendario.
 
 ---
 
-### Analytics — Minha Conta: Metricas Completas
+### 4. Colecoes e Campanhas
 
 <p align="center">
-  <img src="docs/screenshots/minha-conta-loaded.png" alt="Metricas Completas" width="800" />
+  <img src="docs/screenshots/04-colecoes.png" alt="Colecoes" width="800" />
 </p>
 
-> Visao completa com todos os posts carregados: likes, comentarios, alcance, impressoes, taxa de engajamento, e tabela com colunas ordenaveis (Reach, Saves, Shares, Likes, Comments).
+> **Colecoes** — Agrupe conteudos em categorias ou campanhas tematicas. Cada colecao tem nome, icone personalizado, cor hexadecimal, descricao e periodo opcional (inicio/fim). Botao "+ Nova Colecao" com gradiente Instagram no canto superior direito. Estado vazio com call-to-action claro para criar a primeira colecao.
 
 ---
 
-### Analytics — Graficos e Tendencias
+### 5. Contas Instagram
 
 <p align="center">
-  <img src="docs/screenshots/04-graficos-tab.png" alt="Graficos e Charts" width="800" />
+  <img src="docs/screenshots/05-contas.png" alt="Contas Instagram" width="800" />
 </p>
 
-> Timeline de Alcance (AreaChart), Desempenho por Tipo (BarChart), Melhor Dia da Semana, Melhor Horario, e Performance de Reels vs Feed.
+> **Contas Instagram** — Gerencie multiplos perfis. Cada card mostra avatar circular, nome da conta, @handle com gradiente Instagram, badge de status da automacao (verde "AUTOMACAO OK" = sessao Playwright ativa), e contador de conteudos ativos. Botao "+ Nova Conta" no topo. Ao clicar em uma conta, abre formulario completo com: dados basicos, tokens de API (Meta Graph, Facebook Ads, Ad Account ID), informacoes do negocio (endereco, telefone, horario, site) usadas pela IA para respostas contextualizadas a comentarios.
 
 ---
 
-### Analytics — Business Discovery (Concorrentes)
+### 6. Analytics — Metricas Individuais (Apify + Meta API)
 
 <p align="center">
-  <img src="docs/screenshots/concorrentes-tab.png" alt="Concorrentes via Meta API" width="800" />
+  <img src="docs/screenshots/06-analytics-busca.png" alt="Analytics Individual" width="800" />
 </p>
 
-> Busque dados publicos de qualquer conta Business ou Creator do Instagram diretamente pela API oficial do Meta — sem scraping, dados confiaveis.
+> **Analytics Individual** — Tela de analise com 3 abas no topo (Individual, VS, Minha Conta). Area de busca com campo para URL/@ do Instagram, seletor de numero de posts e filtro de historico. Pills de **Clientes** (azuis) e **Concorrentes** (laranjas) para acesso rapido a perfis salvos. Abaixo: 12 cards KPI com sparklines — Seguidores, Alcance Total, Total Likes, Total Saves, Total Shares, Total Comentarios, Eng. Rate, Avg Watch Time, Save Rate, Share Rate, Depth Score (score ponderado 0-100), e Melhor Tipo de conteudo. Cada card mostra tendencia (Estavel, Caindo, Subindo) com seta colorida. Banner "Metricas Privadas (Meta API)" com botao "Enriquecer" para carregar dados exclusivos do Meta.
+
+---
+
+### 7. Minha Conta — Visao Geral (Meta API)
+
+<p align="center">
+  <img src="docs/screenshots/07-minha-conta-visao-geral.png" alt="Minha Conta Visao Geral" width="800" />
+</p>
+
+> **Minha Conta — Visao Geral** — Dados **privados exclusivos** via Meta Graph API v25.0. Seletor de conta no topo com badge "META API" e indicador de cache (data/hora da ultima atualizacao). 9 sub-abas: Visao Geral, Graficos, Melhores Posts, Hashtags, Estrategia IA, Audiencia, Concorrentes, Publicar, Feed Preview. Os mesmos 12 KPIs com sparklines, mas alimentados por dados reais do Meta (alcance real, saves, shares — metricas que scraping nao consegue). Breakdown por tipo de conteudo (Foto, Video, Carrossel) com alcance medio de cada um. Cards de destaque: "Maior Alcance" e "Mais Curtido" com preview da legenda.
+
+---
+
+### 8. Minha Conta — Graficos e Tendencias
+
+<p align="center">
+  <img src="docs/screenshots/08-minha-conta-graficos.png" alt="Graficos e Tendencias" width="800" />
+</p>
+
+> **Graficos e Tendencias** — 6 graficos interativos (Recharts): **1)** Timeline de Alcance + Saves + Shares com linha de tendencia tracejada (AreaChart dual-axis), toggle Alcance & Saves / Likes & Comentarios, legenda com indicadores Reels vs Feed. **2)** Desempenho por Tipo de Conteudo (BarChart agrupado: Carrossel, Foto, Video x Alcance, Likes, Saves, Shares). **3)** Alcance Medio por Dia da Semana (BarChart com toggle Alcance/Likes/Saves/Shares + barra de Engajamento). **4)** Melhor Horario para Postar (BarChart vertical com destaque do horario otimo: "Melhor Horario: 08h — Media de 2.1K alcance"). **5)** Performance de Reels (Total de Reels, Engajamento Reels, grafico Reels VS Feed/Carrossel por alcance medio).
+
+---
+
+### 9. Meta Ads Manager — Campanhas
+
+<p align="center">
+  <img src="docs/screenshots/09-ads-setup.png" alt="Meta Ads Manager" width="800" />
+</p>
+
+> **Meta Ads Manager** — Painel completo de campanhas Meta Ads integrado via API v25.0. No topo: titulo com nome da conta e Ad Account ID, timestamp da ultima atualizacao, botao Atualizar. **Filtros**: Periodo (Hoje, Ontem, 7d, 14d, 30d, 90d, Este Mes, Mes Passado, Personalizado), Status (Todas, Ativas, Pausadas, Arquivadas), Campanha especifica. **8 KPIs**: Gasto Total, Impressoes, Cliques, CTR, CPC Medio, Alcance, Conversoes, ROAS — cada um com icone colorido. **4 sub-abas**: Campanhas (tabela), Criativos (galeria), Graficos, Inteligencia. Tabela de campanhas com colunas ordenaveis: nome, status (badge Ativa/Pausada), objetivo, orcamento/dia, gasto, impressoes, cliques, CTR, CPC e botao de acao (Pausar/Ativar).
+
+---
+
+### 10. Galeria de Criativos
+
+<p align="center">
+  <img src="docs/screenshots/10-ads-criativos.png" alt="Galeria de Criativos" width="800" />
+</p>
+
+> **Galeria de Criativos** — Grid visual responsivo com thumbnails dos criativos de anuncios. Header com contador ("6 criativos, 4 ativos, 6 com imagem"), barra de busca, filtro por status (Todos, Ativos, Pausados, Camp. Pausada, Conj. Pausado), ordenacao (Maior gasto, Mais impressoes, Maior CTR, Maior CPC, Nome A-Z) e toggle Grid/Lista. Cada card mostra: imagem do criativo com badge de status (verde "Ativo", amarelo "Em Analise"), nome do ad, conta vinculada, texto do criativo, e 4 metricas individuais (Gasto, Impressoes, Cliques, CTR). Botao de analise IA por criativo no hover da imagem. Imagens carregadas via proxy para evitar CORS.
+
+---
+
+### 11. Inteligencia de Ads (Intelligence Panel v2)
+
+<p align="center">
+  <img src="docs/screenshots/11-ads-inteligencia.png" alt="Inteligencia de Ads" width="800" />
+</p>
+
+> **Inteligencia de Ads** — Painel de analytics avancado com metricas calculadas automaticamente. **Saude da Conta**: Score circular 0-100 (amarelo "Atencao" = 46) com 4 barras de progresso (Fadiga Criativa Media, Score ROAS, Saturacao Media, Utilizacao de Budget). **Saturacao de Audiencia**: Card por conjunto de anuncios mostrando frequencia atual vs ideal (1.35 / 3.0), badge "Subexplorado", indice de saturacao (0.45x), alcance em %, e recomendacao ("Expandir — publico sub-explorado"). **Comparacao com Benchmark** (Food & Beverage): Tabela com metricas (CTR, CPC, CPM, CPA, ROAS) comparando Cliente vs Benchmark da industria, indice relativo (ex: 0.39x) com seta de tendencia, e status colorido (Verde "Acima", Vermelho "Abaixo", Amarelo "Na Media"). Toggle Setor/Historico.
+
+---
+
+### 12. Intelligence Hub
+
+<p align="center">
+  <img src="docs/screenshots/12-intelligence-hub.png" alt="Intelligence Hub" width="800" />
+</p>
+
+> **Intelligence Hub** — Central de pesquisa competitiva com 2 modulos: **Metricas Google Maps** (scraping de negocios via Playwright com rating, reviews, endereco, telefone, horarios, highlights, analise IA de sentimento) e **Scraper Universal** (FireCrawl — converte URLs em Markdown). Sub-abas: Pesquisar, Salvos (para comparar depois), VS Comparativo (lado a lado). Campo de busca com placeholder "Restaurante Centro SP" e botao Pesquisar.
+
+---
+
+### 13. Configuracoes
+
+<p align="center">
+  <img src="docs/screenshots/13-configuracoes.png" alt="Configuracoes" width="800" />
+</p>
+
+> **Configuracoes** — 6 secoes organizadas: **Aparencia** (toggle Claro/Escuro), **Preferencias** (visualizacao padrao do calendario: Mensal/Semanal/Diario), **Automacao do Instagram** (status de sessao Playwright por conta, botoes Verificar/Reconectar com badges CONECTADO), **Meta API Oficial** (token long-lived com validade, conexao OAuth, checklist de metricas exclusivas vs Apify), **Integracoes Locais** (API Keys: Gemini, Apify, Firecrawl + seletor de provedor IA Google Gemini/OpenRouter com dropdown de modelos: Gemini 2.0 Flash ate 3.1 Pro Preview), **Gerenciamento de Dados** (Exportar/Importar backup JSON + Zona de Perigo com botao Resetar Tudo). Rodape com versao e link para repositorio.
 
 ---
 
