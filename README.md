@@ -742,8 +742,13 @@ SQLite local via Prisma ORM. **7 modelos:**
 
 ## Estrutura de Pastas
 
+> Para um guia completo de navegacao, veja [`PROJECT-MAP.md`](PROJECT-MAP.md) na raiz do projeto.
+
 ```
 instagram-dashboard/
+│
+│── ZONA 1: APLICACAO (o que faz o projeto rodar)
+│
 ├── app/
 │   ├── dashboard/                # Paginas do dashboard
 │   │   ├── page.tsx              # Home (Central de Comando)
@@ -780,13 +785,25 @@ instagram-dashboard/
 │       ├── forecasting.ts            # Holt-Winters, CUSUM change-point detection
 │       ├── advanced-indicators.ts    # Elasticidade, meia-vida criativa, retornos decrescentes
 │       └── sentiment.ts              # Analise de sentimento em portugues
-├── stores/                       # Zustand (9 slices: account, ads, analytics, automation, calendar, collection, content, settings, ui)
+├── stores/                       # Zustand (9 slices)
 ├── components/                   # UI (Shadcn/UI) + Layout + Shared
 ├── hooks/                        # Custom hooks
 ├── types/                        # TypeScript interfaces
 ├── prisma/schema.prisma          # Schema SQLite
 ├── scripts/                      # Scripts utilitarios (scheduler, publisher)
-└── docs/                         # Screenshots + documentacao
+│
+│── ZONA 2: SUPORTE (documentacao e referencia)
+│
+├── docs/                         # Documentacao completa
+│   ├── screenshots/              # 13 capturas de tela do dashboard
+│   ├── stories/                  # User stories do projeto
+│   ├── research/                 # Analises tecnicas de API
+│   ├── design/                   # Referencias visuais
+│   └── qa/                       # Relatorios de QA
+├── archive/                      # Scripts historicos (referencia, NAO importar)
+│   └── scripts-deprecated/       # 73 scripts de desenvolvimento Meta Ads
+├── .github/agents/               # Definicoes dos agentes IA
+└── PROJECT-MAP.md                # Guia de navegacao do projeto
 ```
 
 ---
