@@ -19,11 +19,13 @@ export async function POST(req: NextRequest) {
             getCampaigns(token, accountId, statusFilter),
         ]);
 
-        // Buscar insights por campanha no período padrão (últimos 30 dias)
-        const datePreset = body.datePreset || 'last_30d';
+        // Buscar insights por campanha — suporta preset ou range customizado
+        const datePreset = body.timeRange ? undefined : (body.datePreset || 'last_30d');
+        const timeRange = body.timeRange || undefined;
         const campaignInsights = await getInsights(token, accountId, {
             level: 'campaign',
             datePreset,
+            timeRange,
         });
 
         // Merge insights nas campanhas
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
 
         if (includeSets) {
             adSets = await getAdSets(token, accountId);
-            const adsetInsights = await getInsights(token, accountId, { level: 'adset', datePreset });
+            const adsetInsights = await getInsights(token, accountId, { level: 'adset', datePreset, timeRange });
             const adsetInsightMap = new Map(adsetInsights.map(i => [i.adset_id, i]));
             adSets = adSets.map(s => ({ ...s, insights: adsetInsightMap.get(s.id) || null }));
         }

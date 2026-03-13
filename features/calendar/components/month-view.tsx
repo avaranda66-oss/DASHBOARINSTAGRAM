@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ContentEditorDialog } from '@/features/content/components/content-editor-dialog';
 import type { Content } from '@/types/content';
-import { Image, Circle, Film, Layers } from 'lucide-react';
+import { Image, Circle, Film, Layers, Megaphone } from 'lucide-react';
 
 const WEEKDAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -27,6 +27,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
     story: Circle,
     reel: Film,
     carousel: Layers,
+    campaign: Megaphone,
 };
 
 const STATUS_CHIP_COLORS: Record<string, string> = {

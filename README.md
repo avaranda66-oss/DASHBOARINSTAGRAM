@@ -5,16 +5,18 @@
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?style=for-the-badge&logo=tailwindcss" alt="Tailwind" />
   <img src="https://img.shields.io/badge/Prisma-5-2D3748?style=for-the-badge&logo=prisma" alt="Prisma" />
   <img src="https://img.shields.io/badge/Gemini%20AI-Multimodal-4285F4?style=for-the-badge&logo=google" alt="Gemini" />
-  <img src="https://img.shields.io/badge/Meta%20Graph%20API-Integrated-0866FF?style=for-the-badge&logo=meta" alt="Meta API" />
+  <img src="https://img.shields.io/badge/Meta%20Graph%20API-v25.0-0866FF?style=for-the-badge&logo=meta" alt="Meta API" />
+  <img src="https://img.shields.io/badge/Meta%20Ads%20API-Integrated-00C853?style=for-the-badge&logo=meta" alt="Meta Ads" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" />
 </p>
 
 <h1 align="center">Instagram Dashboard OSS</h1>
-<h3 align="center">Content Manager &middot; Analytics Engine &middot; AI Intelligence &middot; Automation</h3>
+<h3 align="center">Content Manager &middot; Analytics Engine &middot; Ads Manager &middot; AI Intelligence &middot; Automation</h3>
 
 <p align="center">
   Dashboard profissional completo para gerenciamento de contas Instagram.<br/>
-  Gestao de conteudo, analytics com IA multimodal, automacao de publicacao e inteligencia competitiva.
+  Gestao de conteudo, analytics com IA multimodal, gerenciamento de campanhas Meta Ads,<br/>
+  automacao de publicacao e inteligencia competitiva.
 </p>
 
 <p align="center">
@@ -34,36 +36,39 @@
 6. [Calendario Editorial](#calendario-editorial)
 7. [Editor de Conteudo](#editor-de-conteudo)
 8. [Filtros Avancados](#filtros-avancados)
-9. [Analytics e Metricas](#analytics-e-metricas)
-10. [Inteligencia Artificial](#inteligencia-artificial-google-gemini)
-11. [Feed Preview](#feed-preview)
-12. [Contas Instagram](#contas-instagram)
-13. [Colecoes e Campanhas](#colecoes-e-campanhas)
-14. [Intelligence Hub](#intelligence-hub)
-15. [Configuracoes](#configuracoes)
-16. [Automacao e Publicacao](#automacao-e-publicacao)
-17. [Arquitetura Tecnica](#arquitetura-tecnica)
-18. [Banco de Dados](#banco-de-dados)
-19. [Estrutura de Pastas](#estrutura-de-pastas)
-20. [Instalacao](#instalacao)
-21. [Seguranca](#seguranca)
-22. [Creditos](#creditos)
-23. [Licenca](#licenca)
+9. [Meta Ads Manager](#meta-ads-manager)
+10. [Analytics e Metricas](#analytics-e-metricas)
+11. [Inteligencia Artificial](#inteligencia-artificial-google-gemini)
+12. [Feed Preview](#feed-preview)
+13. [Contas Instagram](#contas-instagram)
+14. [Colecoes e Campanhas](#colecoes-e-campanhas)
+15. [Intelligence Hub](#intelligence-hub)
+16. [Configuracoes](#configuracoes)
+17. [Automacao e Publicacao](#automacao-e-publicacao)
+18. [Arquitetura Tecnica](#arquitetura-tecnica)
+19. [Banco de Dados](#banco-de-dados)
+20. [Estrutura de Pastas](#estrutura-de-pastas)
+21. [Instalacao](#instalacao)
+22. [Seguranca](#seguranca)
+23. [Creditos](#creditos)
+24. [Licenca](#licenca)
 
 ---
 
 ## Sobre o Projeto
 
-O **Instagram Dashboard OSS** e uma plataforma completa para gerenciamento profissional de contas Instagram. Combina gestao de conteudo, analytics avancados, inteligencia artificial multimodal (Google Gemini) e automacao de publicacao em uma interface moderna com design glassmorphism.
+O **Instagram Dashboard OSS** e uma plataforma completa para gerenciamento profissional de contas Instagram. Combina gestao de conteudo, analytics avancados, gerenciamento de campanhas Meta Ads, inteligencia artificial multimodal (Google Gemini) e automacao de publicacao em uma interface moderna com design glassmorphism.
 
 ### Destaques
 
+- **Meta Ads Manager**: Painel completo de campanhas com KPIs, graficos, criativos visuais e IA de otimizacao
+- **Galeria de Criativos**: Visualize todos os criativos dos anuncios com metricas por ad (Gasto, CTR, CPC)
 - **Analytics em 3 camadas**: Apify (scraping publico), Meta Graph API (dados privados), IA (insights estrategicos)
 - **IA Multimodal**: Google Gemini analisa visualmente o grid do feed, sugere ordem de publicacao e gera estrategias
 - **Automacao completa**: Publicacao automatizada via Meta API ou Playwright (browser automation)
 - **Inteligencia competitiva**: Compare seu perfil com concorrentes lado a lado
 - **Feed Preview**: Visualize como seu feed ficara no celular antes de publicar
-- **Kanban Storyboard**: Gerencie o ciclo de vida do conteudo (Ideia -> Publicado)
+- **Kanban Storyboard**: Gerencie o ciclo de vida do conteudo (Ideia -> Publicado) — agora com tipo "Campanha"
 - **Agendamento inteligente**: IA sugere dias e horarios otimos para publicacao
 - **Dark mode premium**: Design glassmorphism com tema escuro profissional
 
@@ -77,7 +82,7 @@ O **Instagram Dashboard OSS** e uma plataforma completa para gerenciamento profi
   <img src="docs/screenshots/01-dashboard-home.png" alt="Dashboard Home" width="800" />
 </p>
 
-> KPIs em tempo real: total de conteudos, agendados, publicados, distribuicao por status e tipo, proximos conteudos e acoes rapidas.
+> KPIs em tempo real: total de conteudos, agendados, publicados, distribuicao por status e tipo (incluindo Campanha), proximos conteudos e acoes rapidas.
 
 ---
 
@@ -134,7 +139,7 @@ O **Instagram Dashboard OSS** e uma plataforma completa para gerenciamento profi
 ## Navegacao Global e Atalhos
 
 ### Sidebar (Menu Lateral)
-- **8 links de navegacao**: Dashboard, Storyboard, Calendario, Colecoes, Contas, Metricas, Intelligence Hub, Configuracoes
+- **9 links de navegacao**: Dashboard, Storyboard, Calendario, Ads, Colecoes, Contas, Metricas, Intelligence Hub, Configuracoes
 - Logo animada do Instagram no topo com gradiente real da marca
 - **Colapsavel**: Modo mini (apenas icones, 72px) ou expandido (240px) com animacao suave
 - **Indicador de aba ativa**: Barra vertical com gradiente Instagram animada com spring physics
@@ -162,7 +167,7 @@ Pagina de boas-vindas e visao geral da operacao:
 
 - **4 Cards KPI** (animados): Total de Conteudos, Agendados, Esta Semana, Publicados
 - **Grid por Status**: 6 mini-cards (Ideia, Rascunho, Aprovado, Agendado, Publicado, Falhou)
-- **Distribuicao por Tipo**: Post, Story, Reel, Carrossel com barras percentuais
+- **Distribuicao por Tipo**: Post, Story, Reel, Carrossel, Campanha com barras percentuais
 - **Proximos Conteudos**: Lista dos 5 proximos posts com titulo, data e badge de tipo
 - **Acoes Rapidas**: Novo Conteudo, Storyboard, Calendario, Metricas
 
@@ -181,9 +186,20 @@ Board de planejamento criativo com drag-and-drop (`@dnd-kit`):
 | **Publicado** | Azul | Ja foi ao ar |
 | **Falhou** | Vermelho | Erro na publicacao automatica |
 
+### Tipos de Conteudo
+
+| Tipo | Icone | Cor | Descricao |
+|------|-------|-----|-----------|
+| **Post** | Image | Azul | Publicacao no feed |
+| **Story** | Circle | Roxo | Story de 24h |
+| **Reel** | Film | Rosa | Video curto |
+| **Carrossel** | Layers | Laranja | Multiplas imagens |
+| **Campanha** | Megaphone | Verde | Criativo de campanha de ads |
+
 - Drag-and-drop livre entre colunas (status atualiza automaticamente)
 - Botao `+` no topo de cada coluna (abre editor com status pre-selecionado)
 - Cards com titulo, legenda, tipo, data e hashtags
+- **Filtro por tipo**: Diferencia conteudos organicos de criativos de campanha
 
 ---
 
@@ -195,6 +211,8 @@ Board de planejamento criativo com drag-and-drop (`@dnd-kit`):
 - **Semana**: 7 colunas (Seg-Dom) com cards empilhados + botao "+ Adicionar"
 - **Dia**: Feed vertical detalhado do dia selecionado
 
+Cards com cores por tipo (incluindo verde para Campanha) e badges de status.
+
 ---
 
 ## Editor de Conteudo
@@ -202,7 +220,7 @@ Board de planejamento criativo com drag-and-drop (`@dnd-kit`):
 Drawer lateral com **2 abas** (Editar + Preview):
 
 ### Aba Editar
-- Titulo, Descricao/Legenda, Tipo (Post/Story/Reel/Carrossel)
+- Titulo, Descricao/Legenda, Tipo (Post / Story / Reel / Carrossel / Campanha)
 - Status (6 opcoes do workflow)
 - Conta Instagram, Data/Hora de agendamento
 - Hashtags interativas com chips visuais (`TagInput`)
@@ -223,12 +241,74 @@ Drawer lateral com **2 abas** (Editar + Preview):
 
 Drawer lateral com 6 eixos de filtragem em tempo real:
 
-1. **Tipos de Conteudo** — Post, Story, Reel, Carrossel
+1. **Tipos de Conteudo** — Post, Story, Reel, Carrossel, Campanha
 2. **Status do Funil** — Ideia a Falhou
 3. **Conta Instagram**
 4. **Colecao / Campanha**
 5. **Periodo de Agendamento** — range de datas
 6. **Hashtag Especifica**
+
+---
+
+## Meta Ads Manager
+
+Painel completo para gerenciamento de campanhas Meta Ads (Facebook/Instagram) integrado via **Meta Graph API v25.0**.
+
+### Como Acessar
+
+1. Va em **Contas** e cadastre seu **Token Facebook Ads** + **Ad Account ID**
+2. Acesse a aba **Ads** na sidebar
+3. Os dados carregam automaticamente
+
+### Filtros Disponíveis
+
+- **Periodo**: Hoje, Ontem, 7d, 14d, 30d, 90d, Este Mes, Mes Passado, Personalizado
+- **Status**: Todas, Ativas, Pausadas, Arquivadas
+- **Campanha especifica**: Dropdown com todas as campanhas
+
+### 4 Sub-abas
+
+#### 1. Campanhas (Tabela)
+- Lista de todas as campanhas com metricas agregadas
+- **Toggle de status**: Ative/Pause campanhas direto pela interface
+- Expanda para ver AdSets de cada campanha
+- Metricas: Gasto, Impressoes, Cliques, CTR, CPC, Alcance
+
+#### 2. Criativos (Galeria Visual)
+Esta e a nova aba de **Storyboard de Campanhas**:
+
+- **Grid visual**: Thumbnails dos criativos em grade responsiva (2-5 colunas)
+- **View lista**: Visualizacao compacta com metricas lado a lado
+- **Metricas por criativo**: Gasto, Impressoes, Cliques, CTR, CPC individuais
+- **Status badge**: Ativo, Pausado, Campanha Pausada, Reprovado, Em Analise
+- **Busca**: Pesquise por nome, titulo ou texto do criativo
+- **Filtro por status**: Todos, Ativos, Pausados, Campanha Pausada
+- **Ordenacao**: Maior gasto, Mais impressoes, Maior CTR, Maior CPC, Nome A-Z
+- **Toggle Grid/Lista**: Alterne entre visualizacoes
+- **Link externo**: Hover no criativo mostra link de destino do anuncio
+- **Image proxy**: Imagens via proxy para evitar CORS
+
+> Os criativos sao carregados sob demanda ao clicar na aba — clique "Carregar Criativos" na primeira vez.
+
+#### 3. Graficos
+- Timeline de gastos diarios (AreaChart)
+- Impressoes e cliques por dia
+- Comparacao de performance entre campanhas
+
+#### 4. Inteligencia (IA)
+- Analise automatica dos dados de campanha via Gemini
+- Recomendacoes de otimizacao de budget
+- Insights de performance por campanha
+
+### Infraestrutura Tecnica de Ads
+
+| Feature | Implementacao |
+|---------|---------------|
+| **API** | Meta Graph API v25.0 |
+| **Cache** | 5 minutos TTL em memoria |
+| **Circuit Breaker** | Protecao contra rate limiting (5 falhas = pausa 60s) |
+| **Paginacao** | Automatica para contas com muitas campanhas |
+| **Rate Limiting** | 200ms delay entre paginas |
 
 ---
 
@@ -324,11 +404,12 @@ O dashboard integra o Google Gemini como motor de IA multimodal:
 | **Destaques Sugeridos** | Sugere categorias de Highlights |
 | **Recomendacoes** | Lista de acoes especificas e acionaveis |
 | **IA Organizar Feed** | Reorganiza ordem de publicacao para coesao visual por linha do grid (3 colunas) |
-| **Agendamento Inteligente** | Sugere datas/horarios otimos: 11:30 (almoco), 18:00 (fim de tarde), 20:00 (noite) — distribuidos ao longo dos dias, sem domingos |
+| **Agendamento Inteligente** | Sugere datas/horarios otimos: 11:30, 18:00, 20:00 — distribuidos ao longo dos dias |
 | **Estrategia Completa** | Relatorio com insights demograficos, melhores formatos, horarios e acoes |
 | **Sentimento de Comentarios** | Analise automatica com sugestoes de resposta usando dados reais do negocio |
 | **Intencao de Compra** | Detecta comentarios com intencao comercial |
 | **Comparacao VS** | Chatbot para explorar diferencas entre perfis |
+| **Analise de Ads** | Recomendacoes de otimizacao para campanhas Meta Ads |
 
 ---
 
@@ -356,6 +437,14 @@ Avatar, nome, handle, tipo de negocio, endereco, telefone e horario
 
 ### Formulario
 **Dados basicos**: Nome, Handle, Avatar, Senha
+
+**Tokens de API**:
+
+| Campo | Descricao |
+|-------|-----------|
+| Token Meta Graph API | Para dados privados (alcance, saves, shares) |
+| Token Facebook Ads | Para gerenciamento de campanhas de anuncios |
+| Ad Account ID | ID da conta de anuncios (formato: act_XXXXXXXXX) |
 
 **Informacoes do Negocio** (usadas pela IA para responder comentarios):
 
@@ -436,14 +525,19 @@ Central de pesquisa com **3 abas**:
 | **Backend** | Next.js API Routes + Server Actions |
 | **Database** | SQLite via Prisma 5 ORM |
 | **IA** | Google Gemini (multimodal — texto + imagem) |
-| **APIs** | Meta Graph API, Apify, FireCrawl |
+| **APIs** | Meta Graph API v25.0, Meta Ads API, Apify, FireCrawl |
 | **Automacao** | Playwright (browser automation) |
 | **Imagem** | Sharp (composicao, resize, thumbnails) |
 
-### API Routes (20+)
+### API Routes (25+)
 
 | Rota | Funcao |
 |------|--------|
+| `POST /api/ads-campaigns` | Campanhas + AdSets + insights por campanha |
+| `POST /api/ads-insights` | KPIs agregados + insights diarios para graficos |
+| `POST /api/ads-creatives` | Ads com criativos (imagens) + insights por ad |
+| `POST /api/ads-actions` | Toggle status de campanha (Ativa/Pausada) |
+| `POST /api/ads-ai-analysis` | Analise IA de performance de campanhas |
 | `POST /api/meta-insights` | Metricas privadas da conta (token refresh + circuit breaker) |
 | `POST /api/meta-publish` | Publicacao via Meta API |
 | `POST /api/meta-discovery` | Business Discovery de concorrentes |
@@ -491,8 +585,8 @@ SQLite local via Prisma ORM. **7 modelos:**
 
 | Modelo | Descricao |
 |--------|-----------|
-| **Account** | Contas Instagram + info de negocio (endereco, telefone, horarios como JSON) |
-| **Content** | Posts, Stories, Reels, Carrosseis com workflow de 6 status |
+| **Account** | Contas Instagram + info de negocio + tokens Ads (endereco, telefone, horarios como JSON) |
+| **Content** | Posts, Stories, Reels, Carrosseis, Campanhas com workflow de 6 status |
 | **Collection** | Campanhas/temas com cor, icone e periodo |
 | **Competitor** | Perfis concorrentes salvos com metricas |
 | **Analytics** | Cache de metricas (Apify + Meta) em JSON. `type='meta'` = dados privados |
@@ -510,14 +604,16 @@ instagram-dashboard/
 │   │   ├── page.tsx              # Home (Central de Comando)
 │   │   ├── storyboard/           # Kanban Board
 │   │   ├── calendar/             # Calendario
+│   │   ├── ads/                  # Meta Ads Manager (4 tabs)
 │   │   ├── analytics/            # Analytics (3 abas)
 │   │   ├── accounts/             # Gestao de contas
 │   │   ├── collections/          # Colecoes/Campanhas
 │   │   ├── intelligence/         # Hub de Inteligencia
 │   │   └── settings/             # Configuracoes
-│   ├── api/                      # 20+ API Routes
+│   ├── api/                      # 25+ API Routes
 │   └── actions/                  # 9 Server Actions
 ├── features/                     # Modulos de funcionalidade
+│   ├── ads/components/           # Ads: tabela, graficos, criativos, IA
 │   ├── analytics/components/     # 30+ componentes de analytics
 │   ├── content/components/       # Editor + TagInput
 │   ├── storyboard/components/    # Board + Cards draggable
@@ -525,17 +621,19 @@ instagram-dashboard/
 │   ├── collections/components/   # List + Form
 │   └── accounts/components/      # List + Form com business info
 ├── lib/services/                 # Servicos de backend
+│   ├── facebook-ads.service.ts   # Meta Ads API v25.0 (campaigns, insights, creatives)
 │   ├── instagram-graph.service.ts  # Meta Graph API completa
 │   ├── instagram.service.ts        # Playwright automation
 │   ├── apify.service.ts            # Scraping Apify
 │   ├── ai-adapter.ts              # Gemini/OpenRouter adapter
 │   ├── maps-playwright.service.ts  # Google Maps scraper
 │   └── scheduler.service.ts        # Fila de publicacao
-├── stores/                       # Zustand (8 slices)
+├── stores/                       # Zustand (9 slices incluindo ads-slice)
 ├── components/                   # UI (Shadcn/UI) + Layout + Shared
 ├── hooks/                        # Custom hooks
 ├── types/                        # TypeScript interfaces
 ├── prisma/schema.prisma          # Schema SQLite
+├── scripts/                      # Scripts utilitarios (scheduler, publisher)
 └── docs/                         # Screenshots + documentacao
 ```
 
@@ -599,6 +697,17 @@ Para acessar dados privados da sua conta:
 
 O dashboard gerencia refresh automatico do token e usa circuit breaker para rate limiting.
 
+### Meta Ads API (Campanhas)
+
+Para gerenciar campanhas de anuncios:
+
+1. No mesmo App do Meta, adicione o produto "Marketing API"
+2. Gere um token com permissoes `ads_read` e `ads_management`
+3. Na pagina de **Contas**, preencha:
+   - **Token Facebook Ads**: O token gerado
+   - **Ad Account ID**: No formato `act_XXXXXXXXX` (encontre em Business Manager > Configuracoes)
+4. Acesse a aba **Ads** para ver campanhas, criativos e metricas
+
 ---
 
 ## Seguranca
@@ -627,6 +736,7 @@ O dashboard gerencia refresh automatico do token e usa circuit breaker para rate
 - [Zustand](https://zustand-demo.pmnd.rs/) — State management
 - [Google Gemini](https://ai.google.dev/) — IA multimodal
 - [Meta Graph API](https://developers.facebook.com/docs/instagram-api/) — Dados Instagram
+- [Meta Ads API](https://developers.facebook.com/docs/marketing-apis/) — Campanhas de Anuncios
 - [Apify](https://apify.com/) — Web scraping
 - [Playwright](https://playwright.dev/) — Browser automation
 - [Sharp](https://sharp.pixelplumbing.com/) — Processamento de imagem
@@ -642,5 +752,5 @@ Distribuido sob a licenca MIT. Veja `LICENSE` para mais informacoes.
 <p align="center">
   <strong>Instagram Dashboard OSS</strong><br/>
   <em>Desenvolvido por Humano + IA (Claude Code / Anthropic)</em><br/>
-  Next.js 16 &middot; React 19 &middot; TypeScript 5 &middot; Tailwind 4 &middot; Prisma 5 &middot; Google Gemini &middot; Meta Graph API
+  Next.js 16 &middot; React 19 &middot; TypeScript 5 &middot; Tailwind 4 &middot; Prisma 5 &middot; Google Gemini &middot; Meta Graph API &middot; Meta Ads API
 </p>

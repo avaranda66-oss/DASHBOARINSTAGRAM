@@ -4,6 +4,17 @@ import prisma from '@/lib/db';
 import type { Content } from '@/types/content';
 import { revalidatePath } from 'next/cache';
 
+// Safe JSON array parse — handles both JSON arrays and plain strings
+function safeJsonArray(value: string | null | undefined): string[] {
+    if (!value) return [];
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [value];
+    } catch {
+        return value.split(/[,\s]+/).filter(Boolean);
+    }
+}
+
 // Helper to convert DB Content to App Content (handling JSON strings)
 function mapToContent(dbContent: any): Content {
     return {
@@ -11,8 +22,8 @@ function mapToContent(dbContent: any): Content {
         scheduledAt: dbContent.scheduledAt ? dbContent.scheduledAt.toISOString() : null,
         createdAt: dbContent.createdAt.toISOString(),
         updatedAt: dbContent.updatedAt.toISOString(),
-        hashtags: dbContent.hashtags ? JSON.parse(dbContent.hashtags) : [],
-        mediaUrls: dbContent.mediaUrls ? JSON.parse(dbContent.mediaUrls) : [],
+        hashtags: safeJsonArray(dbContent.hashtags),
+        mediaUrls: safeJsonArray(dbContent.mediaUrls),
         collectionIds: dbContent.collections ? dbContent.collections.map((c: any) => c.id) : [],
     };
 }

@@ -260,11 +260,13 @@ export async function getInsights(
 export async function getDailyInsights(
     token: string,
     accountId: string,
-    datePreset: AdsDatePreset = 'last_30d',
+    datePreset?: AdsDatePreset | null,
+    timeRange?: { since: string; until: string },
 ): Promise<DailyAdInsight[]> {
     const raw = await getInsights(token, accountId, {
         level: 'account',
-        datePreset,
+        datePreset: datePreset || undefined,
+        timeRange,
         timeIncrement: '1',
     });
 

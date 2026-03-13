@@ -1,4 +1,4 @@
-export type ContentType = 'post' | 'story' | 'reel' | 'carousel';
+export type ContentType = 'post' | 'story' | 'reel' | 'carousel' | 'campaign';
 export type ContentStatus = 'idea' | 'draft' | 'approved' | 'scheduled' | 'published' | 'failed';
 
 export interface Content {

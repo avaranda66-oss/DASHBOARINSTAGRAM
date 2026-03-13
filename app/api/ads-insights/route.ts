@@ -5,7 +5,9 @@ import type { AdsDatePreset } from '@/types/ads';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { token, accountId, datePreset = 'last_30d', timeRange, level = 'campaign' } = body;
+        const { token, accountId, timeRange, level = 'campaign' } = body;
+        // If timeRange is provided, don't use datePreset for the API call
+        const datePreset = timeRange ? undefined : (body.datePreset || 'last_30d');
 
         if (!token || !accountId) {
             return NextResponse.json(
@@ -16,7 +18,7 @@ export async function POST(req: NextRequest) {
 
         // Buscar tudo em paralelo
         const [dailyData, insights, campaigns] = await Promise.all([
-            getDailyInsights(token, accountId, datePreset as AdsDatePreset),
+            getDailyInsights(token, accountId, datePreset as AdsDatePreset, timeRange),
             getInsights(token, accountId, {
                 level: level as any,
                 datePreset: datePreset as AdsDatePreset,

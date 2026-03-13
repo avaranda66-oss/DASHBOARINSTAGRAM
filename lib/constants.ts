@@ -14,6 +14,7 @@ export const CONTENT_TYPES = [
     { value: 'story', label: 'Story', icon: 'Circle' },
     { value: 'reel', label: 'Reel', icon: 'Film' },
     { value: 'carousel', label: 'Carrossel', icon: 'Layers' },
+    { value: 'campaign', label: 'Campanha', icon: 'Megaphone' },
 ] as const;
 
 // Derived type helpers
@@ -36,4 +37,5 @@ export const TYPE_BADGE_COLORS: Record<string, string> = {
     story: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
     reel: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
     carousel: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+    campaign: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
 };

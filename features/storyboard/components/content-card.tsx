@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Image, Circle, Film, Layers, GripVertical } from 'lucide-react';
+import { Image, Circle, Film, Layers, Megaphone, GripVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { TYPE_BADGE_COLORS } from '@/lib/constants';
 import type { Content } from '@/types/content';
@@ -16,6 +16,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
     story: Circle,
     reel: Film,
     carousel: Layers,
+    campaign: Megaphone,
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -23,6 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
     story: 'Story',
     reel: 'Reel',
     carousel: 'Carrossel',
+    campaign: 'Campanha',
 };
 
 interface ContentCardProps {

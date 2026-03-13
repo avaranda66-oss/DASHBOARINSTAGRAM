@@ -17,6 +17,7 @@ import {
     Circle,
     Film,
     Layers,
+    Megaphone,
     AlertCircle,
     BarChart3,
     ArrowUpRight,
@@ -46,6 +47,7 @@ const TYPE_CONFIG: Record<string, { icon: React.ElementType; label: string }> = 
     story: { icon: Circle, label: 'Story' },
     reel: { icon: Film, label: 'Reel' },
     carousel: { icon: Layers, label: 'Carrossel' },
+    campaign: { icon: Megaphone, label: 'Campanha' },
 };
 
 const container = {

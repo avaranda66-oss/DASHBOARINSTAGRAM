@@ -16,7 +16,7 @@ import { TYPE_BADGE_COLORS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { ContentEditorDialog } from '@/features/content/components/content-editor-dialog';
 import type { Content } from '@/types/content';
-import { Image, Circle, Film, Layers } from 'lucide-react';
+import { Image, Circle, Film, Layers, Megaphone } from 'lucide-react';
 
 
 
@@ -25,6 +25,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
     story: Circle,
     reel: Film,
     carousel: Layers,
+    campaign: Megaphone,
 };
 
 const TYPE_CARD_COLORS: Record<string, string> = {
@@ -32,6 +33,7 @@ const TYPE_CARD_COLORS: Record<string, string> = {
     story: 'bg-purple-500 text-white',
     reel: 'bg-pink-500 text-white',
     carousel: 'bg-orange-500 text-white',
+    campaign: 'bg-emerald-500 text-white',
 };
 
 export function DayView() {
