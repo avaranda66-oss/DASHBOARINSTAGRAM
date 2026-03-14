@@ -1,12 +1,14 @@
 # DASHBOARD OSS — MASTER PLAN V2
 **Orquestrado por:** Orion (AIOS Master)
-**Data:** 2026-03-14 | **Última atualização:** 2026-03-14 (pós-sprint FASE 2 — EPIC-REALTIME + EPIC-EXPORT + US-66)
+**Data:** 2026-03-14 | **Última atualização:** 2026-03-14 (pós-sprint FASE 3 — US-61 + US-62 DONE)
 **Branch:** v2-dashboard
-**Status do projeto:** FASE 2 CONCLUÍDA — Auto-refresh, cache TTL, CSV, PDF, Attribution Window. Próxima fase: EPIC-MULTIACCOUNTS + EPIC-AUTOMATION
+**Status do projeto:** FASE 3 em andamento — EPIC-DEMOGRAPHICS ✅ + EPIC-MULTIACCOUNTS ✅. Próximas: EPIC-AUTOMATION (US-63/64) + EPIC-CREATIVE-LIBRARY (US-67/68)
 
 ---
 
-## 0. SPRINT CONCLUÍDA — FASE 1 COMPLETA (commit 8deeb86)
+## 0. SPRINTS CONCLUÍDAS
+
+### FASE 1 (commit 8deeb86)
 
 | Story | Descrição | Status | Commit |
 |-------|-----------|--------|--------|
@@ -17,10 +19,34 @@
 | US-54 | Creative Half-Life badge | ✅ DONE | 8deeb86 |
 | US-55 | Viral Potential Index KPI card | ✅ DONE | 8deeb86 |
 | US-71 | weightedRecentTrend WLS por recência | ✅ DONE | 8deeb86 |
-| B-03 | STL-CUSUM bridge (falsos positivos fix) | ✅ DONE | 8deeb86 |
-| B-05 | Budget display em centavos | ✅ NÃO ERA BUG (já divide /100) | — |
 
-**Build:** ✅ Zero erros | **TypeScript:** ✅ Zero erros | **Arquivos alterados:** 7 (+759 linhas)
+### FASE 2 (build ✅ zero erros)
+
+| Story | Descrição | Status |
+|-------|-----------|--------|
+| US-56 | Auto-refresh polling + Page Visibility API | ✅ DONE |
+| US-57 | Request cache TTL + deduplicação | ✅ DONE |
+| US-58 | Export CSV com BOM para Excel | ✅ DONE |
+| US-59 MVP | PDF via window.print() | ✅ DONE |
+| US-66 | Attribution Window Selector | ✅ DONE |
+| B-06 | Lead dual-tracking documentado | ✅ DONE |
+| B-07 | reachestimate deprecation warning | ✅ DONE |
+
+### FASE 3 — EPIC-DEMOGRAPHICS (commit 38d647b)
+
+| Story | Descrição | Status | Commit |
+|-------|-----------|--------|--------|
+| US-69 | Age & Gender breakdown — heatmap + golden segment | ✅ DONE | 38d647b |
+| US-70 | Placement analysis — tabela por platform+placement | ✅ DONE | 38d647b |
+
+### FASE 3 — EPIC-MULTIACCOUNTS (commit 18ec7c5)
+
+| Story | Descrição | Status | Commit |
+|-------|-----------|--------|--------|
+| US-61 | Account Switcher — dropdown header, localStorage history | ✅ DONE | 18ec7c5 |
+| US-62 | Multi-Account Overview — grid spend+ROAS top-5 contas | ✅ DONE | 18ec7c5 |
+
+**Build:** ✅ Zero erros | **TypeScript:** ✅ Zero erros | **Arquivos:** +481 linhas
 
 ---
 
@@ -340,10 +366,10 @@ FASE 2 — Produtividade ✅ CONCLUÍDA
 ├── EPIC-EXPORT (US-58, 59, 60*)       → relatórios para clientes (CSV + PDF) ✅ (*US-60 deferido)
 └── EPIC-ATTRIBUTION-WINDOW (US-66)    → decisão de atribuição ✅
 
-FASE 3 — Agência
-├── EPIC-MULTIACCOUNTS (US-61, 62)     → multi-cliente
+FASE 3 — Agência (em andamento)
+├── EPIC-DEMOGRAPHICS (US-69, 70)      → ✅ DONE (commit 38d647b)
+├── EPIC-MULTIACCOUNTS (US-61, 62)     → multi-cliente ← PRÓXIMA
 ├── EPIC-AUTOMATION (US-63, 64)        → regras automáticas
-├── EPIC-DEMOGRAPHICS (US-69, 70)      → inteligência de audiência
 └── EPIC-CREATIVE-LIBRARY (US-67, 68)  → biblioteca criativa AI
 
 FASE 4 — Enterprise
