@@ -1,8 +1,26 @@
 # DASHBOARD OSS — MASTER PLAN V2
 **Orquestrado por:** Orion (AIOS Master)
-**Data:** 2026-03-14
+**Data:** 2026-03-14 | **Última atualização:** 2026-03-14 (pós-sprint US-50→US-71)
 **Branch:** v2-dashboard
-**Status do projeto:** Motor estatístico completo — próxima fase: agência de alto nível
+**Status do projeto:** FASE 1 CONCLUÍDA — Motor estatístico + indicadores avançados + UI integrada. Próxima fase: EPIC-REALTIME + EPIC-EXPORT
+
+---
+
+## 0. SPRINT CONCLUÍDA — FASE 1 COMPLETA (commit 8deeb86)
+
+| Story | Descrição | Status | Commit |
+|-------|-----------|--------|--------|
+| US-50 | engagementScore midpoint dinâmico | ✅ DONE | 8deeb86 |
+| US-51 | STL-CUSUM na InsightEngine (B-03 fix) | ✅ DONE | 8deeb86 |
+| US-52 | postingConsistencyIndex target configurável | ✅ DONE | 8deeb86 |
+| US-53 | Ads Efficiency Panel (Michaelis-Menten) | ✅ DONE | 8deeb86 |
+| US-54 | Creative Half-Life badge | ✅ DONE | 8deeb86 |
+| US-55 | Viral Potential Index KPI card | ✅ DONE | 8deeb86 |
+| US-71 | weightedRecentTrend WLS por recência | ✅ DONE | 8deeb86 |
+| B-03 | STL-CUSUM bridge (falsos positivos fix) | ✅ DONE | 8deeb86 |
+| B-05 | Budget display em centavos | ✅ NÃO ERA BUG (já divide /100) | — |
+
+**Build:** ✅ Zero erros | **TypeScript:** ✅ Zero erros | **Arquivos alterados:** 7 (+759 linhas)
 
 ---
 
@@ -70,25 +88,20 @@
 
 ## 2. BUGS CONHECIDOS (priorizados)
 
-### 🔴 CRÍTICOS — Afetam precisão de dados
+### ✅ RESOLVIDOS (sprint 2026-03-14)
+
+| # | Bug | Resolução |
+|---|-----|-----------|
+| B-01 | `engagementScore` midpoint fixo | ✅ US-50: midpoint dinâmico via `accountHistory[]` |
+| B-02 | `postingConsistencyIndex` hardcoded | ✅ US-52: `options.targetPostsPerWeek` configurável |
+| B-03 | CUSUM na série bruta | ✅ US-51: STL-CUSUM via `kpiPointFromSTLCUSUM()` |
+| B-04 | `advanced-indicators.ts` não conectado | ✅ US-53+54: `ads-efficiency-panel.tsx` + half-life badge |
+| B-05 | Budget display em centavos | ✅ NÃO ERA BUG — `campaigns-table.tsx:113` já divide /100 |
+
+### 🟡 PENDENTES
 
 | # | Bug | Arquivo | Impacto |
 |---|-----|---------|---------|
-| B-01 | `engagementScore` midpoint fixo em 4 | `statistics.ts:367` | Rankings distorcidos em contas pequenas vs grandes |
-| B-02 | `postingConsistencyIndex` hardcoded (5x/sem = 100) | `statistics.ts:963` | Score sem contexto de nicho |
-
-### 🟠 HIGH — Afetam qualidade das análises
-
-| # | Bug | Arquivo | Impacto |
-|---|-----|---------|---------|
-| B-03 | CUSUM na série bruta (sem STL) | `forecasting.ts` | Falsos alertas todo fim de semana (sazonalidade confundida com anomalia) |
-| B-04 | `advanced-indicators.ts` não conectado à UI | Sem componente | Elasticidade, meia-vida criativa, Michaelis-Menten ficam invisíveis |
-
-### 🟡 MÉDIO — Melhorias de precisão
-
-| # | Bug | Arquivo | Impacto |
-|---|-----|---------|---------|
-| B-05 | Budget display em centavos | `campaigns-table.tsx` + API | R$ 10000 exibido em vez de R$ 100 |
 | B-06 | Lead dual-tracking sem documentação | `facebook-ads.service.ts:~680` | Pode double-count em contas híbridas |
 | B-07 | `reachestimate` v25 deprecation | `facebook-ads.service.ts:584` | Endpoint pode ser removido em v26+ |
 
@@ -317,23 +330,23 @@
 ## 4. MAPA DE PRIORIZAÇÃO EXECUTIVA
 
 ```
-FASE 1 — Precisão (1-2 semanas)
-├── EPIC-STAT-FIX (US-50, 51, 52)     → bugs reais, dados mais precisos
-├── EPIC-ADVANCED-INDICATORS (US-53, 54, 55) → valor oculto visível
-└── US-71 (weightedRecentTrend)        → trends mais inteligentes
+FASE 1 — Precisão ✅ CONCLUÍDA (commit 8deeb86, 2026-03-14)
+├── EPIC-STAT-FIX (US-50, 51, 52)     → ✅ DONE
+├── EPIC-ADVANCED-INDICATORS (US-53, 54, 55) → ✅ DONE
+└── US-71 (weightedRecentTrend)        → ✅ DONE
 
-FASE 2 — Produtividade (2-3 semanas)
-├── EPIC-REALTIME (US-56, 57)          → dashboard vivo
-├── EPIC-EXPORT (US-58, 59, 60)        → relatórios para clientes
+FASE 2 — Produtividade ← PRÓXIMA
+├── EPIC-REALTIME (US-56, 57)          → dashboard vivo (polling + cache)
+├── EPIC-EXPORT (US-58, 59, 60)        → relatórios para clientes (CSV + PDF)
 └── EPIC-ATTRIBUTION-WINDOW (US-66)    → decisão de atribuição
 
-FASE 3 — Agência (1-2 meses)
+FASE 3 — Agência
 ├── EPIC-MULTIACCOUNTS (US-61, 62)     → multi-cliente
 ├── EPIC-AUTOMATION (US-63, 64)        → regras automáticas
 ├── EPIC-DEMOGRAPHICS (US-69, 70)      → inteligência de audiência
 └── EPIC-CREATIVE-LIBRARY (US-67, 68)  → biblioteca criativa AI
 
-FASE 4 — Enterprise (2-3 meses)
+FASE 4 — Enterprise
 ├── EPIC-CAPI (US-65)                  → CAPI integration
 ├── Granger Causality                  → causalidade real
 └── LTV Prediction                     → coort analysis
