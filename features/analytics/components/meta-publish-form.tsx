@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Rocket, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import { Button } from '@/components/ui/button';
 import { useSettingsStore } from '@/stores';
 
@@ -49,7 +49,7 @@ export function MetaPublishForm() {
             <div className="flex items-start justify-between">
                 <div>
                     <h3 className="text-sm font-semibold flex items-center gap-2 text-zinc-100">
-                        <Rocket className="h-4 w-4 text-purple-400" />
+                        <span className="font-mono text-sm text-purple-400">◎</span>
                         Publicação Rápida via Graph API
                     </h3>
                     <p className="text-xs text-zinc-400 mt-1">Poste imagens diretamente no seu perfil.</p>
@@ -62,7 +62,7 @@ export function MetaPublishForm() {
             <form onSubmit={handlePublish} className="space-y-4 mt-4">
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
-                        <ImageIcon className="h-3 w-3" /> URL da Imagem Pública
+                        <span className="font-mono text-xs">◫</span> URL da Imagem Pública
                     </label>
                     <input
                         type="url"
@@ -91,7 +91,7 @@ export function MetaPublishForm() {
                 {/* Status Message */}
                 {result && (
                     <div className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${result.success ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-                        {result.success ? <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}
+                        {result.success ? <span className="font-mono text-sm mt-0.5 shrink-0">◎</span> : <span className="font-mono text-sm mt-0.5 shrink-0">⚠</span>}
                         <div>
                             {result.success ? (
                                 <p className="font-medium">Publicado com sucesso!</p>
@@ -111,7 +111,7 @@ export function MetaPublishForm() {
                     >
                         {isPublishing ? (
                             <>
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                <span className="font-mono text-sm animate-spin mr-2">↻</span>
                                 Publicando...
                             </>
                         ) : (

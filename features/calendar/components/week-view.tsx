@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useContentStore } from '@/stores';
 import { useCalendarStore } from '@/stores/calendar-slice';
 import {
@@ -13,28 +12,17 @@ import {
 } from '../hooks/use-calendar';
 import { ptBR } from 'date-fns/locale';
 import { useFilteredContents } from '@/hooks/use-filtered-contents';
-import { TYPE_BADGE_COLORS } from '@/lib/constants';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/design-system/atoms/Button';
 import { ContentEditorDialog } from '@/features/content/components/content-editor-dialog';
 import type { Content } from '@/types/content';
-import { Image, Circle, Film, Layers, Megaphone } from 'lucide-react';
+import { cn } from '@/design-system/utils/cn';
 
-
-
-const TYPE_ICONS: Record<string, React.ElementType> = {
-    post: Image,
-    story: Circle,
-    reel: Film,
-    carousel: Layers,
-    campaign: Megaphone,
-};
-
-const TYPE_CARD_COLORS: Record<string, string> = {
-    post: 'bg-blue-500 text-white',
-    story: 'bg-purple-500 text-white',
-    reel: 'bg-pink-500 text-white',
-    carousel: 'bg-orange-500 text-white',
-    campaign: 'bg-emerald-500 text-white',
+const TYPE_GLYPHS: Record<string, string> = {
+    post: '◆',
+    story: '◎',
+    reel: '▶',
+    carousel: '◫',
+    campaign: '▲',
 };
 
 export function WeekView() {
@@ -42,7 +30,6 @@ export function WeekView() {
     const filteredContents = useFilteredContents();
     const { currentDate, navigateMonth, goToToday } = useCalendarStore();
     const { weekDays, weekLabel } = useCalendar(currentDate);
-    const containerRef = useRef<HTMLDivElement>(null);
 
     const [editorOpen, setEditorOpen] = useState(false);
     const [editingContent, setEditingContent] = useState<Content | null>(null);
@@ -68,34 +55,33 @@ export function WeekView() {
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-12rem)] w-full rounded-xl border border-border overflow-hidden bg-background">
+        <div className="flex flex-col h-[calc(100vh-14rem)] w-full rounded-lg border border-white/10 overflow-hidden bg-[#0A0A0A]/30">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => navigateMonth('next')}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <h3 className="text-lg font-semibold capitalize">{weekLabel}</h3>
+            <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#0A0A0A]/50">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center bg-[#050505] border border-white/10 rounded overflow-hidden">
+                        <button onClick={() => navigateMonth('prev')} className="px-3 py-1.5 hover:bg-white/5 border-r border-white/10 text-[#4A4A4A] transition-colors font-mono text-xs">‹</button>
+                        <button onClick={() => navigateMonth('next')} className="px-3 py-1.5 hover:bg-white/5 text-[#4A4A4A] transition-colors font-mono text-xs">›</button>
+                    </div>
+                    <h3 className="text-[13px] font-bold text-[#F5F5F5] uppercase tracking-widest">{weekLabel}</h3>
                 </div>
-                <Button variant="outline" size="sm" onClick={goToToday}>
-                    Hoje
-                </Button>
+                <Button variant="outline" size="sm" onClick={goToToday} className="font-mono text-[10px] tracking-widest uppercase">TODAY_SYNC</Button>
             </div>
 
             {/* Week Grid Header */}
-            <div className="flex border-b border-border bg-muted/50">
+            <div className="flex border-b border-white/5 bg-[#0A0A0A]/20">
                 {weekDays.map((day, i) => {
                     const today = isToday(day);
                     return (
-                        <div key={i} className="flex-1 py-3 text-center border-r border-border last:border-r-0">
-                            <div className="text-xs font-medium text-muted-foreground uppercase">
+                        <div key={i} className="flex-1 py-3 text-center border-r border-white/5 last:border-r-0">
+                            <div className="text-[9px] font-mono tracking-[0.2em] text-[#4A4A4A] uppercase">
                                 {format(day, 'eee', { locale: ptBR })}
                             </div>
-                            <div className={`text-sm font-semibold mt-0.5 inline-flex items-center justify-center w-8 h-8 rounded-full ${today ? 'instagram-gradient text-white' : ''}`}>
-                                {format(day, 'd')}
+                            <div className={cn(
+                                "text-[12px] font-mono mt-1 inline-flex items-center justify-center w-7 h-7 rounded",
+                                today ? "bg-[#A3E635] text-black font-bold" : "text-[#8A8A8A]"
+                            )}>
+                                {format(day, 'd').padStart(2, '0')}
                             </div>
                         </div>
                     );
@@ -103,9 +89,8 @@ export function WeekView() {
             </div>
 
             {/* Scrollable Flex Agenda Grid */}
-            <div className="flex-1 overflow-y-auto bg-muted/10">
+            <div className="flex-1 overflow-y-auto scrollbar-none">
                 <div className="flex min-h-full">
-                    {/* Days columns */}
                     {weekDays.map((day, dayIndex) => {
                         const dayContents = getContentsForDay(day, filteredContents).sort((a, b) => {
                             if (!a.scheduledAt || !b.scheduledAt) return 0;
@@ -114,40 +99,39 @@ export function WeekView() {
                         const today = isToday(day);
 
                         return (
-                            <div key={dayIndex} className={`flex-1 flex flex-col gap-2 p-2 border-r border-border min-h-full last:border-r-0 ${today ? 'bg-primary/5' : ''}`}>
+                            <div key={dayIndex} className={cn(
+                                "flex-1 flex flex-col gap-2 p-2 border-r border-white/5 min-h-full last:border-r-0",
+                                today ? "bg-[#A3E635]/[0.02]" : ""
+                            )}>
 
-                                {/* Content Cards (Sorted) */}
                                 {dayContents.map((content) => {
                                     if (!content.scheduledAt) return null;
-                                    const TypeIcon = TYPE_ICONS[content.type] ?? Image;
-                                    const bgClass = TYPE_CARD_COLORS[content.type] ?? 'bg-muted';
                                     const d = parseISO(content.scheduledAt);
 
                                     return (
                                         <div
                                             key={content.id}
                                             onClick={(e) => handleContentClick(content, e)}
-                                            className={`rounded-md p-2 shadow-sm cursor-pointer transition-transform hover:scale-[1.02] hover:shadow-md ${bgClass} opacity-95 flex flex-col gap-1`}
+                                            className="group cursor-pointer rounded border border-white/5 bg-white/[0.03] p-2 hover:border-[#A3E635]/30 hover:bg-white/[0.05] transition-all flex flex-col gap-1.5"
                                         >
-                                            <div className="flex items-center gap-1.5 opacity-90">
-                                                <TypeIcon className="h-3.5 w-3.5 shrink-0" />
-                                                <span className="text-[10px] font-bold tracking-wider uppercase">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-mono text-[9px] text-[#A3E635] opacity-80">
                                                     {format(d, 'HH:mm')}
                                                 </span>
+                                                <span className="font-mono text-[10px] text-[#4A4A4A] group-hover:text-[#A3E635] transition-colors">{TYPE_GLYPHS[content.type] || '◆'}</span>
                                             </div>
-                                            <p className="text-xs font-semibold leading-tight line-clamp-2 mt-0.5">
+                                            <p className="text-[11px] font-bold text-[#F5F5F5] leading-tight line-clamp-2 uppercase tracking-wide">
                                                 {content.title}
                                             </p>
                                         </div>
                                     );
                                 })}
 
-                                {/* Add Button Slot */}
                                 <button
                                     onClick={() => handleSlotClick(day, 12)}
-                                    className="mt-auto flex items-center justify-center py-2 text-xs font-medium text-muted-foreground border border-dashed border-border rounded-md hover:bg-accent/50 transition-colors"
+                                    className="mt-auto py-2 text-[9px] font-mono tracking-widest text-[#4A4A4A] border border-dashed border-white/5 rounded hover:bg-white/5 hover:text-[#8A8A8A] transition-all uppercase"
                                 >
-                                    + Adicionar
+                                    + ADD_SLOT
                                 </button>
                             </div>
                         );

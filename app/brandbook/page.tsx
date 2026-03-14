@@ -3,108 +3,131 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-
-const cosmos = 'linear-gradient(135deg, #A855F7 0%, #EC4899 50%, #3B82F6 100%)'
+import { semantic } from '@/design-system/tokens/colors'
 
 const sections = [
-  { index: '01', title: 'Guidelines', description: 'Princípios, identidade e voz do sistema.', href: '/brandbook/guidelines' },
-  { index: '02', title: 'Foundations', description: 'Tokens: cores, tipografia, espaçamento, motion.', href: '/brandbook/foundations' },
-  { index: '03', title: 'Components', description: 'Átomos, moléculas e organismos documentados.', href: '/brandbook/components' },
-  { index: '04', title: 'Motion', description: 'Presets de animação e lógica cinética.', href: '/brandbook/motion' },
+  { index: '01', title: 'Guidelines', description: 'Princípios matemáticos, identidade bruta e voz do sistema.', href: '/brandbook/guidelines' },
+  { index: '02', title: 'Foundations', description: 'Tokens técnicos: cores RGBA, tipografia escala 1.25, grids.', href: '/brandbook/foundations' },
+  { index: '03', title: 'Components', description: 'Showcase explodido de átomos e moléculas documentadas.', href: '/brandbook/components' },
+  { id: '04', title: 'Motion', index: '04', description: 'Presets cinéticos e lógica de easing HUD.', href: '/brandbook/motion' },
 ]
 
 export default function BrandbookLandingPage() {
   return (
-    <div className="min-h-screen py-24 px-12 md:px-20 max-w-6xl mx-auto">
+    <div className="min-h-screen flex flex-col md:flex-row">
+      
+      {/* ─── LEFT PANEL: CONTEXT ─── */}
+      <section className="w-full md:w-[45%] p-12 md:p-24 flex flex-col justify-between border-r border-[#141414] bg-black relative overflow-hidden">
+        
+        {/* Animated Background lines */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none select-none">
+           <div className="absolute top-0 left-0 w-full h-[1px] bg-[#A3E635] animate-scan" style={{ animationDuration: '4s' }} />
+        </div>
 
-      {/* Label */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex items-center gap-3 mb-12"
-      >
-        <span className="font-mono text-xs font-bold tracking-[0.25em] text-[#A855F7]">[00]</span>
-        <div className="h-px w-6" style={{ background: '#A855F7' }} />
-        <span className="text-[10px] font-semibold tracking-[0.3em] uppercase text-[#4A4A4A]">Design System & Identity</span>
-      </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="space-y-12 relative z-10"
+        >
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-xs font-bold text-[#A3E635] tracking-[0.25em]">[00]</span>
+            <div className="h-px w-8 bg-[#A3E635]/40" />
+            <span className="text-[10px] font-mono font-semibold tracking-[0.4em] uppercase text-[#4A4A4A]">Core Identity Specification</span>
+          </div>
 
-      {/* Hero */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-20"
-      >
-        <h1 className="text-[clamp(3.5rem,10vw,7rem)] font-black tracking-[-0.04em] leading-[0.88] mb-8">
-          <span className="text-[#F5F5F5]">THE </span>
-          <span className="text-[#2A2A2A]">[</span>
-          <span className="text-[#F5F5F5]">DASHBOARD</span>
-          <span className="text-[#2A2A2A]">]</span>
-          <br />
-          <span
-            className="text-transparent bg-clip-text"
-            style={{ backgroundImage: cosmos }}
-          >
-            DESIGN SYSTEM.
-          </span>
-        </h1>
+          <h1 className="text-[clamp(3.5rem,7vw,6.5rem)] font-black tracking-[-0.05em] leading-[0.88] text-[#F5F5F5] uppercase">
+             Design<br />
+             <span className="text-[#A3E635]">System.</span>
+          </h1>
 
-        <p className="text-lg text-[#8A8A8A] max-w-xl leading-relaxed">
-          <span className="text-[#F5F5F5] font-medium">Apple Clean</span> encontra{' '}
-          <span className="text-[#F5F5F5] font-medium">Psychedelic Math.</span>{' '}
-          Um sistema construído para dashboards técnicos de alta densidade de informação.
-        </p>
-      </motion.div>
+          <p className="text-xl text-[#8A8A8A] max-w-sm leading-relaxed font-medium">
+             A performance-driven technical language for <span className="text-[#F5F5F5]">Dashboard OSS</span>. 
+             Engineered for mathematical precision.
+          </p>
+        </motion.div>
 
-      {/* Divider */}
-      <div className="h-px bg-[#1A1A1A] mb-16" />
-
-      {/* Nav Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[#1A1A1A]">
-        {sections.map((section, i) => (
-          <motion.div
-            key={section.index}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 * i, duration: 0.4 }}
-          >
-            <Link
-              href={section.href}
-              className="group block p-10 bg-black hover:bg-[#0A0A0A] transition-colors"
-            >
-              <div className="flex items-start justify-between mb-8">
-                <span className="font-mono text-xs font-bold tracking-[0.2em] text-[#4A4A4A] group-hover:text-[#A855F7] transition-colors">
-                  [{section.index}]
-                </span>
-                <span className="text-[#262626] group-hover:text-[#A855F7] transition-colors text-sm">→</span>
+        <div className="pt-24 space-y-4">
+           <div className="flex gap-4">
+              <div className="px-3 py-1 border border-[#141414] rounded-full">
+                 <span className="font-mono text-[9px] text-[#4A4A4A] uppercase tracking-widest">Build 2.5.H</span>
               </div>
-              <h3 className="text-2xl font-bold tracking-tight text-[#F5F5F5] mb-3">
-                {section.title}
-              </h3>
-              <p className="text-sm text-[#4A4A4A] group-hover:text-[#8A8A8A] transition-colors leading-relaxed">
-                {section.description}
-              </p>
-            </Link>
-          </motion.div>
-        ))}
-      </div>
+              <div className="px-3 py-1 border border-[#141414] rounded-full">
+                 <span className="font-mono text-[9px] text-[#4A4A4A] uppercase tracking-widest">Solar_Green.env</span>
+              </div>
+           </div>
+        </div>
+      </section>
 
-      {/* Footer stat bar */}
-      <div className="mt-px bg-[#1A1A1A]">
-        <div className="grid grid-cols-3 divide-x divide-[#1A1A1A] bg-[#050505]">
-          {[
-            { label: 'Atoms', value: '12' },
-            { label: 'Tokens', value: '80+' },
-            { label: 'Branch', value: 'v2' },
-          ].map((stat) => (
-            <div key={stat.label} className="px-8 py-5 flex items-baseline gap-3">
-              <span className="font-mono text-xl font-bold text-[#F5F5F5]">{stat.value}</span>
-              <span className="text-xs text-[#4A4A4A] tracking-wider uppercase">{stat.label}</span>
-            </div>
+      {/* ─── RIGHT PANEL: NAVIGATION CONTENT ─── */}
+      <section className="flex-1 bg-[#050505] relative overflow-auto">
+        
+        {/* HUD Grid Overlay */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.05]"
+             style={{ 
+               backgroundImage: `radial-gradient(#A3E635 1px, transparent 1px)`,
+               backgroundSize: '32px 32px'
+             }} 
+        />
+
+        <div className="relative z-10 divide-y divide-[#141414]">
+          {sections.map((section, i) => (
+            <Link 
+              key={section.index}
+              href={section.href}
+              className="group block p-12 md:p-16 hover:bg-black transition-all relative overflow-hidden"
+            >
+               {/* Content */}
+               <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <span className="font-mono text-xs font-bold text-[#4A4A4A] group-hover:text-[#A3E635] transition-colors leading-none">
+                        [{section.index}]
+                      </span>
+                      <h3 className="text-3xl font-bold tracking-tight text-[#F5F5F5] uppercase group-hover:translate-x-1 transition-transform">
+                        {section.title}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-[#4A4A4A] max-w-md leading-relaxed group-hover:text-[#8A8A8A] transition-colors">
+                       {section.description}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center gap-6">
+                     <span className="font-mono text-[10px] text-[#2A2A2A] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Accessing_Module</span>
+                     <span className="text-2xl text-[#2A2A2A] group-hover:text-[#A3E635] transition-colors">▶</span>
+                  </div>
+               </div>
+
+               {/* Interaction Highlight Pattern */}
+               <div className="absolute top-0 right-0 h-full w-24 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                    style={{ backgroundImage: 'linear-gradient(90deg, transparent, rgba(163,230,53,0.05))' }} />
+            </Link>
           ))}
         </div>
-      </div>
 
+        {/* System Footer Table */}
+        <div className="p-12 md:p-16 border-t border-[#141414] bg-black">
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
+              <StatBlock label="Core Atoms" value="14" />
+              <StatBlock label="Molecules" value="06" />
+              <StatBlock label="Token Count" value="124" />
+              <StatBlock label="Performance" value="99ms" />
+           </div>
+        </div>
+      </section>
+
+    </div>
+  )
+}
+
+function StatBlock({ label, value }: { label: string, value: string }) {
+  return (
+    <div className="space-y-1">
+       <span className="text-[10px] font-mono text-[#4A4A4A] uppercase tracking-widest leading-none">{label}</span>
+       <div className="flex items-baseline gap-1">
+          <span className="text-2xl font-bold text-[#F5F5F5] leading-none">{value}</span>
+          <span className="w-1 h-1 bg-[#A3E635] rounded-full animate-pulse" />
+       </div>
     </div>
   )
 }

@@ -2,13 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-    Heart, MessageCircle, Eye, TrendingUp,
-    ArrowUp, ArrowDown, Minus,
-    Image as ImageIcon, Film, Layers,
-    Calendar, Clock, BarChart3, Filter,
-    RefreshCw, User
-} from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import { refreshCompetitorAvatarAction } from '@/app/actions/competitor.actions';
 import { toast } from 'sonner';
 import type { InstagramPostMetrics, AnalyticsSummary } from '@/types/analytics';
@@ -67,11 +61,11 @@ function pct(n: number): string { return `${n.toFixed(1)}%`; }
 function Diff({ value, baseline }: { value: number; baseline: number }) {
     if (baseline === 0) return null;
     const d = Math.round(((value - baseline) / baseline) * 100);
-    if (d === 0) return <Minus className="h-3 w-3 text-muted-foreground inline" />;
+    if (d === 0) return <span className="h-3 w-3 text-muted-foreground inline font-mono">-</span>;
     const pos = d > 0;
     return (
         <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${pos ? 'text-green-400' : 'text-red-400'}`}>
-            {pos ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />}
+            <span className="font-mono text-[8px]">{pos ? '▲' : '▼'}</span>
             {Math.abs(d)}%
         </span>
     );
@@ -297,7 +291,7 @@ function MetricRow({ label, icon: Icon, color, profiles, getValue, formatValue, 
         <tr className="hover:bg-muted/10">
             <td className="px-4 py-2 whitespace-nowrap">
                 <span className="flex items-center gap-1.5 text-xs">
-                    <Icon className={`h-3 w-3 ${color}`} /> {label}
+                    <span className={`font-mono text-[10px] ${color}`}>◎</span> {label}
                 </span>
             </td>
             {profiles.map(p => {
@@ -372,7 +366,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-1">
-                        <Filter className="h-3.5 w-3.5" />
+                        <span className="font-mono text-xs">◎</span>
                         <span>Período:</span>
                     </div>
                     {PERIOD_OPTIONS.map(opt => (
@@ -408,7 +402,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
 
                 <div className="flex items-center gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-1">
-                        <BarChart3 className="h-3.5 w-3.5" />
+                        <span className="font-mono text-xs">◎</span>
                         <span>Quantidade:</span>
                     </div>
                     {LIMIT_OPTIONS.map(opt => (
@@ -442,11 +436,11 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                                     {avatarUrl ? (
                                         <img src={`/api/image-proxy?url=${encodeURIComponent(avatarUrl)}`} alt={p.handle} className="h-full w-full object-cover" />
                                     ) : (
-                                        <User className="h-6 w-6 text-muted-foreground/40" />
+                                        <span className="font-mono text-lg text-muted-foreground/40">◎</span>
                                     )}
                                     {refreshing === p.handle && (
                                         <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-                                            <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                                            <span className="font-mono text-xs animate-spin text-primary">↻</span>
                                         </div>
                                     )}
                                 </div>
@@ -467,7 +461,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                                 className="absolute top-2 right-2 p-1.5 rounded-full bg-background/50 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background shadow-sm border border-border"
                                 title="Atualizar Foto de Perfil"
                             >
-                                <RefreshCw className={`h-3 w-3 text-muted-foreground ${refreshing === p.handle ? 'animate-spin' : ''}`} />
+                                <span className={`font-mono text-[10px] text-muted-foreground ${refreshing === p.handle ? 'animate-spin' : ''}`}>↻</span>
                             </button>
 
                             <div className="mt-2 pt-2 border-t border-border/20">
@@ -491,7 +485,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                 className="rounded-xl border border-border bg-card overflow-x-auto">
                 <div className="px-4 py-2.5 border-b border-border bg-muted/30">
                     <h4 className="text-xs font-semibold flex items-center gap-1.5">
-                        <BarChart3 className="h-3.5 w-3.5 text-blue-400" />
+                        <span className="font-mono text-xs text-blue-400">◎</span>
                         Médias por Post (todos os tipos)
                     </h4>
                 </div>
@@ -507,14 +501,14 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                        <MetricRow label="Likes/Post" icon={Heart} color="text-pink-400" profiles={profiles} getValue={m => m.avgLikes} formatValue={fmt} />
-                        <MetricRow label="Comentários/Post" icon={MessageCircle} color="text-blue-400" profiles={profiles} getValue={m => m.avgComments} formatValue={fmt} />
+                        <MetricRow label="Likes/Post" icon={() => null} color="text-pink-400" profiles={profiles} getValue={m => m.avgLikes} formatValue={fmt} />
+                        <MetricRow label="Comentários/Post" icon={() => null} color="text-blue-400" profiles={profiles} getValue={m => m.avgComments} formatValue={fmt} />
 
                         {/* Sentimento */}
                         <tr className="hover:bg-muted/10">
                             <td className="px-4 py-2 whitespace-nowrap">
                                 <span className="flex items-center gap-1.5 text-xs">
-                                    <MessageCircle className="h-3 w-3 text-emerald-400" /> Sentimento (Comentários)
+                                    <span className="font-mono text-xs text-emerald-400">●</span> Sentimento (Comentários)
                                 </span>
                             </td>
                             {profiles.map(p => (
@@ -535,10 +529,10 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                             ))}
                         </tr>
 
-                        <MetricRow label="Engajamento/Post" icon={TrendingUp} color="text-green-400" profiles={profiles} getValue={m => m.avgEngagement} formatValue={fmt} />
-                        <MetricRow label="Engajamento Qualificado" icon={TrendingUp} color="text-yellow-400" profiles={profiles} getValue={m => m.qualifiedEngagement} formatValue={fmt} />
-                        <MetricRow label="Engaj. Reels (%)" icon={Eye} color="text-purple-400" profiles={profiles} getValue={m => m.engagementRateReels} formatValue={pct} />
-                        <MetricRow label="Views/Reel" icon={Eye} color="text-violet-400" profiles={profiles} getValue={m => m.avgViewsPerReel} formatValue={fmt} />
+                        <MetricRow label="Engajamento/Post" icon={() => null} color="text-green-400" profiles={profiles} getValue={m => m.avgEngagement} formatValue={fmt} />
+                        <MetricRow label="Engajamento Qualificado" icon={() => null} color="text-yellow-400" profiles={profiles} getValue={m => m.qualifiedEngagement} formatValue={fmt} />
+                        <MetricRow label="Engaj. Reels (%)" icon={() => null} color="text-purple-400" profiles={profiles} getValue={m => m.engagementRateReels} formatValue={pct} />
+                        <MetricRow label="Views/Reel" icon={() => null} color="text-violet-400" profiles={profiles} getValue={m => m.avgViewsPerReel} formatValue={fmt} />
                     </tbody>
                 </table>
             </motion.div>
@@ -548,7 +542,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                 className="rounded-xl border border-border bg-card overflow-x-auto">
                 <div className="px-4 py-2.5 border-b border-border bg-muted/30">
                     <h4 className="text-xs font-semibold flex items-center gap-1.5">
-                        <Layers className="h-3.5 w-3.5 text-amber-400" />
+                        <span className="font-mono text-xs text-amber-400">⊞</span>
                         Engajamento por Tipo de Conteúdo
                     </h4>
                     <p className="text-[10px] text-muted-foreground">(likes + comentários médios por tipo)</p>
@@ -569,7 +563,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                         <tr className="hover:bg-muted/10">
                             <td className="px-4 py-2 whitespace-nowrap">
                                 <span className="flex items-center gap-1.5 text-xs">
-                                    <ImageIcon className="h-3 w-3 text-blue-400" /> 📷 Posts (imagem)
+                                    <span className="font-mono text-xs text-blue-400">◫</span> 📷 Posts (imagem)
                                 </span>
                             </td>
                             {profiles.map(p => (
@@ -587,7 +581,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                         <tr className="hover:bg-muted/10">
                             <td className="px-4 py-2 whitespace-nowrap">
                                 <span className="flex items-center gap-1.5 text-xs">
-                                    <Film className="h-3 w-3 text-pink-400" /> 🎬 Reels (vídeo)
+                                    <span className="font-mono text-xs text-pink-400">▶</span> 🎬 Reels (vídeo)
                                 </span>
                             </td>
                             {profiles.map(p => (
@@ -605,7 +599,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                         <tr className="hover:bg-muted/10">
                             <td className="px-4 py-2 whitespace-nowrap">
                                 <span className="flex items-center gap-1.5 text-xs">
-                                    <Layers className="h-3 w-3 text-orange-400" /> 🔲 Carrosséis
+                                    <span className="font-mono text-xs text-orange-400">⊞</span> 🔲 Carrosséis
                                 </span>
                             </td>
                             {profiles.map(p => (
@@ -629,7 +623,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                 className="rounded-xl border border-border bg-card overflow-x-auto">
                 <div className="px-4 py-2.5 border-b border-border bg-muted/30">
                     <h4 className="text-xs font-semibold flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-green-400" />
+                        <span className="font-mono text-xs text-green-400">◎</span>
                         Médias Temporais (Engajamento)
                     </h4>
                     <p className="text-[10px] text-muted-foreground">Atividade por semana/mês no período filtrado. Precisa ≥7d para semanal, ≥28d para mensal.</p>
@@ -648,21 +642,21 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                     <tbody className="divide-y divide-border">
                         {/* Period */}
                         <tr className="bg-muted/5">
-                            <td className="px-4 py-2"><span className="text-xs text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3 w-3" /> Período</span></td>
+                            <td className="px-4 py-2"><span className="text-xs text-muted-foreground flex items-center gap-1.5"><span className="font-mono text-xs">◎</span> Período</span></td>
                             {profiles.map(p => (
                                 <td key={p.handle} className="px-3 py-2 text-center text-xs font-medium">{p.diffDays > 0 ? `${p.diffDays}d` : 'N/D'}</td>
                             ))}
                         </tr>
                         {/* Weekly */}
-                        <MetricRow label="Posts/Semana" icon={Clock} color="text-cyan-400" profiles={profiles} getValue={m => m.postsPerWeek} formatValue={n => n.toFixed(1)} />
-                        <MetricRow label="Engaj./Semana" icon={TrendingUp} color="text-green-400" profiles={profiles} getValue={m => m.engPerWeek} formatValue={fmt} />
-                        <MetricRow label="Likes/Semana" icon={Heart} color="text-pink-400" profiles={profiles} getValue={m => m.likesPerWeek} formatValue={fmt} />
-                        <MetricRow label="Coment./Semana" icon={MessageCircle} color="text-blue-400" profiles={profiles} getValue={m => m.commentsPerWeek} formatValue={fmt} />
+                        <MetricRow label="Posts/Semana" icon={() => null} color="text-cyan-400" profiles={profiles} getValue={m => m.postsPerWeek} formatValue={n => n.toFixed(1)} />
+                        <MetricRow label="Engaj./Semana" icon={() => null} color="text-green-400" profiles={profiles} getValue={m => m.engPerWeek} formatValue={fmt} />
+                        <MetricRow label="Likes/Semana" icon={() => null} color="text-pink-400" profiles={profiles} getValue={m => m.likesPerWeek} formatValue={fmt} />
+                        <MetricRow label="Coment./Semana" icon={() => null} color="text-blue-400" profiles={profiles} getValue={m => m.commentsPerWeek} formatValue={fmt} />
                         {/* Monthly */}
-                        <MetricRow label="Posts/Mês" icon={Calendar} color="text-cyan-400" profiles={profiles} getValue={m => m.postsPerMonth} formatValue={n => n.toFixed(1)} />
-                        <MetricRow label="Engaj./Mês" icon={TrendingUp} color="text-green-400" profiles={profiles} getValue={m => m.engPerMonth} formatValue={fmt} />
-                        <MetricRow label="Likes/Mês" icon={Heart} color="text-pink-400" profiles={profiles} getValue={m => m.likesPerMonth} formatValue={fmt} />
-                        <MetricRow label="Coment./Mês" icon={MessageCircle} color="text-blue-400" profiles={profiles} getValue={m => m.commentsPerMonth} formatValue={fmt} />
+                        <MetricRow label="Posts/Mês" icon={() => null} color="text-cyan-400" profiles={profiles} getValue={m => m.postsPerMonth} formatValue={n => n.toFixed(1)} />
+                        <MetricRow label="Engaj./Mês" icon={() => null} color="text-green-400" profiles={profiles} getValue={m => m.engPerMonth} formatValue={fmt} />
+                        <MetricRow label="Likes/Mês" icon={() => null} color="text-pink-400" profiles={profiles} getValue={m => m.likesPerMonth} formatValue={fmt} />
+                        <MetricRow label="Coment./Mês" icon={() => null} color="text-blue-400" profiles={profiles} getValue={m => m.commentsPerMonth} formatValue={fmt} />
                     </tbody>
                 </table>
             </motion.div>
@@ -671,7 +665,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
                 className="rounded-xl border border-border bg-card p-4">
                 <h4 className="text-xs font-semibold flex items-center gap-1.5 mb-3">
-                    <Layers className="h-3.5 w-3.5 text-amber-400" />
+                    <span className="font-mono text-xs text-amber-400">⊞</span>
                     Distribuição de Conteúdo (%)
                 </h4>
                 <div className="space-y-3">
@@ -720,7 +714,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                 className="rounded-xl border border-border bg-card p-4 space-y-3">
                 <h4 className="text-xs font-semibold flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-green-400" />
+                    <span className="font-mono text-xs text-green-400">↗</span>
                     Engajamento por Post (likes + comentários)
                 </h4>
                 {(() => {
@@ -750,7 +744,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
                 className="rounded-xl border border-border bg-card p-4 space-y-3">
                 <h4 className="text-xs font-semibold flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-cyan-400" />
+                    <span className="font-mono text-xs text-cyan-400">◷</span>
                     Frequência de Postagem (posts/semana)
                 </h4>
                 {(() => {
@@ -781,7 +775,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                 className="rounded-xl border border-border bg-card overflow-x-auto">
                 <div className="px-4 py-2.5 border-b border-border bg-muted/30">
                     <h4 className="text-xs font-semibold flex items-center gap-1.5">
-                        <TrendingUp className="h-3.5 w-3.5 text-purple-400" />
+                        <span className="font-mono text-xs text-purple-400">↗</span>
                         Indicadores Estatísticos
                     </h4>
                     <p className="text-[10px] text-muted-foreground">Análise matemática de consistência, volatilidade e tendência</p>
@@ -801,7 +795,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                         <tr className="hover:bg-muted/10">
                             <td className="px-4 py-2 whitespace-nowrap">
                                 <span className="flex items-center gap-1.5 text-xs">
-                                    <Calendar className="h-3 w-3 text-cyan-400" /> Consistência
+                                    <span className="font-mono text-xs text-cyan-400">◎</span> Consistência
                                 </span>
                             </td>
                             {profiles.map(p => (
@@ -816,7 +810,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                         <tr className="hover:bg-muted/10">
                             <td className="px-4 py-2 whitespace-nowrap">
                                 <span className="flex items-center gap-1.5 text-xs">
-                                    <BarChart3 className="h-3 w-3 text-amber-400" /> Volatilidade
+                                    <span className="font-mono text-xs text-amber-400">◎</span> Volatilidade
                                 </span>
                             </td>
                             {profiles.map(p => (
@@ -830,7 +824,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                         <tr className="hover:bg-muted/10">
                             <td className="px-4 py-2 whitespace-nowrap">
                                 <span className="flex items-center gap-1.5 text-xs">
-                                    <TrendingUp className="h-3 w-3 text-green-400" /> Tendência
+                                    <span className="font-mono text-xs text-green-400">↗</span> Tendência
                                 </span>
                             </td>
                             {profiles.map(p => (
@@ -845,7 +839,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                         <tr className="hover:bg-muted/10">
                             <td className="px-4 py-2 whitespace-nowrap">
                                 <span className="flex items-center gap-1.5 text-xs">
-                                    <Calendar className="h-3 w-3 text-blue-400" /> Melhor Dia
+                                    <span className="font-mono text-xs text-blue-400">◎</span> Melhor Dia
                                 </span>
                             </td>
                             {profiles.map(p => (
@@ -863,7 +857,7 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                 className="rounded-xl border border-border bg-card overflow-x-auto">
                 <div className="px-4 py-2.5 border-b border-border bg-muted/30">
                     <h4 className="text-xs font-semibold flex items-center gap-1.5">
-                        <BarChart3 className="h-3.5 w-3.5 text-violet-400" />
+                        <span className="font-mono text-xs text-violet-400">◎</span>
                         Inteligência Competitiva
                     </h4>
                     <p className="text-[10px] text-muted-foreground">Indicadores baseados em frameworks de especialistas (Hormozi, Cialdini, Eyal, Schwartz, Lindstrom, Brunson)</p>
@@ -880,14 +874,14 @@ export function ComparisonView({ client, competitors }: ComparisonViewProps) {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                        <MetricRow label="Content ROI" icon={TrendingUp} color="text-emerald-400" profiles={profiles} getValue={m => m.contentROI} formatValue={n => `${n}/100`} />
-                        <MetricRow label="Pareto (80/20)" icon={BarChart3} color="text-amber-400" profiles={profiles} getValue={m => m.paretoEfficiency} formatValue={n => `${n}%`} />
-                        <MetricRow label="Content Velocity" icon={TrendingUp} color="text-sky-400" profiles={profiles} getValue={m => m.contentVelocity} formatValue={n => `${n}/100`} />
-                        <MetricRow label="Variable Reward" icon={RefreshCw} color="text-cyan-400" profiles={profiles} getValue={m => m.variableReward} formatValue={n => `${n}/100`} />
-                        <MetricRow label="Investment Depth" icon={MessageCircle} color="text-purple-400" profiles={profiles} getValue={m => m.investmentDepth} formatValue={n => `${n}/100`} />
-                        <MetricRow label="Hook Quality" icon={Eye} color="text-yellow-400" profiles={profiles} getValue={m => m.hookQuality} formatValue={n => `${n}/100`} />
-                        <MetricRow label="Brand Equity" icon={Heart} color="text-violet-400" profiles={profiles} getValue={m => m.brandEquity} formatValue={n => `${n}/100`} />
-                        <MetricRow label="Persuasion Triggers" icon={TrendingUp} color="text-rose-400" profiles={profiles} getValue={m => m.persuasionTriggers} formatValue={n => `${n}`} />
+                        <MetricRow label="Content ROI" icon={() => null} color="text-emerald-400" profiles={profiles} getValue={m => m.contentROI} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Pareto (80/20)" icon={() => null} color="text-amber-400" profiles={profiles} getValue={m => m.paretoEfficiency} formatValue={n => `${n}%`} />
+                        <MetricRow label="Content Velocity" icon={() => null} color="text-sky-400" profiles={profiles} getValue={m => m.contentVelocity} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Variable Reward" icon={() => null} color="text-cyan-400" profiles={profiles} getValue={m => m.variableReward} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Investment Depth" icon={() => null} color="text-purple-400" profiles={profiles} getValue={m => m.investmentDepth} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Hook Quality" icon={() => null} color="text-yellow-400" profiles={profiles} getValue={m => m.hookQuality} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Brand Equity" icon={() => null} color="text-violet-400" profiles={profiles} getValue={m => m.brandEquity} formatValue={n => `${n}/100`} />
+                        <MetricRow label="Persuasion Triggers" icon={() => null} color="text-rose-400" profiles={profiles} getValue={m => m.persuasionTriggers} formatValue={n => `${n}`} />
                     </tbody>
                 </table>
             </motion.div>

@@ -2,16 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import {
-    ArrowUpDown,
-    ExternalLink,
-    Heart,
-    MessageCircle,
-    Eye,
-    Image,
-    Film,
-    Layers,
-} from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { InstagramPostMetrics } from '@/types/analytics';
@@ -23,10 +13,10 @@ interface PostsTableProps {
 type SortKey = 'likesCount' | 'commentsCount' | 'videoViewCount' | 'timestamp';
 type SortDir = 'asc' | 'desc';
 
-const TYPE_ICONS: Record<string, React.ElementType> = {
-    Image: Image,
-    Video: Film,
-    Sidecar: Layers,
+const TYPE_GLYPHS: Record<string, string> = {
+    Image: '◫',
+    Video: '▶',
+    Sidecar: '⊞',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -80,10 +70,10 @@ export function PostsTable({ posts }: PostsTableProps) {
     const SortButton = ({ field, children }: { field: SortKey; children: React.ReactNode }) => (
         <button
             onClick={() => toggleSort(field)}
-            className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors font-mono"
         >
             {children}
-            <ArrowUpDown className="h-3 w-3" />
+            <span className="text-[10px] opacity-50">↕</span>
         </button>
     );
 
@@ -117,7 +107,7 @@ export function PostsTable({ posts }: PostsTableProps) {
                 </thead>
                 <tbody>
                     {sorted.map((post, i) => {
-                        const TypeIcon = TYPE_ICONS[post.type] ?? Image;
+                        const typeGlyph = TYPE_GLYPHS[post.type] ?? '◫';
                         const typeColor = TYPE_COLORS[post.type] ?? TYPE_COLORS.Image;
                         const typeLabel = TYPE_LABELS[post.type] ?? post.type;
 
@@ -139,8 +129,8 @@ export function PostsTable({ posts }: PostsTableProps) {
                                                 className="h-10 w-10 shrink-0 rounded-lg object-cover border border-border"
                                             />
                                         ) : (
-                                            <div className="h-10 w-10 shrink-0 rounded-lg bg-muted flex items-center justify-center">
-                                                <Image className="h-4 w-4 text-muted-foreground" />
+                                            <div className="h-10 w-10 shrink-0 rounded-lg bg-muted flex items-center justify-center border border-border">
+                                                <span className="text-muted-foreground font-mono text-lg">◫</span>
                                             </div>
                                         )}
                                         <p className="truncate text-sm">{post.caption || '(sem legenda)'}</p>
@@ -149,24 +139,24 @@ export function PostsTable({ posts }: PostsTableProps) {
 
                                 {/* Type */}
                                 <td className="px-4 py-3">
-                                    <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${typeColor}`}>
-                                        <TypeIcon className="h-3 w-3" />
+                                    <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-tighter ${typeColor}`}>
+                                        <span className="font-mono">{typeGlyph}</span>
                                         {typeLabel}
                                     </span>
                                 </td>
 
                                 {/* Likes */}
                                 <td className="px-4 py-3 text-right">
-                                    <span className="inline-flex items-center gap-1 text-pink-400">
-                                        <Heart className="h-3.5 w-3.5" />
+                                    <span className="inline-flex items-center gap-1 text-pink-400 font-mono font-bold">
+                                        <span className="text-[10px]">▲</span>
                                         {formatNumber(post.likesCount)}
                                     </span>
                                 </td>
 
                                 {/* Comments */}
                                 <td className="px-4 py-3 text-right">
-                                    <span className="inline-flex items-center gap-1 text-blue-400">
-                                        <MessageCircle className="h-3.5 w-3.5" />
+                                    <span className="inline-flex items-center gap-1 text-blue-400 font-mono font-bold">
+                                        <span className="text-[10px]">◐</span>
                                         {formatNumber(post.commentsCount)}
                                     </span>
                                 </td>
@@ -174,8 +164,8 @@ export function PostsTable({ posts }: PostsTableProps) {
                                 {/* Views */}
                                 <td className="px-4 py-3 text-right">
                                     {post.videoViewCount != null ? (
-                                        <span className="inline-flex items-center gap-1 text-purple-400">
-                                            <Eye className="h-3.5 w-3.5" />
+                                        <span className="inline-flex items-center gap-1 text-purple-400 font-mono font-bold">
+                                            <span className="text-[10px]">◎</span>
                                             {formatNumber(post.videoViewCount)}
                                         </span>
                                     ) : (
@@ -184,7 +174,7 @@ export function PostsTable({ posts }: PostsTableProps) {
                                 </td>
 
                                 {/* Date */}
-                                <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap">
+                                <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap font-mono text-xs uppercase">
                                     {post.timestamp
                                         ? format(parseISO(post.timestamp), 'dd MMM yyyy', { locale: ptBR })
                                         : '—'}
@@ -196,10 +186,10 @@ export function PostsTable({ posts }: PostsTableProps) {
                                         href={post.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors font-mono text-sm"
                                         title="Abrir no Instagram"
                                     >
-                                        <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                        ↗
                                     </a>
                                 </td>
                             </motion.tr>

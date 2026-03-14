@@ -3,7 +3,8 @@
 > **Status:** Em construcao
 > **Branch:** `v2-dashboard`
 > **Metodologia:** Atomic Design (Brad Frost)
-> **Identidade:** Apple Clean + Psychedelic Math
+> **Identidade:** Apple Clean + Industrial Blueprint
+> **Paleta:** Absolute Black, Solar Green & Measurement Slate
 
 ---
 
@@ -17,8 +18,8 @@
 | **Tom** | Tech/moderno, matematico, estatistico |
 | **Sensacao** | Clean como Apple, psicodelico nos dados |
 | **Base** | Preto profundo, minimalismo cirurgico |
-| **Accents** | Gradientes neon nos dados e visualizacoes |
-| **Metafora** | "Bloomberg Terminal se Steve Jobs desenhasse sob efeito de LSD" |
+| **Accents** | Solar Green (#A3E635) - Stark, industrial, non-AI |
+| **Metafora** | "Scientific Drawing / Technical Blueprint / Radar Screen" |
 
 ### Principios de Design
 
@@ -57,20 +58,17 @@
 
 ### Accent (Psychedelic Math)
 ```
---neon-purple:  #A855F7 → #7C3AED   ← Primario (metricas, links ativos)
---neon-blue:    #3B82F6 → #2563EB   ← Informacao, dados em progresso
---neon-cyan:    #06B6D4 → #0891B2   ← Destaque secundario
---neon-pink:    #EC4899 → #DB2777   ← Alertas, destaques urgentes
---neon-green:   #10B981 → #059669   ← Sucesso, tendencia positiva
---neon-amber:   #F59E0B → #D97706   ← Aviso, atencao
---neon-red:     #EF4444 → #DC2626   ← Erro, tendencia negativa
+--brand-solar:    #A3E635 → #84CC16   ← Principal (Trigger)
+--slate-light:    #F8FAFC → #E2E8F0   ← Texto/Estrutura
+--slate-deep:     #1E293B → #0F172A   ← Profundidade
+--action-red:     #FF4444 → #CC0000   ← Erro (Stark)
+--action-blue:    #3E63DD → #2E46A6   ← Info
 ```
 
-### Gradientes (Psicodelicos — para dados e visualizacoes)
+### Patterns (Blueprint - No Gradients)
 ```
---gradient-cosmos:  linear-gradient(135deg, #A855F7, #EC4899, #3B82F6)
---gradient-aurora:  linear-gradient(135deg, #06B6D4, #10B981, #A855F7)
---gradient-sunset:  linear-gradient(135deg, #F59E0B, #EF4444, #EC4899)
+--pattern-grid:     radial-gradient(#1E293B 0.5px, transparent 0.5px) (Size: 20px)
+--razor-border:     0.5px solid #2D3748
 --gradient-depth:   linear-gradient(180deg, #0A0A0A, #000000)
 ```
 

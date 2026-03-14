@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Loader2, Infinity, RefreshCw } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import { Button } from '@/components/ui/button';
 
 interface AnalyticsSearchProps {
@@ -53,7 +53,7 @@ export function AnalyticsSearch({ onSearch, onMerge, isLoading, hasCachedData, i
                     Perfil do Instagram
                 </label>
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-muted-foreground">◎</span>
                     <input
                         id="profile-url"
                         type="text"
@@ -93,7 +93,7 @@ export function AnalyticsSearch({ onSearch, onMerge, isLoading, hasCachedData, i
                                 : 'border-border text-muted-foreground hover:text-foreground hover:border-purple-500/50'
                                 } disabled:opacity-50`}
                         >
-                            <Infinity className="h-5 w-5" />
+                            <span className="font-mono text-lg leading-none">∞</span>
                         </button>
                     </div>
                 </div>
@@ -123,7 +123,7 @@ export function AnalyticsSearch({ onSearch, onMerge, isLoading, hasCachedData, i
                             <option value="90">Últimos 90 dias</option>
                         </select>
                         <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                            <Search className="h-3.5 w-3.5 opacity-50" />
+                            <span className="font-mono text-[10px] opacity-50">◎</span>
                         </div>
                     </div>
                 </div>
@@ -136,12 +136,12 @@ export function AnalyticsSearch({ onSearch, onMerge, isLoading, hasCachedData, i
                     >
                         {isLoading ? (
                             <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <span className="mr-2 font-mono text-sm animate-spin">↻</span>
                                 Analisando...
                             </>
                         ) : (
                             <>
-                                <Search className="mr-2 h-4 w-4" />
+                                <span className="mr-2 font-mono text-sm">◎</span>
                                 {analyzeAll ? 'Analisar Tudo' : 'Analisar'}
                             </>
                         )}
@@ -156,7 +156,7 @@ export function AnalyticsSearch({ onSearch, onMerge, isLoading, hasCachedData, i
                             title="Busca os últimos N posts e faz merge com dados já salvos"
                             className="h-11 text-xs"
                         >
-                            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                            <span className="mr-1.5 font-mono text-sm">↻</span>
                             Atualizar
                         </Button>
                     )}

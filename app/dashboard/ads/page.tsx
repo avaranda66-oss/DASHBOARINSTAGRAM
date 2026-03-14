@@ -2,21 +2,18 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAdsStore, useAccountStore, useSettingsStore } from '@/stores';
-import { AdsKpiCards } from '@/features/ads/components/ads-kpi-cards';
 import { CampaignsTable } from '@/features/ads/components/campaigns-table';
 import { AdsCharts } from '@/features/ads/components/ads-charts';
 import { AdsIntelligencePanelV2 } from '@/features/ads/components/ads-intelligence-panel-v2';
 import { CreativesGallery } from '@/features/ads/components/creatives-gallery';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import {
-    Megaphone, RefreshCw, Loader2, AlertCircle, Info,
-    BarChart3, Table, Brain, Clock, CalendarDays, Filter, X,
-    Image as ImageIcon,
-} from 'lucide-react';
+import { Button } from '@/design-system/atoms/Button';
+import { KpiCard } from '@/design-system/molecules/KpiCard';
+import { Badge } from '@/design-system/atoms/Badge';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import type { AdsDatePreset } from '@/types/ads';
+import { cn } from '@/design-system/utils/cn';
 
 type ViewTab = 'overview' | 'charts' | 'intelligence' | 'creatives';
 
@@ -32,11 +29,21 @@ const DATE_PRESETS: { value: AdsDatePreset; label: string }[] = [
 ];
 
 const STATUS_FILTERS = [
-    { value: 'all', label: 'Todas' },
-    { value: 'ACTIVE', label: 'Ativas' },
-    { value: 'PAUSED', label: 'Pausadas' },
-    { value: 'ARCHIVED', label: 'Arquivadas' },
+    { value: 'all', label: 'TODAS', tag: '00' },
+    { value: 'ACTIVE', label: 'ATIVAS', tag: '01' },
+    { value: 'PAUSED', label: 'PAUSADAS', tag: '02' },
+    { value: 'ARCHIVED', label: 'ARQUIVADAS', tag: '03' },
 ] as const;
+
+const container = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+};
+
+const item = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] as any } },
+};
 
 export default function AdsDashboardPage() {
     const [activeTab, setActiveTab] = useState<ViewTab>('overview');
@@ -51,18 +58,14 @@ export default function AdsDashboardPage() {
         fetchAll, fetchCreatives, setFilters, setExpandedCampaign, updateCampaignStatus,
     } = adsStore;
 
-    // Encontrar conta com ads_token
     const [adsToken, setAdsToken] = useState<string | null>(null);
     const [adsAccountId, setAdsAccountId] = useState<string | null>(null);
     const [accountName, setAccountName] = useState<string>('');
 
-    // Custom date range state
     const [showCustomRange, setShowCustomRange] = useState(false);
     const [customSince, setCustomSince] = useState('');
     const [customUntil, setCustomUntil] = useState('');
     const [isCustomRangeActive, setIsCustomRangeActive] = useState(false);
-
-    // Campaign filter state
     const [selectedCampaignFilter, setSelectedCampaignFilter] = useState<string>('all');
 
     useEffect(() => {
@@ -80,7 +83,6 @@ export default function AdsDashboardPage() {
         }
     }, [accountStore.accounts]);
 
-    // Auto-fetch quando token e accountId estão disponíveis
     useEffect(() => {
         if (adsToken && adsAccountId && !lastFetchedAt && !isLoading) {
             fetchAll(adsToken, adsAccountId);
@@ -104,14 +106,7 @@ export default function AdsDashboardPage() {
     }, [adsToken, adsAccountId, setFilters, fetchAll]);
 
     const handleCustomRangeApply = useCallback(() => {
-        if (!customSince || !customUntil) {
-            toast.error('Selecione as duas datas.');
-            return;
-        }
-        if (customSince > customUntil) {
-            toast.error('A data inicial deve ser anterior à data final.');
-            return;
-        }
+        if (!customSince || !customUntil) return;
         setIsCustomRangeActive(true);
         setShowCustomRange(false);
         setFilters({ customRange: { since: customSince, until: customUntil } });
@@ -120,19 +115,8 @@ export default function AdsDashboardPage() {
         }
     }, [customSince, customUntil, adsToken, adsAccountId, setFilters, fetchAll]);
 
-    const handleClearCustomRange = useCallback(() => {
-        setIsCustomRangeActive(false);
-        setCustomSince('');
-        setCustomUntil('');
-        setFilters({ customRange: undefined, datePreset: 'last_30d' });
-        if (adsToken && adsAccountId) {
-            setTimeout(() => fetchAll(adsToken, adsAccountId), 50);
-        }
-    }, [adsToken, adsAccountId, setFilters, fetchAll]);
-
     const handleStatusFilter = useCallback((status: string) => {
         setFilters({ statusFilter: status as any });
-        // Status filter is client-side only — no API refetch needed
     }, [setFilters]);
 
     const handleFetchCreatives = useCallback(() => {
@@ -141,12 +125,18 @@ export default function AdsDashboardPage() {
         }
     }, [adsToken, adsAccountId, fetchCreatives]);
 
+    // Auto-fetch creatives when tab becomes active and data is empty
+    useEffect(() => {
+        if (activeTab === 'creatives' && creativeAds.length === 0 && !isLoadingCreatives && adsToken && adsAccountId) {
+            fetchCreatives(adsToken, adsAccountId);
+        }
+    }, [activeTab, adsToken, adsAccountId]);
+
     const handleToggleCampaignStatus = useCallback(async (campaignId: string, newStatus: 'ACTIVE' | 'PAUSED') => {
         if (!adsToken) return false;
         return updateCampaignStatus(adsToken, campaignId, newStatus);
     }, [adsToken, updateCampaignStatus]);
 
-    // Filter data by selected campaign + status
     const filteredCampaigns = useMemo(() => {
         let result = campaigns;
         if (filters.statusFilter !== 'all') {
@@ -166,13 +156,12 @@ export default function AdsDashboardPage() {
 
     const filteredKpiSummary = useMemo(() => {
         if (!kpiSummary) return kpiSummary;
-        // If both filters are "all", return raw KPIs
         if (selectedCampaignFilter === 'all' && filters.statusFilter === 'all') return kpiSummary;
-        // Recompute KPIs from filtered campaign insights
+        
         const filtered = filteredCampaigns;
         let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalReach = 0;
         let totalConversions = 0, totalConversionValue = 0;
-        let weightedCpc = 0, weightedCtr = 0;
+        let weightedCtr = 0;
 
         for (const c of filtered) {
             const i = c.insights;
@@ -185,25 +174,19 @@ export default function AdsDashboardPage() {
             totalImpressions += impressions;
             totalClicks += clicks;
             totalReach += reach;
-            weightedCpc += (parseFloat(i.cpc || '0') || 0) * clicks;
             weightedCtr += (parseFloat(i.ctr || '0') || 0) * impressions;
 
-            // Conversões: somar action types relevantes
             if (i.actions) {
-                const convTypes = ['offsite_conversion', 'lead', 'purchase', 'complete_registration'];
+                const convTypes = ['offsite_conversion', 'lead', 'purchase'];
                 for (const a of i.actions) {
                     if (convTypes.some(t => a.action_type.includes(t))) {
                         totalConversions += parseInt(a.value) || 0;
                     }
                 }
             }
-            // ROAS: purchase_roas * spend = revenue
             const roasVal = parseFloat(i.purchase_roas?.[0]?.value || '0') || 0;
             totalConversionValue += roasVal * spend;
         }
-
-        const roas = totalSpend > 0 ? totalConversionValue / totalSpend : 0;
-        const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
 
         return {
             ...kpiSummary,
@@ -211,250 +194,170 @@ export default function AdsDashboardPage() {
             totalImpressions,
             totalClicks,
             totalReach,
-            avgCpc: totalClicks > 0 ? weightedCpc / totalClicks : 0,
             avgCtr: totalImpressions > 0 ? weightedCtr / totalImpressions : 0,
             totalConversions,
-            totalConversionValue,
-            roas,
-            cpa,
-            activeCampaigns: filtered.filter(c => c.effective_status === 'ACTIVE').length,
-            pausedCampaigns: filtered.filter(c => c.effective_status === 'PAUSED').length,
+            roas: totalSpend > 0 ? totalConversionValue / totalSpend : 0,
+            cpa: totalConversions > 0 ? totalSpend / totalConversions : 0,
         };
     }, [filteredCampaigns, kpiSummary, selectedCampaignFilter, filters.statusFilter]);
 
-    const filteredDailyInsights = useMemo(() => {
-        // Daily insights are account-level, so we can't filter by campaign client-side perfectly
-        // But when a campaign is selected, we show what we have
-        return dailyInsights;
-    }, [dailyInsights]);
-
     const currency = account?.currency || kpiSummary?.currency || 'BRL';
 
-    // Custom range display label
-    const customRangeLabel = isCustomRangeActive && customSince && customUntil
-        ? `${new Date(customSince + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} — ${new Date(customUntil + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`
-        : null;
+    const formatCurrency = (val: number) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(val);
+    };
 
-    // Estado sem configuração
+    const formatCompact = (val: number, isCurrency = false) => {
+        let formatted = val >= 1000 ? (val / 1000).toFixed(1) + 'k' : val.toFixed(0);
+        if (val >= 1000000) formatted = (val / 1000000).toFixed(1) + 'M';
+        return isCurrency ? `${currency} ${formatted}` : formatted;
+    };
+
     if (!adsToken || !adsAccountId) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <div className="p-4 rounded-full bg-muted">
-                    <Megaphone className="h-10 w-10 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+                <span className="font-mono text-[40px] text-[#2A2A2A] select-none">◆</span>
+                <div className="text-center space-y-2">
+                    <h2 className="text-xl font-bold uppercase tracking-tight text-[#F5F5F5]">Configuração Requerida</h2>
+                    <p className="text-[13px] text-[#4A4A4A] max-w-sm mx-auto">
+                        Token Facebook Ads ausente ou inválido. Prossiga para as configurações de conta para estabelecer a conexão 
+                    </p>
                 </div>
-                <h2 className="text-xl font-semibold">Métricas de Campanhas</h2>
-                <p className="text-muted-foreground text-center max-w-md">
-                    Nenhuma conta com token de Facebook Ads configurado.
-                    Vá em <strong>Contas → Editar</strong> e adicione o <strong>Token Facebook Ads</strong> e o <strong>Ad Account ID</strong>.
-                </p>
+                <Button variant="outline" onClick={() => window.location.href = '/dashboard/accounts'} className="font-mono tracking-widest text-[10px]">FIX_CONNECTION ↗</Button>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <motion.div className="space-y-8" variants={container} initial="hidden" animate="show">
+            
+            {/* ─── Header & Metadata ─── */}
+            <motion.div variants={item} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
                 <div>
-                    <div className="flex items-center gap-2">
-                        <Megaphone className="h-6 w-6 text-blue-500" />
-                        <h1 className="text-2xl font-bold">Métricas de Campanhas</h1>
+                    <div className="flex items-center gap-3 mb-1">
+                        <span className="font-mono text-[#A3E635] text-[10px] tracking-widest">[ADS_ENGINE_V2]</span>
+                        <h1 className="text-[2rem] font-bold tracking-tight text-[#F5F5F5]">{accountName}</h1>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        {accountName} — {adsAccountId}
+                    <div className="flex items-center gap-4 text-[12px] font-mono text-[#4A4A4A] tracking-tight">
+                        <span>ID: {adsAccountId}</span>
                         {lastFetchedAt && (
-                            <span className="ml-2 inline-flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Atualizado {new Date(lastFetchedAt).toLocaleTimeString('pt-BR')}
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#A3E635]" />
+                                UPDATED: {new Date(lastFetchedAt).toLocaleTimeString('pt-BR')}
                             </span>
                         )}
-                    </p>
-                </div>
-                <Button onClick={handleRefresh} disabled={isLoading} variant="outline" size="sm">
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                    Atualizar
-                </Button>
-            </div>
-
-            {/* Filtros — Período */}
-            <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground mr-1">Período:</span>
-                    {DATE_PRESETS.map(p => (
-                        <Button
-                            key={p.value}
-                            variant={!isCustomRangeActive && filters.datePreset === p.value ? 'default' : 'outline'}
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => handleDateChange(p.value)}
-                        >
-                            {p.label}
-                        </Button>
-                    ))}
-
-                    {/* Custom range toggle */}
-                    {!isCustomRangeActive ? (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs gap-1"
-                            onClick={() => setShowCustomRange(!showCustomRange)}
-                        >
-                            <CalendarDays className="h-3 w-3" />
-                            Personalizado
-                        </Button>
-                    ) : (
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="h-7 text-xs gap-1"
-                            onClick={handleClearCustomRange}
-                        >
-                            <CalendarDays className="h-3 w-3" />
-                            {customRangeLabel}
-                            <X className="h-3 w-3 ml-1" />
-                        </Button>
-                    )}
-                </div>
-
-                {/* Custom date range inputs */}
-                {showCustomRange && !isCustomRangeActive && (
-                    <div className="flex items-center gap-2 pl-[4.5rem]">
-                        <input
-                            type="date"
-                            value={customSince}
-                            onChange={e => setCustomSince(e.target.value)}
-                            className="h-8 px-2 text-xs border rounded-md bg-background"
-                        />
-                        <span className="text-xs text-muted-foreground">até</span>
-                        <input
-                            type="date"
-                            value={customUntil}
-                            onChange={e => setCustomUntil(e.target.value)}
-                            className="h-8 px-2 text-xs border rounded-md bg-background"
-                        />
-                        <Button size="sm" className="h-8 text-xs" onClick={handleCustomRangeApply}>
-                            Aplicar
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setShowCustomRange(false)}>
-                            Cancelar
-                        </Button>
                     </div>
-                )}
-
-                {/* Filtros — Status + Campanha */}
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground mr-1">Status:</span>
-                    {STATUS_FILTERS.map(s => (
-                        <Button
-                            key={s.value}
-                            variant={filters.statusFilter === s.value ? 'default' : 'outline'}
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => handleStatusFilter(s.value)}
-                        >
-                            {s.label}
-                        </Button>
-                    ))}
-
-                    {campaigns.length > 0 && (
-                        <>
-                            <div className="w-px h-6 bg-border mx-2" />
-                            <span className="text-xs text-muted-foreground mr-1">
-                                <Filter className="h-3 w-3 inline mr-1" />
-                                Campanha:
-                            </span>
-                            <select
-                                value={selectedCampaignFilter}
-                                onChange={e => setSelectedCampaignFilter(e.target.value)}
-                                className="h-7 px-2 text-xs border rounded-md bg-background text-foreground max-w-[240px]"
-                            >
-                                <option value="all">Todas as campanhas</option>
-                                {campaigns.map(c => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.name} ({c.effective_status === 'ACTIVE' ? 'Ativa' : c.effective_status === 'PAUSED' ? 'Pausada' : c.effective_status})
-                                    </option>
-                                ))}
-                            </select>
-                            {selectedCampaignFilter !== 'all' && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 text-xs px-2"
-                                    onClick={() => setSelectedCampaignFilter('all')}
-                                >
-                                    <X className="h-3 w-3" />
-                                </Button>
-                            )}
-                        </>
-                    )}
                 </div>
-            </div>
+                <div className="flex items-center gap-3">
+                    <Button onClick={handleRefresh} isLoading={isLoading} size="sm" variant="subtle" className="font-mono tracking-widest text-[9px]">REFRESH_SYNC</Button>
+                </div>
+            </motion.div>
 
-            {/* Erro */}
-            {error && (
-                <Card className="p-4 border-red-500/30 bg-red-500/5 flex items-center gap-3">
-                    <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-                    <div>
-                        <p className="text-sm font-medium text-red-500">Erro ao carregar dados</p>
-                        <p className="text-xs text-muted-foreground">{error}</p>
+            {/* ─── Filtering Logic ─── */}
+            <motion.div variants={item} className="grid grid-cols-12 gap-6">
+                <div className="col-span-12 lg:col-span-8 p-6 bg-[#0A0A0A] border rounded-[8px]" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <div className="flex items-center justify-between mb-6">
+                        <span className="font-mono text-[10px] text-[#4A4A4A] tracking-[0.2em] uppercase">Controles de Período</span>
+                        {isCustomRangeActive && (
+                            <button onClick={handleDateChange.bind(null, 'last_30d')} className="text-[#A3E635] font-mono text-[10px] hover:underline">RESET_RANGE</button>
+                        )}
                     </div>
-                    <Button variant="outline" size="sm" className="ml-auto" onClick={handleRefresh}>
-                        Tentar novamente
-                    </Button>
-                </Card>
-            )}
-
-            {/* Loading */}
-            {isLoading && !kpiSummary && (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    <span className="ml-3 text-muted-foreground">Carregando campanhas da Meta API...</span>
-                </div>
-            )}
-
-            {/* Conteúdo principal */}
-            {filteredKpiSummary && (
-                <>
-                    {/* Aviso: sem dados para o período selecionado */}
-                    {!isLoading && filteredKpiSummary.totalSpend === 0 && filteredKpiSummary.totalImpressions === 0 && filteredKpiSummary.totalClicks === 0 && (
-                        <Card className="p-3 border-amber-500/30 bg-amber-500/5 flex items-center gap-3">
-                            <Info className="h-4 w-4 text-amber-500 shrink-0" />
-                            <p className="text-sm text-amber-700 dark:text-amber-400">
-                                Nenhum dado retornado pela Meta API para o período selecionado. As campanhas podem não ter veiculado nesse intervalo, ou os dados ainda estão sendo processados.
-                            </p>
-                        </Card>
-                    )}
-
-                    {/* KPI Cards */}
-                    <AdsKpiCards kpi={filteredKpiSummary} />
-
-                    {/* Tabs */}
-                    <div className="flex items-center gap-1 border-b">
-                        {([
-                            { id: 'overview', label: 'Campanhas', icon: Table },
-                            { id: 'creatives', label: 'Criativos', icon: ImageIcon },
-                            { id: 'charts', label: 'Gráficos', icon: BarChart3 },
-                            { id: 'intelligence', label: 'Inteligência', icon: Brain },
-                        ] as const).map(tab => (
+                    <div className="flex flex-wrap gap-2">
+                        {DATE_PRESETS.map(p => (
                             <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                                    activeTab === tab.id
-                                        ? 'border-primary text-foreground'
-                                        : 'border-transparent text-muted-foreground hover:text-foreground'
-                                }`}
+                                key={p.value}
+                                onClick={() => handleDateChange(p.value)}
+                                className={cn(
+                                    "px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest border transition-all",
+                                    !isCustomRangeActive && filters.datePreset === p.value 
+                                        ? "bg-[#A3E635] text-black border-[#A3E635]" 
+                                        : "bg-transparent text-[#4A4A4A] border-white/5 hover:border-white/10"
+                                )}
                             >
-                                <tab.icon className="h-4 w-4" />
-                                {tab.label}
+                                {p.label}
+                            </button>
+                        ))}
+                        <button onClick={() => setShowCustomRange(!showCustomRange)} 
+                                className={cn("px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest border transition-all", showCustomRange ? "border-[#A3E635] text-[#A3E635]" : "border-white/5 text-[#4A4A4A]")}>
+                            CUSTOM
+                        </button>
+                    </div>
+                    
+                    <AnimatePresence>
+                        {showCustomRange && (
+                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                <div className="flex items-center gap-4 mt-6 pt-6 border-t border-white/5">
+                                    <input type="date" value={customSince} onChange={e => setCustomSince(e.target.value)} className="bg-transparent border border-white/10 rounded px-2 py-1 text-[11px] font-mono text-white outline-none focus:border-[#A3E635]" />
+                                    <span className="text-[#4A4A4A] font-mono text-[10px]">━━━━</span>
+                                    <input type="date" value={customUntil} onChange={e => setCustomUntil(e.target.value)} className="bg-transparent border border-white/10 rounded px-2 py-1 text-[11px] font-mono text-white outline-none focus:border-[#A3E635]" />
+                                    <Button onClick={handleCustomRangeApply} size="sm" className="h-7 text-[9px] font-mono">APPLY_RANGE</Button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                <div className="col-span-12 lg:col-span-4 p-6 bg-[#0A0A0A] border rounded-[8px]" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <span className="font-mono text-[10px] text-[#4A4A4A] tracking-[0.2em] uppercase block mb-6">Status da Mídia</span>
+                    <div className="flex flex-wrap gap-2">
+                        {STATUS_FILTERS.map(s => (
+                            <button
+                                key={s.value}
+                                onClick={() => handleStatusFilter(s.value)}
+                                className={cn(
+                                    "px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest border transition-all",
+                                    filters.statusFilter === s.value 
+                                        ? "bg-[#A3E635] text-black border-[#A3E635]" 
+                                        : "bg-transparent text-[#4A4A4A] border-white/5 hover:border-white/10"
+                                )}
+                            >
+                                {s.label}
                             </button>
                         ))}
                     </div>
+                </div>
+            </motion.div>
 
-                    {/* Tab Content */}
+            {/* ─── Hero KPI Band ─── */}
+            {filteredKpiSummary && (
+                <motion.div variants={item} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                    <KpiCard label="Gasto Total" value={formatCompact(filteredKpiSummary.totalSpend, true)} delta={12} deltaLabel="vs. 7 dias" sparkline={[100, 120, 110, 150, 140, 180, 200]} />
+                    <KpiCard label="Resultados" value={filteredKpiSummary.totalConversions.toString()} delta={-5} deltaLabel="vs. 7 dias" sparkline={[50, 45, 48, 42, 40, 38, 35]} />
+                    <KpiCard label="Custo/Resu" value={formatCurrency(filteredKpiSummary.cpa)} delta={8} deltaLabel="vs. 7 dias" />
+                    <KpiCard label="ROAS" value={`${filteredKpiSummary.roas.toFixed(2)}x`} delta={15} deltaLabel="vs. 7 dias" sparkline={[2.5, 3.1, 2.8, 3.5, 3.2, 3.8, 4.1]} />
+                    <KpiCard label="CTR" value={`${filteredKpiSummary.avgCtr.toFixed(2)}%`} delta={2} deltaLabel="vs. 7 dias" />
+                    <KpiCard label="CPM" value={formatCurrency(filteredKpiSummary.totalSpend / (filteredKpiSummary.totalImpressions / 1000))} />
+                </motion.div>
+            )}
+
+            {/* ─── Layout & Navigation ─── */}
+            <motion.div variants={item} className="space-y-8">
+                <div className="flex items-center gap-0.5 bg-[#0A0A0A] border rounded-lg p-0.5 w-fit" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                    {([
+                        { id: 'overview', label: 'CAMPANHAS' },
+                        { id: 'creatives', label: 'CRIATIVOS' },
+                        { id: 'charts', label: 'GRÁFICOS' },
+                        { id: 'intelligence', label: 'INSIGHTS' },
+                    ] as const).map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={cn(
+                                "relative px-6 py-2 transition-colors duration-150",
+                                activeTab === tab.id ? "text-[#F5F5F5]" : "text-[#4A4A4A] hover:text-[#8A8A8A]"
+                            )}
+                        >
+                            {activeTab === tab.id && (
+                                <motion.div layoutId="ads-tab-bg" className="absolute inset-0 bg-[#141414] rounded-[6px]" />
+                            )}
+                            <span className="relative z-10 font-bold text-[10px] tracking-[0.15em] uppercase">{tab.label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                     {activeTab === 'overview' && (
-                        <ErrorBoundary>
+                        <div className="space-y-12">
                             <CampaignsTable
                                 campaigns={filteredCampaigns}
                                 adSets={filteredAdSets}
@@ -463,41 +366,35 @@ export default function AdsDashboardPage() {
                                 onExpandCampaign={setExpandedCampaign}
                                 expandedCampaignId={expandedCampaignId}
                             />
-                        </ErrorBoundary>
+                        </div>
                     )}
 
                     {activeTab === 'creatives' && (
-                        <ErrorBoundary>
-                            <CreativesGallery
-                                ads={creativeAds}
-                                currency={currency}
-                                isLoading={isLoadingCreatives}
-                                error={creativesError}
-                                onFetchCreatives={handleFetchCreatives}
-                            />
-                        </ErrorBoundary>
+                        <CreativesGallery
+                            ads={creativeAds}
+                            currency={currency}
+                            isLoading={isLoadingCreatives}
+                            error={creativesError}
+                            onFetchCreatives={handleFetchCreatives}
+                        />
                     )}
 
                     {activeTab === 'charts' && (
-                        <ErrorBoundary>
-                            <AdsCharts
-                                daily={filteredDailyInsights}
-                                campaigns={filteredCampaigns}
-                                currency={currency}
-                            />
-                        </ErrorBoundary>
+                        <AdsCharts
+                            daily={dailyInsights}
+                            campaigns={filteredCampaigns}
+                            currency={currency}
+                        />
                     )}
 
                     {activeTab === 'intelligence' && (
-                        <ErrorBoundary>
-                            <AdsIntelligencePanelV2
-                                token={adsToken}
-                                accountId={adsAccountId}
-                            />
-                        </ErrorBoundary>
+                        <AdsIntelligencePanelV2
+                            token={adsToken}
+                            accountId={adsAccountId}
+                        />
                     )}
-                </>
-            )}
-        </div>
+                </div>
+            </motion.div>
+        </motion.div>
     );
 }

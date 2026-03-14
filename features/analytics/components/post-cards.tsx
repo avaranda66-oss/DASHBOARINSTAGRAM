@@ -2,17 +2,6 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-    Heart,
-    MessageCircle,
-    Eye,
-    ExternalLink,
-    Image as ImageIcon,
-    Film,
-    Layers,
-    Calendar,
-    Hash,
-} from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { InstagramPostMetrics } from '@/types/analytics';
@@ -21,10 +10,10 @@ interface PostCardsProps {
     posts: InstagramPostMetrics[];
 }
 
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-    Image: { icon: ImageIcon, label: 'Post', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-    Video: { icon: Film, label: 'Reels/Vídeo', color: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
-    Sidecar: { icon: Layers, label: 'Carrossel', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+const TYPE_CONFIG: Record<string, { glyph: string; label: string; color: string }> = {
+    Image: { glyph: '◫', label: 'Post', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+    Video: { glyph: '▶', label: 'Reels/Vídeo', color: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
+    Sidecar: { glyph: '⊞', label: 'Carrossel', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
 };
 
 function formatNumber(n: number): string {
@@ -40,7 +29,7 @@ function PostImage({ src, alt }: { src: string; alt: string }) {
     if (!src || error) {
         return (
             <div className="flex h-full w-full items-center justify-center bg-muted/50">
-                <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
+                <span className="font-mono text-xl text-muted-foreground/40">◫</span>
             </div>
         );
     }
@@ -61,7 +50,6 @@ export function PostCards({ posts }: PostCardsProps) {
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {posts.map((post, i) => {
                 const config = TYPE_CONFIG[post.type] ?? TYPE_CONFIG.Image;
-                const TypeIcon = config.icon;
 
                 // Only show real engagement when we have video views
                 const hasViews = post.videoViewCount != null && post.videoViewCount > 0;
@@ -83,17 +71,17 @@ export function PostCards({ posts }: PostCardsProps) {
 
                             {/* Overlay on hover */}
                             <div className="absolute inset-0 flex items-center justify-center gap-4 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <div className="flex items-center gap-1 text-white text-sm font-semibold">
-                                    <Heart className="h-4 w-4 fill-white" />
+                                <div className="flex items-center gap-1 text-white text-sm font-semibold font-mono">
+                                    <span className="text-xs">▲</span>
                                     {formatNumber(post.likesCount)}
                                 </div>
-                                <div className="flex items-center gap-1 text-white text-sm font-semibold">
-                                    <MessageCircle className="h-4 w-4 fill-white" />
+                                <div className="flex items-center gap-1 text-white text-sm font-semibold font-mono">
+                                    <span className="text-xs">◐</span>
                                     {formatNumber(post.commentsCount)}
                                 </div>
                                 {hasViews && (
-                                    <div className="flex items-center gap-1 text-white text-sm font-semibold">
-                                        <Eye className="h-4 w-4" />
+                                    <div className="flex items-center gap-1 text-white text-sm font-semibold font-mono">
+                                        <span className="text-xs">◎</span>
                                         {formatNumber(post.videoViewCount!)}
                                     </div>
                                 )}
@@ -101,7 +89,7 @@ export function PostCards({ posts }: PostCardsProps) {
 
                             {/* Type badge */}
                             <span className={`absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium backdrop-blur-sm ${config.color}`}>
-                                <TypeIcon className="h-2.5 w-2.5" />
+                                <span className="font-mono text-[10px]">{config.glyph}</span>
                                 {config.label}
                             </span>
 
@@ -113,21 +101,21 @@ export function PostCards({ posts }: PostCardsProps) {
                                 className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-black/40 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/60 transition-colors"
                                 title="Abrir no Instagram"
                             >
-                                <ExternalLink className="h-3 w-3" />
+                                <span className="font-mono text-sm leading-none">↗</span>
                             </a>
                         </div>
 
                         {/* Compact metrics row */}
                         <div className="flex items-center justify-around py-2 border-b border-border text-[11px]">
-                            <span className="flex items-center gap-1 text-pink-400 font-semibold">
-                                <Heart className="h-3 w-3" /> {formatNumber(post.likesCount)}
+                            <span className="flex items-center gap-1 text-pink-400 font-bold font-mono">
+                                <span className="text-[10px]">▲</span> {formatNumber(post.likesCount)}
                             </span>
-                            <span className="flex items-center gap-1 text-blue-400 font-semibold">
-                                <MessageCircle className="h-3 w-3" /> {formatNumber(post.commentsCount)}
+                            <span className="flex items-center gap-1 text-blue-400 font-bold font-mono">
+                                <span className="text-[10px]">◐</span> {formatNumber(post.commentsCount)}
                             </span>
                             {hasViews ? (
-                                <span className="flex items-center gap-1 text-purple-400 font-semibold">
-                                    <Eye className="h-3 w-3" /> {formatNumber(post.videoViewCount!)}
+                                <span className="flex items-center gap-1 text-purple-400 font-bold font-mono">
+                                    <span className="text-[10px]">◎</span> {formatNumber(post.videoViewCount!)}
                                 </span>
                             ) : (
                                 <span className="text-muted-foreground">—</span>
@@ -142,7 +130,7 @@ export function PostCards({ posts }: PostCardsProps) {
 
                             {post.hashtags && post.hashtags.length > 0 && (
                                 <div className="flex items-start gap-1">
-                                    <Hash className="h-2.5 w-2.5 mt-0.5 text-muted-foreground shrink-0" />
+                                    <span className="text-[10px] text-muted-foreground mr-1 font-mono">#</span>
                                     <p className="text-[10px] text-muted-foreground line-clamp-1">
                                         {post.hashtags.slice(0, 4).join(' ')}
                                         {post.hashtags.length > 4 && ` +${post.hashtags.length - 4}`}
@@ -151,8 +139,8 @@ export function PostCards({ posts }: PostCardsProps) {
                             )}
 
                             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                    <Calendar className="h-2.5 w-2.5" />
+                                <span className="flex items-center gap-1 font-mono">
+                                    <span className="text-[10px]">◫</span>
                                     {post.timestamp
                                         ? format(parseISO(post.timestamp), 'dd MMM yy', { locale: ptBR })
                                         : '—'}

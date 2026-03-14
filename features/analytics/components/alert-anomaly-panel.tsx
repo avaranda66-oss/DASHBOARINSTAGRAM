@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, TrendingUp, TrendingDown, Zap, Calendar } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import type { InstagramPostMetrics } from '@/types/analytics';
 import { detectOutliers, periodComparison, linearTrend, bestTimeToPost } from '@/lib/utils/statistics';
 
@@ -16,7 +16,7 @@ interface Alert {
     severity: 'high' | 'medium' | 'low';
     title: string;
     description: string;
-    icon: typeof AlertTriangle;
+    icon: string;
     color: string;
 }
 
@@ -42,7 +42,7 @@ export function AlertAnomalyPanel({ posts }: AlertAnomalyPanelProps) {
                 description: viralPosts.length > 0
                     ? `"${viralPosts[0].caption?.slice(0, 50) || 'Post'}..." com ${viralPosts[0].likesCount + viralPosts[0].commentsCount} interações (acima do limite ${Math.round(outlierResult.bounds.upper)})`
                     : `Engajamento acima do limite superior de ${Math.round(outlierResult.bounds.upper)} interações`,
-                icon: Zap,
+                icon: '◎',
                 color: 'text-emerald-400',
             });
         }
@@ -67,7 +67,7 @@ export function AlertAnomalyPanel({ posts }: AlertAnomalyPanelProps) {
                         severity: 'high',
                         title: 'Queda significativa de engajamento',
                         description: `Engajamento caiu ${Math.abs(Math.round(comparison.changePercent))}% nos posts recentes vs anteriores (estatisticamente significativo)`,
-                        icon: TrendingDown,
+                        icon: '↘',
                         color: 'text-red-400',
                     });
                 } else if (comparison.direction === 'up') {
@@ -77,7 +77,7 @@ export function AlertAnomalyPanel({ posts }: AlertAnomalyPanelProps) {
                         severity: 'low',
                         title: 'Crescimento significativo de engajamento',
                         description: `Engajamento cresceu ${Math.round(comparison.changePercent)}% nos posts recentes (estatisticamente significativo)`,
-                        icon: TrendingUp,
+                        icon: '↗',
                         color: 'text-emerald-400',
                     });
                 }
@@ -92,7 +92,7 @@ export function AlertAnomalyPanel({ posts }: AlertAnomalyPanelProps) {
                     severity: 'medium',
                     title: 'Tendência de queda detectada',
                     description: `A linha de tendência está em queda com R²=${(trend.r2 * 100).toFixed(0)}% de confiança`,
-                    icon: TrendingDown,
+                    icon: '↘',
                     color: 'text-orange-400',
                 });
             }
@@ -111,7 +111,7 @@ export function AlertAnomalyPanel({ posts }: AlertAnomalyPanelProps) {
                     severity: 'low',
                     title: `Melhor dia: ${bestDay.bestDay}`,
                     description: `Engajamento médio de ${Math.round(bestDay.bestDayAvg)} interações. Considere concentrar publicações neste dia.`,
-                    icon: Calendar,
+                    icon: '◷',
                     color: 'text-sky-400',
                 });
             }
@@ -132,7 +132,7 @@ export function AlertAnomalyPanel({ posts }: AlertAnomalyPanelProps) {
             className="rounded-2xl border border-white/[0.06] bg-zinc-900/60 backdrop-blur-md p-5"
         >
             <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle className="h-4 w-4 text-amber-400" />
+                <span className="font-mono text-sm text-amber-400">⚠</span>
                 <h3 className="text-sm font-semibold text-zinc-200">Alertas & Anomalias</h3>
                 <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">
                     {alerts.length}
@@ -141,7 +141,7 @@ export function AlertAnomalyPanel({ posts }: AlertAnomalyPanelProps) {
 
             <div className="space-y-2">
                 {sortedAlerts.map(alert => {
-                    const Icon = alert.icon;
+                    const Glyph = alert.icon;
                     return (
                         <div
                             key={alert.id}
@@ -153,7 +153,7 @@ export function AlertAnomalyPanel({ posts }: AlertAnomalyPanelProps) {
                                     : 'border-zinc-700/30 bg-zinc-800/30'
                             }`}
                         >
-                            <Icon className={`h-4 w-4 mt-0.5 flex-shrink-0 ${alert.color}`} />
+                            <span className={`font-mono text-sm mt-0.5 flex-shrink-0 ${alert.color}`}>{Glyph}</span>
                             <div>
                                 <p className="text-sm font-medium text-zinc-200">{alert.title}</p>
                                 <p className="text-xs text-zinc-400 mt-0.5">{alert.description}</p>

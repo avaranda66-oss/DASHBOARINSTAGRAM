@@ -2,11 +2,7 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import {
-    Heart, MessageCircle, Eye, TrendingUp, BarChart2, Calendar,
-    FileText, Hash, ArrowUpRight, ArrowDownRight, Minus, Zap,
-    Activity, Target, Clock
-} from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import type { InstagramPostMetrics, MetaPostMetrics } from '@/types/analytics';
 import {
     linearTrend,
@@ -61,12 +57,12 @@ function SimpleSparkline({ data, color }: { data: number[]; color: string }) {
 }
 
 function TrendBadge({ direction, label }: { direction: 'rising' | 'falling' | 'stable'; label?: string }) {
-    const Icon = direction === 'rising' ? ArrowUpRight : direction === 'falling' ? ArrowDownRight : Minus;
+    const glyph = direction === 'rising' ? '↗' : direction === 'falling' ? '↘' : '-';
     const color = direction === 'rising' ? 'var(--v2-success)' : direction === 'falling' ? 'var(--v2-danger)' : 'var(--v2-text-tertiary)';
     const text = label ?? (direction === 'rising' ? 'Crescendo' : direction === 'falling' ? 'Caindo' : 'Estável');
     return (
         <div className="flex items-center gap-1">
-            <Icon className="h-3 w-3" style={{ color }} />
+            <span className="font-mono text-[10px]" style={{ color }}>{glyph}</span>
             <span className="text-[9px] font-mono" style={{ color }}>{text}</span>
         </div>
     );
@@ -267,14 +263,14 @@ export function ApifyStatsPanel({ posts, isMeta = false }: ApifyStatsPanelProps)
 
     // ─── KPI Cards ───
     const kpiCards = [
-        { label: 'Total Posts', value: formatNumber(stats.totalPosts), icon: BarChart2, color: '#3b82f6' },
-        { label: 'Total Likes', value: formatNumber(stats.totalLikes), icon: Heart, color: '#ec4899', spark: stats.likesHistory, trend: linearTrend(stats.likesHistory) },
-        { label: 'Total Comentários', value: formatNumber(stats.totalComments), icon: MessageCircle, color: '#f97316', spark: stats.commentsHistory, trend: linearTrend(stats.commentsHistory) },
-        { label: 'Views (Reels)', value: stats.reelsCount > 0 ? formatNumber(stats.totalViews) : 'Sem Reels', icon: Eye, color: '#8b5cf6' },
-        { label: 'Eng. Médio/Post', value: formatNumber(stats.avgEngPerPost), icon: TrendingUp, color: '#10b981', spark: stats.engHistory, trend: linearTrend(stats.engHistory) },
-        { label: 'Consistência', value: `${stats.consistency.score}/100`, icon: Calendar, color: stats.consistency.score >= 45 ? '#10b981' : '#f59e0b', sub: `${stats.consistency.classification} (${stats.consistency.postsPerWeek} posts/sem)` },
+        { label: 'Total Posts', value: formatNumber(stats.totalPosts), glyph: '⊞', color: '#3b82f6' },
+        { label: 'Total Likes', value: formatNumber(stats.totalLikes), glyph: '▲', color: '#ec4899', spark: stats.likesHistory, trend: linearTrend(stats.likesHistory) },
+        { label: 'Total Comentários', value: formatNumber(stats.totalComments), glyph: '◐', color: '#f97316', spark: stats.commentsHistory, trend: linearTrend(stats.commentsHistory) },
+        { label: 'Views (Reels)', value: stats.reelsCount > 0 ? formatNumber(stats.totalViews) : 'Sem Reels', glyph: '◎', color: '#8b5cf6' },
+        { label: 'Eng. Médio/Post', value: formatNumber(stats.avgEngPerPost), glyph: '↗', color: '#10b981', spark: stats.engHistory, trend: linearTrend(stats.engHistory) },
+        { label: 'Consistência', value: `${stats.consistency.score}/100`, glyph: '◷', color: stats.consistency.score >= 45 ? '#10b981' : '#f59e0b', sub: `${stats.consistency.classification} (${stats.consistency.postsPerWeek} posts/sem)` },
         ...(stats.typeWinner ? [{
-            label: 'Melhor Tipo', value: stats.typeWinner.type, icon: Target, color: '#a855f7',
+            label: 'Melhor Tipo', value: stats.typeWinner.type, glyph: '◎', color: '#a855f7',
             sub: `${formatNumber(Math.round(stats.typeWinner.avg))} eng. médio (${stats.typeWinner.count} posts)`,
         }] : []),
     ];
@@ -311,7 +307,7 @@ export function ApifyStatsPanel({ posts, isMeta = false }: ApifyStatsPanelProps)
                             <div className="relative z-[2]">
                                 <div className="flex items-center justify-between">
                                     <span className="v2-label">{card.label}</span>
-                                    <card.icon className="h-3.5 w-3.5" style={{ color: card.color, opacity: 0.8 }} />
+                                    <span className="font-mono text-[10px]" style={{ color: card.color }}>{card.glyph}</span>
                                 </div>
                                 <p className="mt-2 text-2xl font-mono v2-number font-bold tracking-tight" style={{ color: 'var(--v2-text-primary)' }}>{card.value}</p>
                                 {'sub' in card && card.sub && <p className="mt-0.5 text-[10px] leading-tight" style={{ color: 'var(--v2-text-tertiary)' }}>{card.sub}</p>}
@@ -328,7 +324,7 @@ export function ApifyStatsPanel({ posts, isMeta = false }: ApifyStatsPanelProps)
                 {/* B1: Coeficiente Viral (melhorado) */}
                 <motion.div variants={item} className="rounded-xl p-5 v2-glass">
                     <div className="flex items-center gap-2 mb-3">
-                        <Zap className="h-4 w-4" style={{ color: '#f59e0b' }} />
+                        <span className="font-mono text-xs text-[#f59e0b]">⚡</span>
                         <span className="v2-label text-sm font-semibold">Coeficiente Viral</span>
                         {stats.viralPosts.length > 0 && (
                             <span className="text-[9px] px-1.5 py-0.5 rounded-full font-mono" style={{
@@ -387,7 +383,7 @@ export function ApifyStatsPanel({ posts, isMeta = false }: ApifyStatsPanelProps)
                 {/* B2: Melhor Dia para Postar */}
                 <motion.div variants={item} className="rounded-xl p-5 v2-glass">
                     <div className="flex items-center gap-2 mb-3">
-                        <Calendar className="h-4 w-4" style={{ color: '#3b82f6' }} />
+                        <span className="font-mono text-xs text-[#3b82f6]">◷</span>
                         <span className="v2-label text-sm font-semibold">Melhor Dia para Postar</span>
                     </div>
                     {stats.bestDay.dayBreakdown.length > 0 ? (
@@ -422,7 +418,7 @@ export function ApifyStatsPanel({ posts, isMeta = false }: ApifyStatsPanelProps)
                 {/* B3: Evolução Temporal (30d vs 30d) */}
                 <motion.div variants={item} className="rounded-xl p-5 v2-glass">
                     <div className="flex items-center gap-2 mb-3">
-                        <Activity className="h-4 w-4" style={{ color: '#10b981' }} />
+                        <span className="font-mono text-xs text-[#10b981]">◎</span>
                         <span className="v2-label text-sm font-semibold">Evolução do Engajamento</span>
                         <span className="text-[9px] px-1.5 py-0.5 rounded-full font-mono" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
                             {stats.temporalComp.method === '30d' ? '30 dias' : stats.temporalComp.method === '14d' ? '14 dias' : '50/50'}
@@ -450,7 +446,7 @@ export function ApifyStatsPanel({ posts, isMeta = false }: ApifyStatsPanelProps)
                 {/* B4: Sentimento por Post */}
                 <motion.div variants={item} className="rounded-xl p-5 v2-glass">
                     <div className="flex items-center gap-2 mb-3">
-                        <Heart className="h-4 w-4" style={{ color: '#ec4899' }} />
+                        <span className="font-mono text-xs text-[#ec4899]">▲</span>
                         <span className="v2-label text-sm font-semibold">Sentimento por Post</span>
                     </div>
                     {stats.sentimentRank.mostEmotional.length > 0 ? (
@@ -498,7 +494,7 @@ export function ApifyStatsPanel({ posts, isMeta = false }: ApifyStatsPanelProps)
                 {stats.hookQuality.hookTypes.length > 0 && (
                     <motion.div variants={item} className="rounded-xl p-5 v2-glass sm:col-span-2">
                         <div className="flex items-center gap-2 mb-3">
-                            <Target className="h-4 w-4" style={{ color: '#8b5cf6' }} />
+                            <span className="font-mono text-xs text-[#8b5cf6]">◎</span>
                             <span className="v2-label text-sm font-semibold">Qualidade do Hook</span>
                             <span className="text-[10px] ml-auto" style={{ color: 'var(--v2-text-tertiary)' }}>Primeiros 50 chars da legenda</span>
                         </div>
@@ -537,7 +533,7 @@ export function ApifyStatsPanel({ posts, isMeta = false }: ApifyStatsPanelProps)
             {/* ─── Section C: Post Score Table ─── */}
             <motion.div variants={item} className="rounded-xl p-5 v2-glass relative z-20">
                 <div className="flex items-center gap-2 mb-4">
-                    <Target className="h-4 w-4" style={{ color: '#ec4899' }} />
+                    <span className="font-mono text-xs text-[#ec4899]">◎</span>
                     <span className="v2-label text-sm font-semibold">Score de Engajamento por Post</span>
                     {isMeta && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-mono" style={{ background: 'rgba(139,92,246,0.15)', color: '#a855f7' }}>Meta Enhanced</span>}
                     <span className="text-[10px] ml-auto" style={{ color: 'var(--v2-text-tertiary)' }}>
@@ -606,7 +602,7 @@ export function ApifyStatsPanel({ posts, isMeta = false }: ApifyStatsPanelProps)
             {stats.hashtagEff.length > 0 && (
                 <motion.div variants={item} className="rounded-xl p-5 v2-glass relative z-10">
                     <div className="flex items-center gap-2 mb-4">
-                        <Hash className="h-4 w-4" style={{ color: '#10b981' }} />
+                        <span className="font-mono text-xs text-[#10b981]">#</span>
                         <span className="v2-label text-sm font-semibold">Eficiência de Hashtags</span>
                         <span className="text-[10px] ml-auto" style={{ color: 'var(--v2-text-tertiary)' }}>
                             {isMeta ? 'Engagement completo (likes+comments+saves+shares)' : 'Mínimo 2 posts por hashtag'}

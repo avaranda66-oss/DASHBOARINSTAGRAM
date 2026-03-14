@@ -2,11 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Sparkles, RefreshCw, Palette, Target, Eye, Type,
-    Star, AlertTriangle, ArrowRight, ChevronDown, ChevronUp,
-    CheckCircle2, XCircle, Lightbulb, Shuffle,
-} from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import { Button } from '@/components/ui/button';
 
 export interface FeedAnalysisResult {
@@ -41,7 +37,7 @@ function ScoreBar({ label, value, icon: Icon, color }: { label: string; value: n
         <div className="space-y-1">
             <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs text-[var(--v2-text-secondary)]">
-                    <Icon className={`w-3.5 h-3.5 ${color}`} />
+                    <span className={`font-mono text-[10px] ${color}`}>{label === 'Harmonia Visual' ? '◎' : label === 'Consistência de Marca' ? '◎' : label === 'Diversidade de Conteúdo' ? '◎' : '◆'}</span>
                     {label}
                 </span>
                 <span className={`text-xs font-bold ${value >= 7 ? 'text-emerald-400' : value >= 5 ? 'text-yellow-400' : 'text-red-400'}`}>
@@ -104,7 +100,7 @@ export function FeedAnalysisPanel({ username, onAnalyze, result, isLoading, erro
             <div className="rounded-xl v2-glass p-4">
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-purple-400" />
+                        <span className="font-mono text-sm text-purple-400">◎</span>
                         <span className="text-sm font-semibold text-[var(--v2-text-primary)]">
                             Análise Visual do Feed
                         </span>
@@ -131,11 +127,11 @@ export function FeedAnalysisPanel({ username, onAnalyze, result, isLoading, erro
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                 >
                     {isLoading ? (
-                        <><RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> Analisando feed...</>
+                        <><span className="mr-2 font-mono text-sm animate-spin">↻</span> Analisando feed...</>
                     ) : result ? (
-                        <><RefreshCw className="mr-2 h-3.5 w-3.5" /> Reanalisar Feed</>
+                        <><span className="mr-2 font-mono text-sm">↻</span> Reanalisar Feed</>
                     ) : (
-                        <><Sparkles className="mr-2 h-3.5 w-3.5" /> Analisar Feed com IA</>
+                        <><span className="mr-2 font-mono text-sm">◎</span> Analisar Feed com IA</>
                     )}
                 </Button>
             </div>
@@ -143,7 +139,7 @@ export function FeedAnalysisPanel({ username, onAnalyze, result, isLoading, erro
             {/* Error */}
             {error && (
                 <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 flex items-start gap-2">
-                    <XCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                    <span className="font-mono text-sm text-red-400 mt-0.5 shrink-0">⊗</span>
                     <p className="text-xs text-red-300">{error}</p>
                 </div>
             )}
@@ -167,23 +163,23 @@ export function FeedAnalysisPanel({ username, onAnalyze, result, isLoading, erro
                         {/* Scores */}
                         <CollapsibleSection
                             title="Pontuações"
-                            icon={Target}
+                            glyph="◎"
                             sectionKey="scores"
                             expanded={expandedSection === 'scores'}
                             onToggle={toggleSection}
                         >
                             <div className="space-y-3">
-                                <ScoreBar label="Harmonia Visual" value={result.scores.harmonia_visual} icon={Eye} color="text-cyan-400" />
-                                <ScoreBar label="Consistência de Marca" value={result.scores.consistencia_marca} icon={Target} color="text-orange-400" />
-                                <ScoreBar label="Diversidade de Conteúdo" value={result.scores.diversidade_conteudo} icon={Shuffle} color="text-green-400" />
-                                <ScoreBar label="Apelo Visual" value={result.scores.apelo_visual} icon={Star} color="text-yellow-400" />
+                                <ScoreBar label="Harmonia Visual" value={result.scores.harmonia_visual} icon={() => null} color="text-cyan-400" />
+                                <ScoreBar label="Consistência de Marca" value={result.scores.consistencia_marca} icon={() => null} color="text-orange-400" />
+                                <ScoreBar label="Diversidade de Conteúdo" value={result.scores.diversidade_conteudo} icon={() => null} color="text-green-400" />
+                                <ScoreBar label="Apelo Visual" value={result.scores.apelo_visual} icon={() => null} color="text-yellow-400" />
                             </div>
                         </CollapsibleSection>
 
                         {/* Color palette */}
                         <CollapsibleSection
                             title="Paleta de Cores"
-                            icon={Palette}
+                            glyph="◎"
                             sectionKey="palette"
                             expanded={expandedSection === 'palette'}
                             onToggle={toggleSection}
@@ -198,7 +194,7 @@ export function FeedAnalysisPanel({ username, onAnalyze, result, isLoading, erro
                         {result.posts_problematicos.length > 0 && (
                             <CollapsibleSection
                                 title={`Posts para Ajustar (${result.posts_problematicos.length})`}
-                                icon={AlertTriangle}
+                                glyph="⚠"
                                 sectionKey="problems"
                                 expanded={expandedSection === 'problems'}
                                 onToggle={(key) => {
@@ -227,7 +223,7 @@ export function FeedAnalysisPanel({ username, onAnalyze, result, isLoading, erro
                         {result.bio_sugerida && (
                             <CollapsibleSection
                                 title="Bio Sugerida"
-                                icon={Type}
+                                glyph="◎"
                                 sectionKey="bio"
                                 expanded={expandedSection === 'bio'}
                                 onToggle={toggleSection}
@@ -244,7 +240,7 @@ export function FeedAnalysisPanel({ username, onAnalyze, result, isLoading, erro
                         {result.destaques_sugeridos.length > 0 && (
                             <CollapsibleSection
                                 title="Destaques Sugeridos"
-                                icon={Star}
+                                glyph="◆"
                                 sectionKey="highlights"
                                 expanded={expandedSection === 'highlights'}
                                 onToggle={toggleSection}
@@ -262,7 +258,7 @@ export function FeedAnalysisPanel({ username, onAnalyze, result, isLoading, erro
                         {/* Recommendations */}
                         <CollapsibleSection
                             title={`Recomendações (${result.recomendacoes.length})`}
-                            icon={Lightbulb}
+                            glyph="◎"
                             sectionKey="recs"
                             expanded={expandedSection === 'recs'}
                             onToggle={toggleSection}
@@ -270,7 +266,7 @@ export function FeedAnalysisPanel({ username, onAnalyze, result, isLoading, erro
                             <div className="space-y-2">
                                 {result.recomendacoes.map((rec, i) => (
                                     <div key={i} className="flex items-start gap-2">
-                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                                        <span className="font-mono text-[10px] text-emerald-400 mt-0.5 shrink-0">◎</span>
                                         <p className="text-[11px] text-[var(--v2-text-primary)] leading-relaxed">{rec}</p>
                                     </div>
                                 ))}
@@ -285,14 +281,14 @@ export function FeedAnalysisPanel({ username, onAnalyze, result, isLoading, erro
 
 function CollapsibleSection({
     title,
-    icon: Icon,
+    glyph,
     sectionKey,
     expanded,
     onToggle,
     children,
 }: {
     title: string;
-    icon: React.ElementType;
+    glyph: string;
     sectionKey: string;
     expanded: boolean;
     onToggle: (key: string) => void;
@@ -305,13 +301,13 @@ function CollapsibleSection({
                 className="w-full flex items-center justify-between p-3 hover:bg-white/[0.02] transition-colors"
             >
                 <span className="flex items-center gap-2 text-xs font-semibold text-[var(--v2-text-primary)]">
-                    <Icon className="w-3.5 h-3.5 text-[var(--v2-accent)]" />
+                    <span className="font-mono text-[10px] text-[var(--v2-accent)]">{glyph}</span>
                     {title}
                 </span>
                 {expanded ? (
-                    <ChevronUp className="w-3.5 h-3.5 text-[var(--v2-text-tertiary)]" />
+                    <span className="font-mono text-[10px] text-[var(--v2-text-tertiary)]">▲</span>
                 ) : (
-                    <ChevronDown className="w-3.5 h-3.5 text-[var(--v2-text-tertiary)]" />
+                    <span className="font-mono text-[10px] text-[var(--v2-text-tertiary)]">▼</span>
                 )}
             </button>
             <AnimatePresence>

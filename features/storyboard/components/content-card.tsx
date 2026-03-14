@@ -1,31 +1,11 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Image, Circle, Film, Layers, Megaphone, GripVertical } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { TYPE_BADGE_COLORS } from '@/lib/constants';
+import { Badge } from '@/design-system/atoms/Badge';
 import type { Content } from '@/types/content';
 import { useCollectionStore } from '@/stores';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-
-const TYPE_ICONS: Record<string, React.ElementType> = {
-    post: Image,
-    story: Circle,
-    reel: Film,
-    carousel: Layers,
-    campaign: Megaphone,
-};
-
-const TYPE_LABELS: Record<string, string> = {
-    post: 'Post',
-    story: 'Story',
-    reel: 'Reel',
-    carousel: 'Carrossel',
-    campaign: 'Campanha',
-};
 
 interface ContentCardProps {
     content: Content;
@@ -33,12 +13,19 @@ interface ContentCardProps {
     isDragOverlay?: boolean;
 }
 
+const STATUS_MAP = {
+    idea: { intent: 'info', variant: 'subtle' },
+    draft: { intent: 'default', variant: 'subtle' },
+    approved: { intent: 'success', variant: 'subtle' },
+    scheduled: { intent: 'warning', variant: 'subtle' },
+    published: { intent: 'success', variant: 'solid' },
+    failed: { intent: 'error', variant: 'subtle' },
+} as const;
+
 export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProps) {
     const { collections } = useCollectionStore();
     const primaryCollection = collections.find(c => content.collectionIds?.includes(c.id));
-    const TypeIcon = TYPE_ICONS[content.type] ?? Image;
-    const badgeColor = TYPE_BADGE_COLORS[content.type] ?? '';
-
+    
     const {
         attributes,
         listeners,
@@ -54,63 +41,81 @@ export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProp
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.4 : 1,
+        opacity: isDragging ? 0.3 : 1,
+        backgroundColor: '#0A0A0A',
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderRadius: '8px',
     };
+
+    const statusConfig = STATUS_MAP[content.status as keyof typeof STATUS_MAP] || STATUS_MAP.draft;
 
     return (
         <div
             ref={setNodeRef}
             style={style}
             onClick={isDragging ? undefined : onClick}
-            className={`group cursor-pointer rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow hover:shadow-md hover:border-border/80 backdrop-blur-sm ${isDragOverlay ? 'shadow-xl rotate-2 scale-105' : ''}`}
+            className={cn(
+                "group cursor-pointer border p-3 transition-colors duration-100",
+                isDragOverlay ? 'shadow-2xl border-[#A3E635]/40 rotate-1 scale-[1.02] z-50' : ''
+            )}
+            onMouseEnter={(e) => {
+                if (!isDragging) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)';
+            }}
+            onMouseLeave={(e) => {
+                if (!isDragging) e.currentTarget.style.backgroundColor = '#0A0A0A';
+            }}
         >
             {/* Header row */}
-            <div className="mb-2 flex items-center justify-between">
-                <Badge variant="outline" className={`text-xs ${badgeColor}`}>
-                    <TypeIcon className="mr-1 h-3 w-3" />
-                    {TYPE_LABELS[content.type]}
-                </Badge>
-                <div className="flex items-center gap-1.5">
+            <div className="mb-3 flex items-center justify-between">
+                <span 
+                    className="font-mono text-[10px] tracking-wider" 
+                    style={{ color: content.type?.toUpperCase() === 'CAMPAIGN' ? '#A3E635' : '#8A8A8A' }}
+                >
+                    [{content.type?.toUpperCase().slice(0, 4)}]
+                </span>
+                
+                <div className="flex items-center gap-2">
                     {primaryCollection && (
                         <div
-                            className="h-2 w-2 rounded-full shadow-sm"
+                            className="h-1.5 w-1.5 rounded-full"
                             style={{ backgroundColor: primaryCollection.color }}
-                            title={primaryCollection.name}
                         />
                     )}
-                    <button
+                    <div
                         {...attributes}
                         {...listeners}
-                        className="cursor-grab active:cursor-grabbing rounded p-0.5 hover:bg-accent/50 opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="Arrastar card"
+                        className="cursor-grab active:cursor-grabbing opacity-20 group-hover:opacity-100 transition-opacity"
                     >
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    </button>
+                        <span className="font-mono text-[10px] text-[#4A4A4A]">::</span>
+                    </div>
                 </div>
             </div>
 
             {/* Title */}
-            <h4 className="text-sm font-medium leading-snug line-clamp-2">
+            <h4 className="text-[12px] font-bold text-[#F5F5F5] leading-snug line-clamp-2 uppercase tracking-wide">
                 {content.title}
             </h4>
 
-            {/* Scheduled date */}
-            {content.scheduledAt && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                    📅{' '}
-                    {format(parseISO(content.scheduledAt), "dd MMM, HH:mm", {
-                        locale: ptBR,
-                    })}
-                </p>
-            )}
-
-            {/* Hashtags preview */}
-            {content.hashtags.length > 0 && (
-                <p className="mt-1.5 text-xs text-muted-foreground truncate">
-                    {content.hashtags.slice(0, 3).join(' ')}
-                    {content.hashtags.length > 3 && ` +${content.hashtags.length - 3}`}
-                </p>
-            )}
+            {/* Metadata Footer */}
+            <div className="mt-4 pt-3 flex items-center justify-between border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                <div className="font-mono text-[9px] text-[#4A4A4A] tracking-wider">
+                    {content.scheduledAt ? (
+                        <span className="flex items-center gap-1">
+                            ◷ {format(parseISO(content.scheduledAt), "dd.MM | HH:mm")}
+                        </span>
+                    ) : (
+                        'UNSCHEDULED'
+                    )}
+                </div>
+                
+                {content.hashtags.length > 0 && (
+                    <div className="font-mono text-[9px] text-[#A3E635] opacity-60">
+                        #{content.hashtags.length.toString().padStart(2, '0')}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
+
+import { cn } from '@/design-system/utils/cn';

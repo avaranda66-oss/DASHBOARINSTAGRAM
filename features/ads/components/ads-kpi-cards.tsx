@@ -2,14 +2,25 @@
 
 import { Card } from '@/components/ui/card';
 import type { AdsKpiSummary } from '@/types/ads';
-import {
-    DollarSign, Eye, MousePointerClick, Target,
-    TrendingUp, Users, BarChart3, Zap,
-} from 'lucide-react';
+// [ZERO_LUCIDE_PURGE]
+import { cn } from '@/design-system/utils/cn';
 
 interface Props {
     kpi: AdsKpiSummary;
 }
+
+const GLYPHS = {
+    MONEY: '＄',
+    EYE: '◎',
+    CLICK: '◈',
+    TARGET: '◎',
+    TREND: '↗',
+    USERS: '○',
+    CHART: '▤',
+    AUTO: '⚡'
+};
+
+const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
 
 function formatCurrency(value: number, currency: string = 'BRL'): string {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(value);
@@ -28,73 +39,74 @@ function formatPercent(value: number): string {
 export function AdsKpiCards({ kpi }: Props) {
     const cards = [
         {
-            label: 'Gasto Total',
+            label: 'Total_Spend',
             value: formatCurrency(kpi.totalSpend, kpi.currency),
-            icon: DollarSign,
-            color: 'text-red-500',
-            bg: 'bg-red-500/10',
+            glyph: GLYPHS.MONEY,
+            color: 'text-[#F5F5F5]',
+            accent: 'text-[#EF4444]',
         },
         {
-            label: 'Impressões',
+            label: 'Impressions',
             value: formatNumber(kpi.totalImpressions),
-            icon: Eye,
-            color: 'text-blue-500',
-            bg: 'bg-blue-500/10',
+            glyph: GLYPHS.EYE,
+            color: 'text-[#F5F5F5]',
+            accent: 'text-blue-500',
         },
         {
-            label: 'Cliques',
+            label: 'Clicks',
             value: formatNumber(kpi.totalClicks),
-            icon: MousePointerClick,
-            color: 'text-green-500',
-            bg: 'bg-green-500/10',
+            glyph: GLYPHS.CLICK,
+            color: 'text-[#F5F5F5]',
+            accent: 'text-green-500',
         },
         {
-            label: 'CTR',
+            label: 'Yield_CTR',
             value: formatPercent(kpi.avgCtr),
-            icon: Target,
-            color: 'text-purple-500',
-            bg: 'bg-purple-500/10',
+            glyph: GLYPHS.TARGET,
+            color: 'text-[#A3E635]',
+            accent: 'text-[#A3E635]',
         },
         {
-            label: 'CPC Médio',
+            label: 'Avg_CPC',
             value: formatCurrency(kpi.avgCpc, kpi.currency),
-            icon: BarChart3,
-            color: 'text-orange-500',
-            bg: 'bg-orange-500/10',
+            glyph: GLYPHS.CHART,
+            color: 'text-[#FBBF24]',
+            accent: 'text-[#FBBF24]',
         },
         {
-            label: 'Alcance',
+            label: 'Total_Reach',
             value: formatNumber(kpi.totalReach),
-            icon: Users,
-            color: 'text-cyan-500',
-            bg: 'bg-cyan-500/10',
+            glyph: GLYPHS.USERS,
+            color: 'text-[#F5F5F5]',
+            accent: 'text-cyan-500',
         },
         {
-            label: 'Conversões',
+            label: 'Conversions',
             value: formatNumber(kpi.totalConversions),
-            icon: Zap,
-            color: 'text-yellow-500',
-            bg: 'bg-yellow-500/10',
+            glyph: GLYPHS.AUTO,
+            color: 'text-[#A3E635]',
+            accent: 'text-[#A3E635]',
         },
         {
-            label: 'ROAS',
+            label: 'ROAS_Factor',
             value: kpi.roas > 0 ? `${kpi.roas.toFixed(2)}x` : '—',
-            icon: TrendingUp,
-            color: kpi.roas >= 2 ? 'text-green-500' : kpi.roas >= 1 ? 'text-yellow-500' : 'text-red-500',
-            bg: kpi.roas >= 2 ? 'bg-green-500/10' : kpi.roas >= 1 ? 'bg-yellow-500/10' : 'bg-red-500/10',
+            glyph: GLYPHS.TREND,
+            color: kpi.roas >= 2 ? 'text-[#A3E635]' : kpi.roas >= 1 ? 'text-[#FBBF24]' : 'text-[#EF4444]',
+            accent: kpi.roas >= 2 ? 'text-[#A3E635]' : kpi.roas >= 1 ? 'text-[#FBBF24]' : 'text-[#EF4444]',
         },
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 font-mono">
             {cards.map((card) => (
-                <Card key={card.label} className="p-4 flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${card.bg}`}>
-                        <card.icon className={`h-5 w-5 ${card.color}`} />
+                <Card key={card.label} className="p-5 bg-[#0A0A0A] border-white/10 rounded-lg flex flex-col justify-between group hover:border-white/20 transition-all">
+                    <div className="flex items-center justify-between mb-4">
+                        <span className="text-[9px] text-[#4A4A4A] font-bold uppercase tracking-[0.2em]">{card.label}</span>
+                        <span className={cn("text-xs opacity-40 group-hover:opacity-100 transition-opacity", card.accent)}>{wrap(card.glyph)}</span>
                     </div>
                     <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground truncate">{card.label}</p>
-                        <p className="text-lg font-bold truncate">{card.value}</p>
+                        <p className={cn("text-[1.5rem] font-bold tracking-tighter leading-none mb-1", card.color)}>{card.value}</p>
+                        <div className="h-0.5 w-8 bg-white/5 group-hover:bg-[#A3E635]/20 transition-colors" />
                     </div>
                 </Card>
             ))}

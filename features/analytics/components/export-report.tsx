@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { Download, FileText } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import type { InstagramPostMetrics, AnalyticsSummary } from '@/types/analytics';
 
 interface ExportReportProps {
@@ -81,14 +81,14 @@ export function ExportReport({ posts, summary, accountHandle }: ExportReportProp
                 onClick={exportCSV}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-300 rounded-lg border border-white/[0.06] bg-zinc-800/50 hover:bg-zinc-800 transition-colors"
             >
-                <Download className="h-3.5 w-3.5" />
+                <span className="font-mono text-[10px]">◎</span>
                 CSV
             </button>
             <button
                 onClick={exportJSON}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-300 rounded-lg border border-white/[0.06] bg-zinc-800/50 hover:bg-zinc-800 transition-colors"
             >
-                <FileText className="h-3.5 w-3.5" />
+                <span className="font-mono text-[10px]">◎</span>
                 JSON
             </button>
         </div>

@@ -4,17 +4,15 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Trash2, Copy, Save, X, ImagePlus, Send } from 'lucide-react';
+// [ZERO_LUCIDE_PURGE]
 import { useContentStore, useCollectionStore, useAccountStore, useAutomationStore } from '@/stores';
 import { publishInstagramPostAction } from '@/app/actions/instagram.actions';
 import { contentSchema, type ContentFormData } from '../schemas/content.schema';
 import { TagInput } from './tag-input';
 import { CONTENT_TYPES, CONTENT_STATUSES } from '@/lib/constants';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/design-system/atoms/Button';
+import { Input } from '@/design-system/atoms/Input';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
-import * as Icons from 'lucide-react';
 import {
     Select,
     SelectTrigger,
@@ -23,6 +21,7 @@ import {
     SelectItem,
 } from '@/components/ui/select';
 import type { Content } from '@/types/content';
+import { cn } from '@/design-system/utils/cn';
 
 interface ContentEditorDialogProps {
     open: boolean;
@@ -30,6 +29,29 @@ interface ContentEditorDialogProps {
     content?: Content | null;
     defaultStatus?: string;
 }
+
+const GLYPHS = {
+    SAVE: '◆',
+    TRASH: '✕',
+    COPY: '◫',
+    CLOSE: '✕',
+    MEDIA: '◎',
+    PLUS: '+',
+    SEND: '↗',
+    EYE: '◎',
+    HUB: '◆',
+    BACK: '←',
+    NEXT: '→',
+    CLOCK: '◷',
+    USER: '○',
+    DOTS: '⋯',
+    HEART: '♡',
+    MSG: '🗨',
+    BOOKMARK: '🔖',
+    WARN: '▲'
+};
+
+const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
 
 export function ContentEditorDialog({
     open,
@@ -47,20 +69,16 @@ export function ContentEditorDialog({
     const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
-    // Helper to format ISO string to YYYY-MM-DDTHH:MM for datetime-local input
     const formatISOForInput = (isoString: string | null | undefined) => {
         if (!isoString) return '';
         try {
             const date = new Date(isoString);
             if (isNaN(date.getTime())) return '';
-
-            // Usar partes locais para evitar o shift de timezone do toISOString()
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             const hours = String(date.getHours()).padStart(2, '0');
             const minutes = String(date.getMinutes()).padStart(2, '0');
-
             return `${year}-${month}-${day}T${hours}:${minutes}`;
         } catch (e) {
             return '';
@@ -81,29 +99,17 @@ export function ContentEditorDialog({
         formState: { errors, isDirty },
     } = useForm<ContentFormData>({
         resolver: zodResolver(contentSchema),
-        defaultValues: content
-            ? {
-                title: content.title,
-                description: content.description,
-                type: content.type,
-                status: content.status,
-                scheduledAt: content.scheduledAt,
-                accountId: content.accountId,
-                hashtags: content.hashtags,
-                mediaUrls: content.mediaUrls,
-                collectionIds: content.collectionIds,
-            }
-            : {
-                title: '',
-                description: '',
-                type: 'post',
-                status: (defaultStatus as ContentFormData['status']) || 'idea',
-                scheduledAt: null,
-                accountId: null,
-                hashtags: [],
-                mediaUrls: [],
-                collectionIds: [],
-            },
+        defaultValues: {
+            title: '',
+            description: '',
+            type: 'post',
+            status: (defaultStatus as ContentFormData['status']) || 'idea',
+            scheduledAt: null,
+            accountId: null,
+            hashtags: [],
+            mediaUrls: [],
+            collectionIds: [],
+        }
     });
 
     useEffect(() => {
@@ -156,10 +162,10 @@ export function ContentEditorDialog({
             };
             if (isEditing) {
                 updateContent(content.id, normalized);
-                toast.success('Conteúdo salvo!');
+                toast.success('Kernel atualizado!');
             } else {
                 addContent(normalized);
-                toast.success('Conteúdo criado!');
+                toast.success('Novo kernel inicializado!');
             }
             onOpenChange(false);
             reset();
@@ -171,14 +177,14 @@ export function ContentEditorDialog({
     const handleDelete = () => {
         if (!content) return;
         deleteContent(content.id);
-        toast.success('Conteúdo excluído');
+        toast.success('Kernel purgado');
         onOpenChange(false);
     };
 
     const handleDuplicate = () => {
         if (!content) return;
         duplicateContent(content.id);
-        toast.success('Conteúdo duplicado!');
+        toast.success('Kernel clonado!');
         onOpenChange(false);
     };
 
@@ -196,7 +202,7 @@ export function ContentEditorDialog({
                 body: formData,
             });
 
-            if (!res.ok) throw new Error('Falha no upload');
+            if (!res.ok) throw new Error('Upload_Link_Failure');
 
             const data = await res.json();
             if (data.url) {
@@ -204,7 +210,7 @@ export function ContentEditorDialog({
             }
         } catch (error) {
             console.error(error);
-            toast.error('Erro ao enviar a imagem. Tente novamente.');
+            toast.error('Erro no fluxo de uplink.');
         } finally {
             setIsUploading(false);
         }
@@ -223,7 +229,7 @@ export function ContentEditorDialog({
 
     const handleClose = () => {
         if (isDirty) {
-            if (!confirm('Descartar alterações?')) return;
+            if (!confirm('Descartar alterações sistêmicas?')) return;
         }
         onOpenChange(false);
         reset();
@@ -236,21 +242,18 @@ export function ContentEditorDialog({
 
     const handlePublishMeta = async () => {
         if (!content) return;
-        
         setIsSaving(true);
-        const toastId = toast.loading('Publicando via Meta API...');
-        
+        const toastId = toast.loading('Injecting via Meta API...');
         try {
             const res = await publishInstagramPostAction(content.id, content.accountId || undefined, { useMetaApi: true });
-            
             if (res.success) {
-                toast.success('Publicado com sucesso!', { id: toastId });
+                toast.success('Injection_Successful!', { id: toastId });
                 onOpenChange(false);
             } else {
-                toast.error(`Falha na publicação: ${res.message}`, { id: toastId });
+                toast.error(`Injection_Failure: ${res.message}`, { id: toastId });
             }
         } catch (error: any) {
-            toast.error(`Erro: ${error.message || 'Erro interno'}`, { id: toastId });
+            toast.error(`Critical_Link_Error: ${error.message || 'Error'}`, { id: toastId });
         } finally {
             setIsSaving(false);
         }
@@ -259,181 +262,135 @@ export function ContentEditorDialog({
     const isInQueue = queue.some(i => i.contentId === content?.id);
     const queueItem = queue.find(i => i.contentId === content?.id);
 
-    // Derived state for preview
     const titleText = watch('title') ? `${watch('title')}\n\n` : '';
     const descText = watch('description') ? `${watch('description')}\n\n` : '';
     const tags = watch('hashtags') || [];
     const tagsText = tags.length > 0 ? tags.map(t => t.startsWith('#') ? t : `#${t}`).join(' ') : '';
-
-    // NÃO usar .trim() único no final pq ele come quebras reais em alguns casos
     const compiledCaption = `${titleText}${descText}${tagsText}`;
     const charCount = compiledCaption.length;
 
     return (
         <Sheet open={open} onOpenChange={handleClose}>
-            <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto p-0" showCloseButton={false}>
-                <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <SheetTitle className="text-lg font-semibold">
-                            {isEditing ? 'Editar Conteúdo' : 'Novo Conteúdo'}
+            <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto p-0 border-l border-white/10 bg-[#050505]" showCloseButton={false}>
+                <div className="p-8 font-mono">
+                    <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
+                        <SheetTitle className="text-[11px] font-bold uppercase tracking-[0.4em] text-[#F5F5F5]">
+                            {isEditing ? 'CONTENT_KERNEL_0x' : 'INITIALIZE_CONTENT_VAL'}
                         </SheetTitle>
-                        <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-
-                    <div className="flex bg-muted p-1 rounded-lg mb-6">
-                        <button
-                            type="button"
-                            className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${activeTab === 'edit' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                            onClick={() => setActiveTab('edit')}
-                        >
-                            Editar
-                        </button>
-                        <button
-                            type="button"
-                            className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${activeTab === 'preview' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                            onClick={() => {
-                                setActiveTab('preview');
-                                setCurrentMediaIndex(0);
-                            }}
-                        >
-                            <span className="flex items-center justify-center gap-1.5">
-                                <Icons.Eye className="h-4 w-4" /> Preview
-                            </span>
+                        <button onClick={handleClose} className="h-8 w-8 flex items-center justify-center text-[#4A4A4A] hover:text-[#F5F5F5] transition-colors">
+                            <span className="text-sm">{wrap(GLYPHS.CLOSE)}</span>
                         </button>
                     </div>
 
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                    <div className="flex bg-[#0A0A0A] p-1 rounded border border-white/5 mb-8">
+                        {(['edit', 'preview'] as const).map(tab => (
+                            <button
+                                key={tab}
+                                type="button"
+                                className={cn(
+                                    "flex-1 text-[9px] font-black py-2 rounded uppercase tracking-widest transition-all",
+                                    activeTab === tab ? "bg-[#A3E635] text-black shadow-lg" : "text-[#4A4A4A] hover:text-[#F5F5F5]"
+                                )}
+                                onClick={() => setActiveTab(tab)}
+                            >
+                                <span className="flex items-center justify-center gap-2">
+                                    {tab === 'preview' ? wrap(GLYPHS.EYE) : wrap(GLYPHS.HUB)} {tab}_MODE
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                         {activeTab === 'edit' ? (
-                            <div className="space-y-5">
-                                {/* Title */}
-                                <div>
-                                    <label className="text-sm font-medium" htmlFor="title">
-                                        Título *
-                                    </label>
-                                    <Input
-                                        id="title"
-                                        {...register('title')}
-                                        placeholder="Nome do conteúdo"
-                                        className="mt-1.5"
-                                    />
-                                    {errors.title && (
-                                        <p className="mt-1 text-xs text-destructive">{errors.title.message}</p>
-                                    )}
-                                </div>
+                            <div className="space-y-8">
+                                <Input
+                                    label="CORE_TITLE_VAL"
+                                    {...register('title')}
+                                    placeholder="ENTRY_NAME..."
+                                    error={errors.title?.message}
+                                    isMono={true}
+                                />
 
-                                {/* Description */}
-                                <div>
-                                    <label className="text-sm font-medium" htmlFor="description">
-                                        Descrição / Legenda
-                                    </label>
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">CAPTION_META_DATA</label>
                                     <textarea
-                                        id="description"
                                         {...register('description')}
-                                        placeholder="Legenda do post..."
-                                        rows={4}
-                                        className="mt-1.5 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                        placeholder="LEGACY_DESCRIPTION..."
+                                        rows={6}
+                                        className="w-full bg-[#0A0A0A] border border-white/10 rounded-md p-4 text-[11px] text-[#F5F5F5] font-mono focus:border-white/20 outline-none uppercase placeholder:text-[#2A2A2A] transition-all resize-none"
                                     />
-                                    {errors.description && (
-                                        <p className="mt-1 text-xs text-destructive">
-                                            {errors.description.message}
-                                        </p>
-                                    )}
+                                    {errors.description && <p className="text-[9px] text-[#EF4444] uppercase font-bold">{errors.description.message}</p>}
                                 </div>
 
-                                {/* Type + Status row */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-sm font-medium">Tipo *</label>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">CHANNEL_OBJECT_TYPE</label>
                                         <select
                                             {...register('type')}
-                                            className="mt-1.5 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                            className="w-full h-10 bg-[#0A0A0A] border border-white/10 rounded font-mono text-[11px] text-[#F5F5F5] px-4 focus:border-white/20 outline-none uppercase cursor-pointer"
                                         >
                                             {CONTENT_TYPES.map((t) => (
-                                                <option key={t.value} value={t.value}>
-                                                    {t.label}
-                                                </option>
+                                                <option key={t.value} value={t.value}>{t.label.toUpperCase()}</option>
                                             ))}
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="text-sm font-medium">Status *</label>
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">SYSTEM_STATUS</label>
                                         <select
                                             {...register('status')}
-                                            className="mt-1.5 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                            className="w-full h-10 bg-[#0A0A0A] border border-white/10 rounded font-mono text-[11px] text-[#F5F5F5] px-4 focus:border-white/20 outline-none uppercase cursor-pointer"
                                         >
                                             {CONTENT_STATUSES.map((s) => (
-                                                <option key={s.value} value={s.value}>
-                                                    {s.label}
-                                                </option>
+                                                <option key={s.value} value={s.value}>{s.label.toUpperCase()}</option>
                                             ))}
                                         </select>
                                     </div>
                                 </div>
 
-                                {/* Account + Scheduled date row */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-sm font-medium">Conta Instagram</label>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">TARGET_ACCOUNT_NODE</label>
                                         <select
                                             {...register('accountId')}
-                                            className="mt-1.5 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                            className="w-full h-10 bg-[#0A0A0A] border border-white/10 rounded font-mono text-[11px] text-[#F5F5F5] px-4 focus:border-white/20 outline-none uppercase cursor-pointer"
                                         >
-                                            <option value="">Nenhuma Conta</option>
+                                            <option value="">NULL_ACCOUNT</option>
                                             {accounts.map((a) => (
-                                                <option key={a.id} value={a.id}>
-                                                    {a.name} ({a.handle})
-                                                </option>
+                                                <option key={a.id} value={a.id}>{a.name.toUpperCase()}</option>
                                             ))}
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="text-sm font-medium" htmlFor="scheduledAt">
-                                            Data/Hora
-                                        </label>
-                                        <Input
-                                            id="scheduledAt"
-                                            type="datetime-local"
-                                            {...register('scheduledAt')}
-                                            className="mt-1.5"
-                                        />
-                                    </div>
+                                    <Input
+                                        type="datetime-local"
+                                        label="EPOCH_SCHEDULE_VAL"
+                                        {...register('scheduledAt')}
+                                        isMono={true}
+                                    />
                                 </div>
 
-                                {/* Hashtags */}
-                                <div>
-                                    <label className="text-sm font-medium">Hashtags</label>
-                                    <div className="mt-1.5">
-                                        <TagInput
-                                            tags={hashtags || []}
-                                            onChange={(newTags) =>
-                                                setValue('hashtags', newTags, { shouldDirty: true })
-                                            }
-                                        />
-                                    </div>
-                                </div>
+                                <TagInput
+                                    tags={hashtags || []}
+                                    onChange={(newTags) => setValue('hashtags', newTags, { shouldDirty: true })}
+                                />
 
-                                {/* Collections */}
                                 {collections.length > 0 && (
-                                    <div>
-                                        <label className="text-sm font-medium">Coleções</label>
-                                        <div className="mt-1.5 flex flex-wrap gap-2">
+                                    <div className="space-y-3">
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">ID_COLLECTION_MAPPING</label>
+                                        <div className="flex flex-wrap gap-2">
                                             {collections.map((c) => {
                                                 const isSelected = collectionIds.includes(c.id);
-                                                const Icon = (Icons as any)[c.icon || 'Folder'] || Icons.Folder;
                                                 return (
                                                     <button
                                                         key={c.id}
                                                         type="button"
                                                         onClick={() => toggleCollection(c.id)}
-                                                        className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${isSelected
-                                                            ? 'bg-primary/10 border-primary text-primary'
-                                                            : 'bg-background border-border hover:bg-muted text-muted-foreground'
-                                                            }`}
+                                                        className={cn(
+                                                            "px-3 py-1.5 rounded-full text-[9px] font-black border uppercase tracking-widest transition-all",
+                                                            isSelected ? "bg-[#A3E635]/10 border-[#A3E635]/40 text-[#A3E635]" : "bg-white/5 border-white/10 text-[#4A4A4A] hover:text-[#F5F5F5]"
+                                                        )}
                                                     >
-                                                        <Icon className="h-3 w-3" style={isSelected ? { color: c.color } : undefined} />
-                                                        <span>{c.name}</span>
+                                                        <span className="mr-2">{isSelected ? wrap(GLYPHS.HUB) : wrap(GLYPHS.MEDIA)}</span>
+                                                        {c.name}
                                                     </button>
                                                 );
                                             })}
@@ -441,242 +398,136 @@ export function ContentEditorDialog({
                                     </div>
                                 )}
 
-                                {/* Media upload */}
-                                <div>
-                                    <label className="text-sm font-medium">Mídia</label>
-                                    <div className="mt-1.5 space-y-2">
+                                <div className="space-y-4">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">MEDIA_BUFFER_NODES</label>
+                                    <div className="grid grid-cols-2 gap-4">
                                         {(mediaUrls || []).map((url, index) => (
-                                            <div
-                                                key={index}
-                                                className="relative rounded-lg overflow-hidden border border-border"
-                                            >
+                                            <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 group grayscale hover:grayscale-0 transition-all">
                                                 {url.match(/\.(mp4|webm|ogg)$/i) ? (
-                                                    <video
-                                                        src={url}
-                                                        className="w-full h-32 object-cover"
-                                                    />
+                                                    <video src={url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
                                                 ) : (
-                                                    <img
-                                                        src={url}
-                                                        alt={`Mídia ${index + 1}`}
-                                                        className="w-full h-32 object-cover"
-                                                    />
+                                                    <img src={url} alt="" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
                                                 )}
-                                                <Button
+                                                <button
                                                     type="button"
-                                                    variant="destructive"
-                                                    size="icon"
-                                                    className="absolute top-2 right-2 h-6 w-6"
                                                     onClick={() => removeImage(index)}
+                                                    className="absolute top-2 right-2 h-6 w-6 rounded bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[#EF4444] transition-all"
                                                 >
-                                                    <X className="h-3 w-3" />
-                                                </Button>
+                                                    <span className="text-xs">{wrap(GLYPHS.CLOSE)}</span>
+                                                </button>
                                             </div>
                                         ))}
-                                        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 hover:bg-accent/30 transition-colors">
-                                            <ImagePlus className="h-5 w-5 text-muted-foreground" />
-                                            <span className="text-sm text-muted-foreground">
-                                                {isUploading ? 'Enviando...' : 'Adicionar imagem'}
-                                            </span>
-                                            <input
-                                                type="file"
-                                                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime"
-                                                onChange={handleImageUpload}
-                                                disabled={isUploading}
-                                                className="hidden"
-                                            />
+                                        <label className="aspect-square flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-[#A3E635]/40 transition-all cursor-pointer group">
+                                            <span className="text-2xl text-[#4A4A4A] group-hover:text-[#A3E635] transition-colors">{wrap(GLYPHS.PLUS)}</span>
+                                            <span className="text-[9px] font-bold text-[#4A4A4A] uppercase tracking-widest">{isUploading ? 'UPLOADING...' : 'ADD_MEDIA'}</span>
+                                            <input type="file" multiple accept="image/*,video/*" onChange={handleImageUpload} className="hidden" />
                                         </label>
                                     </div>
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between pl-1">
-                                    <h3 className="text-sm font-medium text-muted-foreground">Preview do Feed</h3>
-                                    <span className={`text-xs font-semibold ${charCount > 2200 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                                        {charCount} / 2200
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                <div className="flex items-center justify-between px-2">
+                                    <span className="text-[10px] font-black text-[#A3E635] uppercase tracking-[0.2em]">Live_Feed_Simulation</span>
+                                    <span className={cn("text-[9px] font-bold", charCount > 2200 ? 'text-[#EF4444]' : 'text-[#4A4A4A]')}>
+                                        {charCount} / 2200 BITS
                                     </span>
                                 </div>
 
-                                <div className="w-full max-w-[350px] mx-auto bg-background border border-border rounded-xl flex flex-col overflow-hidden shadow-sm">
-                                    {/* App Header */}
-                                    <div className="flex items-center justify-between p-3 border-b border-border">
+                                <div className="max-w-[360px] mx-auto bg-black border border-white/10 rounded-xl overflow-hidden shadow-2xl font-sans">
+                                    <div className="p-3 flex items-center justify-between border-b border-white/5">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-fuchsia-600 p-[2px]">
-                                                <div className="w-full h-full rounded-full bg-background border border-border flex items-center justify-center overflow-hidden">
-                                                    <Icons.User className="w-4 h-4 text-muted-foreground" />
-                                                </div>
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#A3E635] to-[#3b82f6] p-[1px]">
+                                                <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden border border-black text-[10px] text-[#4A4A4A]">{wrap(GLYPHS.USER)}</div>
                                             </div>
-                                            <span className="text-[13px] font-semibold tracking-tight text-foreground">suaconta</span>
+                                            <span className="text-[11px] font-bold text-[#F5F5F5]">local_instance</span>
                                         </div>
-                                        <Icons.MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                                        <span className="text-[#4A4A4A]">{wrap(GLYPHS.DOTS)}</span>
                                     </div>
 
-                                    {/* Image/Carousel */}
-                                    <div className="w-full aspect-[4/5] bg-muted/30 relative flex items-center justify-center group/media">
+                                    <div className="aspect-[4/5] bg-[#0A0A0A] relative flex items-center justify-center group overflow-hidden">
                                         {(mediaUrls && mediaUrls.length > 0) ? (
-                                            mediaUrls[currentMediaIndex].match(/\.(mp4|webm|ogg)$/i) ? (
-                                                <video
-                                                    key={mediaUrls[currentMediaIndex]}
-                                                    src={mediaUrls[currentMediaIndex]}
-                                                    className="w-full h-full object-cover"
-                                                    autoPlay
-                                                    muted
-                                                    loop
-                                                    playsInline
-                                                />
-                                            ) : (
-                                                <img 
-                                                    key={mediaUrls[currentMediaIndex]}
-                                                    src={mediaUrls[currentMediaIndex]} 
-                                                    className="w-full h-full object-cover animate-in fade-in duration-300" 
-                                                    alt="Preview" 
-                                                />
-                                            )
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                                                <Icons.Image className="w-8 h-8 opacity-20" />
-                                                <span className="text-xs font-medium">Sem imagem</span>
+                                            <div className="w-full h-full">
+                                                {mediaUrls[currentMediaIndex].match(/\.(mp4|webm|ogg)$/i) ? (
+                                                    <video key={mediaUrls[currentMediaIndex]} src={mediaUrls[currentMediaIndex]} className="w-full h-full object-cover" autoPlay muted loop />
+                                                ) : (
+                                                    <img key={mediaUrls[currentMediaIndex]} src={mediaUrls[currentMediaIndex]} className="w-full h-full object-cover" alt="" />
+                                                )}
+                                                {mediaUrls.length > 1 && (
+                                                    <>
+                                                        <button onClick={(e) => { e.preventDefault(); setCurrentMediaIndex(p => p > 0 ? p - 1 : mediaUrls.length - 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 p-2 rounded-full text-white">{wrap(GLYPHS.BACK)}</button>
+                                                        <button onClick={(e) => { e.preventDefault(); setCurrentMediaIndex(p => p < mediaUrls.length - 1 ? p + 1 : 0); }} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 p-2 rounded-full text-white">{wrap(GLYPHS.NEXT)}</button>
+                                                        <div className="absolute top-3 right-3 bg-black/60 px-2 py-1 rounded-full text-[9px] font-bold text-white">{currentMediaIndex + 1}/{mediaUrls.length}</div>
+                                                    </>
+                                                )}
                                             </div>
-                                        )}
-                                        
-                                        {/* Navigation Arrows */}
-                                        {(mediaUrls && mediaUrls.length > 1) && (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.preventDefault(); setCurrentMediaIndex(prev => prev > 0 ? prev - 1 : mediaUrls.length - 1); }}
-                                                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover/media:opacity-100"
-                                                >
-                                                    <Icons.ChevronLeft className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.preventDefault(); setCurrentMediaIndex(prev => prev < mediaUrls.length - 1 ? prev + 1 : 0); }}
-                                                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover/media:opacity-100"
-                                                >
-                                                    <Icons.ChevronRight className="h-4 w-4" />
-                                                </button>
-                                                
-                                                <div className="absolute top-3 right-3 bg-black/50 backdrop-blur text-white text-[10px] font-medium px-2 py-1 rounded-full">
-                                                    {currentMediaIndex + 1}/{mediaUrls.length}
-                                                </div>
-
-                                                {/* Dots indicator */}
-                                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
-                                                    {mediaUrls.map((_, i) => (
-                                                        <div 
-                                                            key={i} 
-                                                            className={`h-1 rounded-full transition-all ${i === currentMediaIndex ? 'w-4 bg-white' : 'w-1 bg-white/40'}`}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </>
+                                        ) : (
+                                            <span className="text-[#2A2A2A] text-4xl">{wrap(GLYPHS.MEDIA)}</span>
                                         )}
                                     </div>
 
-                                    {/* Actions */}
-                                    <div className="p-3 pb-2 flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <Icons.Heart className="w-6 h-6 text-foreground" />
-                                            <Icons.MessageCircle className="w-6 h-6 text-foreground" />
-                                            <Icons.Send className="w-6 h-6 text-foreground" />
+                                    <div className="p-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex gap-4">
+                                                <span className="text-[#F5F5F5] text-xl">{wrap(GLYPHS.HEART)}</span>
+                                                <span className="text-[#F5F5F5] text-xl">{wrap(GLYPHS.MSG)}</span>
+                                                <span className="text-[#F5F5F5] text-xl">{wrap(GLYPHS.SEND)}</span>
+                                            </div>
+                                            <span className="text-[#F5F5F5] text-xl">{wrap(GLYPHS.BOOKMARK)}</span>
                                         </div>
-                                        <Icons.Bookmark className="w-6 h-6 text-foreground" />
-                                    </div>
-
-                                    {/* Likes */}
-                                    <div className="px-3 pb-1 text-[13px] font-semibold text-foreground">
-                                        1.042 curtidas
-                                    </div>
-
-                                    {/* Caption */}
-                                    <div className="px-3 pb-4 text-[13px] leading-[18px] text-foreground">
-                                        <span className="font-semibold mr-1.5">suaconta</span>
-                                        <div className="inline break-words text-foreground">
-                                            {compiledCaption ? compiledCaption.split('\n').map((line, i) => (
-                                                <span key={i}>
-                                                    {line}
-                                                    {i !== compiledCaption.split('\n').length - 1 && <br />}
-                                                </span>
-                                            )) : <span className="text-muted-foreground italic">Sua legenda aparecerá aqui...</span>}
+                                        <div className="text-[11px] leading-relaxed text-[#F5F5F5]">
+                                            <span className="font-bold mr-2">local_instance</span>
+                                            {compiledCaption ? compiledCaption : <span className="opacity-20 italic">AWAITING_INPUT_SIGNAL...</span>}
                                         </div>
                                     </div>
                                 </div>
 
                                 {charCount > 2200 && (
-                                    <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg flex items-start gap-2">
-                                        <X className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                                        <span>Sua legenda excedeu o limite do Instagram de 2200 caracteres e será cortada ou rejeitada.</span>
+                                    <div className="p-4 bg-[#EF4444]/10 border border-[#EF4444]/40 rounded-lg flex gap-3">
+                                        <span className="text-[#EF4444]">{wrap(GLYPHS.WARN)}</span>
+                                        <p className="text-[10px] text-[#EF4444] font-bold uppercase tracking-widest leading-tight">Limiar de caracteres excedido. A integridade do post no Instagram pode ser comprometida.</p>
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Action buttons */}
-                        <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                            <Button
-                                type="submit"
-                                disabled={isSaving || isUploading}
-                                className="w-full instagram-gradient text-white border-0 hover:opacity-90"
-                            >
-                                <Save className="mr-2 h-4 w-4" />
-                                {isSaving ? 'Salvando...' : 'Salvar'}
+                        <div className="flex flex-col gap-3 pt-8 border-t border-white/5">
+                            <Button type="submit" disabled={isSaving || isUploading} className="w-full h-12 bg-[#A3E635] text-black font-black uppercase tracking-[0.2em] text-[10px]">
+                                <span className="mr-2">{GLYPHS.SAVE}</span>
+                                COMMIT_CHANGES
                             </Button>
 
                             {isEditing && (
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex gap-2">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="flex-1"
-                                            onClick={handleDuplicate}
-                                        >
-                                            <Copy className="mr-2 h-4 w-4" />
-                                            Duplicar
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="destructive"
-                                            className="flex-1"
-                                            onClick={handleDelete}
-                                        >
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Excluir
-                                        </Button>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="w-full border-pink-500/50 hover:bg-pink-500/10 text-pink-600 dark:text-pink-400"
-                                        disabled={isInQueue}
-                                        onClick={handlePublishNow}
-                                    >
-                                        <Send className="mr-2 h-4 w-4" />
-                                        {queueItem?.status === 'processing'
-                                            ? 'Postando agora...'
-                                            : isInQueue
-                                                ? 'Na fila de espera...'
-                                                : 'Publicar via Robô'}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Button type="button" variant="outline" onClick={handleDuplicate} className="h-10 text-[9px] uppercase tracking-widest border-white/10 font-bold">
+                                        <span className="mr-2">{GLYPHS.COPY}</span> CLONE_VAL
                                     </Button>
+                                    <Button type="button" variant="outline" onClick={handleDelete} className="h-10 text-[9px] uppercase tracking-widest border-white/10 font-bold text-[#EF4444] hover:bg-[#EF4444]/5">
+                                        <span className="mr-2">{GLYPHS.TRASH}</span> PURGE_OBJ
+                                    </Button>
+                                </div>
+                            )}
 
+                            {isEditing && (
+                                <div className="space-y-3 pt-3">
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        className="w-full border-blue-500/50 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                        className="w-full h-11 border-blue-500/30 text-blue-400 hover:bg-blue-500/5 text-[10px] font-black uppercase tracking-widest"
                                         disabled={isSaving || isUploading || isProcessing}
                                         onClick={handlePublishMeta}
                                     >
-                                        <Icons.Share2 className="mr-2 h-4 w-4" />
-                                        Publicar via Meta API
+                                        <span className="mr-2">{wrap(GLYPHS.SEND)}</span> INJECT_VIA_META_API
                                     </Button>
-
-                                    {isInQueue && (
-                                        <p className="text-[10px] text-center text-muted-foreground animate-pulse">
-                                            O robô processará este post automaticamente seguindo a fila.
-                                        </p>
-                                    )}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="w-full h-11 border-[#A3E635]/30 text-[#A3E635] hover:bg-[#A3E635]/5 text-[10px] font-black uppercase tracking-widest"
+                                        disabled={isInQueue}
+                                        onClick={handlePublishNow}
+                                    >
+                                        <span className="mr-2">{wrap(GLYPHS.SEND)}</span> {queueItem?.status === 'processing' ? 'EXECUTING_BOT...' : isInQueue ? 'IN_QUEUE_BUFFER' : 'LINK_VIA_BOT_ROTOR'}
+                                    </Button>
                                 </div>
                             )}
                         </div>

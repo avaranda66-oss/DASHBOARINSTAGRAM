@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useContentStore } from '@/stores';
 import { useCalendarStore } from '@/stores/calendar-slice';
 import {
@@ -12,28 +11,17 @@ import {
     parseISO,
 } from '../hooks/use-calendar';
 import { useFilteredContents } from '@/hooks/use-filtered-contents';
-import { TYPE_BADGE_COLORS } from '@/lib/constants';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/design-system/atoms/Button';
 import { ContentEditorDialog } from '@/features/content/components/content-editor-dialog';
 import type { Content } from '@/types/content';
-import { Image, Circle, Film, Layers, Megaphone } from 'lucide-react';
+import { cn } from '@/design-system/utils/cn';
 
-
-
-const TYPE_ICONS: Record<string, React.ElementType> = {
-    post: Image,
-    story: Circle,
-    reel: Film,
-    carousel: Layers,
-    campaign: Megaphone,
-};
-
-const TYPE_CARD_COLORS: Record<string, string> = {
-    post: 'bg-blue-500 text-white',
-    story: 'bg-purple-500 text-white',
-    reel: 'bg-pink-500 text-white',
-    carousel: 'bg-orange-500 text-white',
-    campaign: 'bg-emerald-500 text-white',
+const TYPE_GLYPHS: Record<string, string> = {
+    post: '◆',
+    story: '◎',
+    reel: '▶',
+    carousel: '◫',
+    campaign: '▲',
 };
 
 export function DayView() {
@@ -41,7 +29,6 @@ export function DayView() {
     const filteredContents = useFilteredContents();
     const { currentDate, navigateMonth, goToToday } = useCalendarStore();
     const { dayLabel } = useCalendar(currentDate);
-    const containerRef = useRef<HTMLDivElement>(null);
 
     const [editorOpen, setEditorOpen] = useState(false);
     const [editingContent, setEditingContent] = useState<Content | null>(null);
@@ -70,26 +57,22 @@ export function DayView() {
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-12rem)] w-full rounded-xl border border-border overflow-hidden bg-background">
+        <div className="flex flex-col h-[calc(100vh-14rem)] w-full rounded-lg border border-white/10 overflow-hidden bg-[#0A0A0A]/30">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => navigateMonth('next')}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <h3 className="text-lg font-semibold capitalize">{dayLabel}</h3>
+            <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#0A0A0A]/50">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center bg-[#050505] border border-white/10 rounded overflow-hidden">
+                        <button onClick={() => navigateMonth('prev')} className="px-3 py-1.5 hover:bg-white/5 border-r border-white/10 text-[#4A4A4A] transition-colors font-mono text-xs">‹</button>
+                        <button onClick={() => navigateMonth('next')} className="px-3 py-1.5 hover:bg-white/5 text-[#4A4A4A] transition-colors font-mono text-xs">›</button>
+                    </div>
+                    <h3 className="text-[13px] font-bold text-[#F5F5F5] uppercase tracking-widest">{dayLabel}</h3>
                 </div>
-                <Button variant="outline" size="sm" onClick={goToToday}>
-                    Hoje
-                </Button>
+                <Button variant="outline" size="sm" onClick={goToToday} className="font-mono text-[10px] tracking-widest uppercase">TODAY_SYNC</Button>
             </div>
 
             {/* Scrollable Vertical Agenda */}
-            <div className="flex-1 overflow-y-auto bg-muted/10 p-4 sm:p-6">
-                <div className="max-w-2xl mx-auto flex flex-col gap-4">
+            <div className="flex-1 overflow-y-auto bg-transparent p-6 scrollbar-none">
+                <div className="max-w-3xl mx-auto space-y-3">
                     {/* Content Cards (Sorted) */}
                     {dayContents
                         .sort((a, b) => {
@@ -98,65 +81,69 @@ export function DayView() {
                         })
                         .map((content) => {
                             if (!content.scheduledAt) return null;
-                            const TypeIcon = TYPE_ICONS[content.type] ?? Image;
-                            const bgClass = TYPE_CARD_COLORS[content.type] ?? 'bg-muted';
                             const d = parseISO(content.scheduledAt);
 
                             return (
                                 <div
                                     key={content.id}
                                     onClick={(e) => handleContentClick(content, e)}
-                                    className={`rounded-xl p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.01] hover:shadow-md ${bgClass} opacity-95`}
+                                    className="group relative border border-white/5 bg-[#0A0A0A] p-5 rounded-lg hover:border-[#A3E635]/30 hover:bg-white/[0.02] transition-all cursor-pointer"
                                 >
-                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 rounded-lg bg-black/10 shrink-0">
-                                                <TypeIcon className="h-5 w-5" />
+                                    <div className="flex items-start gap-6">
+                                        <div className="font-mono text-[#A3E635] flex flex-col items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                                            <span className="text-[14px] font-bold leading-none">{format(d, 'HH:mm')}</span>
+                                            <span className="text-[10px] tracking-widest opacity-40">MST</span>
+                                        </div>
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="font-mono text-[10px] text-[#A3E635] bg-[#A3E635]/5 px-2 py-0.5 rounded tracking-[0.2em] uppercase">
+                                                    {content.type}
+                                                </span>
+                                                <span className="font-mono text-[12px] text-[#4A4A4A]">{TYPE_GLYPHS[content.type] || '◆'}</span>
                                             </div>
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-xs font-bold tracking-widest uppercase bg-black/10 px-2 py-0.5 rounded-full">
-                                                        {format(d, 'HH:mm')}
-                                                    </span>
-                                                    <span className="text-[10px] font-bold tracking-widest uppercase opacity-90">
-                                                        {content.type}
-                                                    </span>
-                                                </div>
-                                                <p className="text-base font-semibold leading-tight">
-                                                    {content.title}
+                                            
+                                            <h4 className="text-[16px] font-bold text-[#F5F5F5] uppercase tracking-tight mb-2 group-hover:text-[#A3E635] transition-colors">
+                                                {content.title}
+                                            </h4>
+                                            
+                                            {content.description && (
+                                                <p className="text-[12px] text-[#8A8A8A] line-clamp-2 leading-relaxed opacity-60">
+                                                    {content.description}
                                                 </p>
-                                                {content.description && (
-                                                    <p className="text-sm mt-1.5 opacity-90 line-clamp-2">
-                                                        {content.description}
-                                                    </p>
-                                                )}
-                                            </div>
+                                            )}
+
+                                            {content.hashtags.length > 0 && (
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    {content.hashtags.map((h, i) => (
+                                                        <span key={i} className="font-mono text-[9px] text-[#4A4A4A] lowercase italic">#{h}</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="font-mono text-[9px] text-[#4A4A4A] tracking-widest uppercase writing-vertical-lr opacity-30 mt-1">
+                                            ITEM_RECORD_{content.id.slice(0, 4)}
                                         </div>
                                     </div>
-                                    {content.hashtags.length > 0 && (
-                                        <div className="mt-3 pt-3 border-t border-black/10">
-                                            <p className="text-xs opacity-75 truncate">
-                                                {content.hashtags.join(' ')}
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
                             );
                         })}
 
                     {/* Empty State */}
                     {dayContents.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed border-border rounded-xl bg-background/50">
-                            <p className="text-sm font-medium mb-3">Nenhum conteúdo agendado para este dia.</p>
+                        <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/5 rounded-lg bg-white/[0.01]">
+                            <span className="font-mono text-xl text-[#4A4A4A] mb-2">∅</span>
+                            <p className="font-mono text-[9px] tracking-[0.3em] text-[#4A4A4A] uppercase">Zero_Agenda_Activity</p>
                         </div>
                     )}
 
                     {/* Add Button */}
                     <button
                         onClick={() => handleSlotClick(12, false)}
-                        className="mt-2 flex items-center justify-center p-4 text-sm font-semibold text-muted-foreground border-2 border-dashed border-border rounded-xl hover:bg-accent/50 hover:text-accent-foreground transition-all"
+                        className="w-full py-4 mt-4 border border-dashed border-white/10 rounded-lg font-mono text-[10px] tracking-[0.2em] text-[#4A4A4A] hover:bg-white/5 hover:text-[#8A8A8A] transition-all uppercase"
                     >
-                        + Agendar Novo Conteúdo
+                        + INJECT_NEW_CONTENT_NODE
                     </button>
                 </div>
             </div>

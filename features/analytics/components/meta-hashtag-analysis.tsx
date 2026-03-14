@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Hash, TrendingUp, Flame, Zap } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 
 interface MetaPost {
     caption?: string;
@@ -30,14 +30,14 @@ function PerformanceBadge({ level }: { level: 'high' | 'medium' | 'low' }) {
     if (level === 'high') {
         return (
             <span className="inline-flex items-center gap-1 rounded-full bg-[var(--v2-success)]/10 border border-[var(--v2-success)]/20 px-2 py-0.5 text-[10px] font-bold text-[var(--v2-success)]">
-                <Flame className="h-2.5 w-2.5" /> Alta
+                <span className="font-mono text-[10px]">▲</span> Alta
             </span>
         );
     }
     if (level === 'medium') {
         return (
             <span className="inline-flex items-center gap-1 rounded-full bg-[var(--v2-warning)]/10 border border-[var(--v2-warning)]/20 px-2 py-0.5 text-[10px] font-bold text-[var(--v2-warning)]">
-                <Zap className="h-2.5 w-2.5" /> Média
+                <span className="font-mono text-[10px]">⚡</span> Média
             </span>
         );
     }
@@ -101,7 +101,7 @@ export function MetaHashtagAnalysis({ posts }: Props) {
     if (rows.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-12 text-center space-y-2">
-                <Hash className="h-8 w-8 text-muted-foreground/30" />
+                <span className="font-mono text-xl text-muted-foreground/30">#</span>
                 <p className="text-sm text-muted-foreground">Nenhuma hashtag encontrada nas legendas.</p>
                 <p className="text-xs text-muted-foreground/60">Certifique-se de que os posts têm legendas com #hashtags.</p>
             </div>
@@ -113,7 +113,7 @@ export function MetaHashtagAnalysis({ posts }: Props) {
             {/* Insight highlight */}
             {topInsight && (
                 <div className="flex items-start gap-2 rounded-lg border border-[var(--v2-success)]/20 bg-[var(--v2-success)]/5 px-3 py-2.5">
-                    <TrendingUp className="h-4 w-4 text-[var(--v2-success)] shrink-0 mt-0.5" />
+                    <span className="font-mono text-sm text-[var(--v2-success)] shrink-0 mt-0.5">↗</span>
                     <p className="text-xs text-[var(--v2-success)]">{topInsight}</p>
                 </div>
             )}

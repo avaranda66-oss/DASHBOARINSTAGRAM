@@ -4,10 +4,7 @@ import { useState, Fragment } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { AdCampaign, AdSet } from '@/types/ads';
-import {
-    Play, Pause, ChevronDown, ChevronRight,
-    DollarSign, Eye, MousePointerClick, Target,
-} from 'lucide-react';
+// [ZERO_LUCIDE_PURGE]
 import { toast } from 'sonner';
 
 interface Props {
@@ -18,6 +15,8 @@ interface Props {
     onExpandCampaign: (id: string | null) => void;
     expandedCampaignId: string | null;
 }
+
+const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
 
 function formatCurrency(value: number, currency: string = 'BRL'): string {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(value);
@@ -61,29 +60,29 @@ export function CampaignsTable({ campaigns, adSets, currency, onToggleStatus, on
 
     if (campaigns.length === 0) {
         return (
-            <Card className="p-8 text-center text-muted-foreground">
+            <Card className="p-8 text-center text-muted-foreground bg-[#0A0A0A] border-white/10 rounded-lg">
                 Nenhuma campanha encontrada para este período/filtro.
             </Card>
         );
     }
 
     return (
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden bg-[#0A0A0A] border-white/10 rounded-lg">
             <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm font-mono">
                     <thead>
-                        <tr className="border-b bg-muted/50">
-                            <th className="px-4 py-3 text-left font-medium w-8"></th>
-                            <th className="px-4 py-3 text-left font-medium">Campanha</th>
-                            <th className="px-4 py-3 text-left font-medium">Status</th>
-                            <th className="px-4 py-3 text-left font-medium">Objetivo</th>
-                            <th className="px-4 py-3 text-right font-medium">Orçamento/dia</th>
-                            <th className="px-4 py-3 text-right font-medium">Gasto</th>
-                            <th className="px-4 py-3 text-right font-medium">Impressões</th>
-                            <th className="px-4 py-3 text-right font-medium">Cliques</th>
-                            <th className="px-4 py-3 text-right font-medium">CTR</th>
-                            <th className="px-4 py-3 text-right font-medium">CPC</th>
-                            <th className="px-4 py-3 text-center font-medium">Ação</th>
+                        <tr className="border-b border-white/5 bg-white/5 uppercase tracking-widest text-[10px] text-[#4A4A4A]">
+                            <th className="px-4 py-3 text-left font-bold w-8"></th>
+                            <th className="px-4 py-3 text-left font-bold">Campanha</th>
+                            <th className="px-4 py-3 text-left font-bold">Status</th>
+                            <th className="px-4 py-3 text-left font-bold">Objetivo</th>
+                            <th className="px-4 py-3 text-right font-bold">Orçamento/dia</th>
+                            <th className="px-4 py-3 text-right font-bold">Gasto</th>
+                            <th className="px-4 py-3 text-right font-bold">Impressões</th>
+                            <th className="px-4 py-3 text-right font-bold">Cliques</th>
+                            <th className="px-4 py-3 text-right font-bold">CTR</th>
+                            <th className="px-4 py-3 text-right font-bold">CPC</th>
+                            <th className="px-4 py-3 text-center font-bold">Ação</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -100,34 +99,34 @@ export function CampaignsTable({ campaigns, adSets, currency, onToggleStatus, on
 
                             return (
                                 <Fragment key={c.id}>
-                                    <tr className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => onExpandCampaign(c.id)}>
+                                    <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => onExpandCampaign(c.id)}>
                                         <td className="px-4 py-3">
                                             {campaignAdSets.length > 0 ? (
-                                                isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                                <span className="text-[#A3E635] font-bold">{isExpanded ? wrap('▼') : wrap('▶')}</span>
                                             ) : <span className="w-4" />}
                                         </td>
-                                        <td className="px-4 py-3 font-medium max-w-[200px] truncate" title={c.name}>{c.name}</td>
+                                        <td className="px-4 py-3 font-bold text-[#F5F5F5] max-w-[200px] truncate" title={c.name}>{c.name}</td>
                                         <td className="px-4 py-3">{statusBadge(c.effective_status)}</td>
-                                        <td className="px-4 py-3 text-xs text-muted-foreground">{formatObjective(c.objective)}</td>
-                                        <td className="px-4 py-3 text-right">{budget != null ? formatCurrency(budget, currency) : '—'}</td>
-                                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(spend, currency)}</td>
-                                        <td className="px-4 py-3 text-right">{formatNumber(impressions)}</td>
-                                        <td className="px-4 py-3 text-right">{formatNumber(clicks)}</td>
-                                        <td className="px-4 py-3 text-right">{ctr.toFixed(2)}%</td>
-                                        <td className="px-4 py-3 text-right">{formatCurrency(cpc, currency)}</td>
+                                        <td className="px-4 py-3 text-[10px] uppercase text-[#4A4A4A]">{formatObjective(c.objective)}</td>
+                                        <td className="px-4 py-3 text-right text-[#F5F5F5]">{budget != null ? formatCurrency(budget, currency) : '—'}</td>
+                                        <td className="px-4 py-3 text-right font-bold text-[#A3E635]">{formatCurrency(spend, currency)}</td>
+                                        <td className="px-4 py-3 text-right text-[#8A8A8A]">{formatNumber(impressions)}</td>
+                                        <td className="px-4 py-3 text-right text-[#8A8A8A]">{formatNumber(clicks)}</td>
+                                        <td className="px-4 py-3 text-right text-[#8A8A8A]">{ctr.toFixed(2)}%</td>
+                                        <td className="px-4 py-3 text-right text-[#8A8A8A]">{formatCurrency(cpc, currency)}</td>
                                         <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                                             {(c.effective_status === 'ACTIVE' || c.effective_status === 'PAUSED') && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8"
+                                                    className="h-8 w-8 hover:bg-[#A3E635]/10"
                                                     disabled={loadingId === c.id}
                                                     onClick={() => handleToggle(c)}
                                                     title={c.effective_status === 'ACTIVE' ? 'Pausar' : 'Ativar'}
                                                 >
                                                     {c.effective_status === 'ACTIVE'
-                                                        ? <Pause className="h-4 w-4 text-yellow-500" />
-                                                        : <Play className="h-4 w-4 text-green-500" />
+                                                        ? <span className="text-[#FBBF24] font-bold text-xs">{wrap('❚❚')}</span>
+                                                        : <span className="text-[#A3E635] font-bold text-xs">{wrap('▶')}</span>
                                                     }
                                                 </Button>
                                             )}
@@ -143,19 +142,19 @@ export function CampaignsTable({ campaigns, adSets, currency, onToggleStatus, on
                                         const sBudget = adSet.daily_budget ? parseInt(adSet.daily_budget) / 100 : null;
 
                                         return (
-                                            <tr key={adSet.id} className="border-b bg-muted/20 text-xs">
+                                            <tr key={adSet.id} className="border-b border-white/5 bg-white/[0.02] text-[11px]">
                                                 <td className="px-4 py-2"></td>
-                                                <td className="px-4 py-2 pl-10 text-muted-foreground truncate max-w-[180px]" title={adSet.name}>
-                                                    ↳ {adSet.name}
+                                                <td className="px-4 py-2 pl-10 text-[#8A8A8A] truncate max-w-[180px]" title={adSet.name}>
+                                                    <span className="text-[#4A4A4A] mr-2">{wrap('↳')}</span> {adSet.name}
                                                 </td>
                                                 <td className="px-4 py-2">{statusBadge(adSet.effective_status)}</td>
-                                                <td className="px-4 py-2 text-muted-foreground">{adSet.optimization_goal || '—'}</td>
-                                                <td className="px-4 py-2 text-right">{sBudget != null ? formatCurrency(sBudget, currency) : '—'}</td>
-                                                <td className="px-4 py-2 text-right">{formatCurrency(sSpend, currency)}</td>
-                                                <td className="px-4 py-2 text-right">{formatNumber(sImpr)}</td>
-                                                <td className="px-4 py-2 text-right">{formatNumber(sClicks)}</td>
-                                                <td className="px-4 py-2 text-right">{sCtr.toFixed(2)}%</td>
-                                                <td className="px-4 py-2 text-right">{formatCurrency(sCpc, currency)}</td>
+                                                <td className="px-4 py-2 text-[#4A4A4A] uppercase text-[9px] tracking-tighter">{adSet.optimization_goal || '—'}</td>
+                                                <td className="px-4 py-2 text-right text-[#F5F5F5]">{sBudget != null ? formatCurrency(sBudget, currency) : '—'}</td>
+                                                <td className="px-4 py-2 text-right text-[#A3E635]">{formatCurrency(sSpend, currency)}</td>
+                                                <td className="px-4 py-2 text-right text-[#4A4A4A]">{formatNumber(sImpr)}</td>
+                                                <td className="px-4 py-2 text-right text-[#4A4A4A]">{formatNumber(sClicks)}</td>
+                                                <td className="px-4 py-2 text-right text-[#4A4A4A]">{sCtr.toFixed(2)}%</td>
+                                                <td className="px-4 py-2 text-right text-[#4A4A4A]">{formatCurrency(sCpc, currency)}</td>
                                                 <td className="px-4 py-2"></td>
                                             </tr>
                                         );

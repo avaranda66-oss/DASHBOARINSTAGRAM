@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Filter } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import type { MetaPostMetrics } from '@/types/analytics';
 
 interface FunnelChartProps {
@@ -47,7 +47,7 @@ export function FunnelChart({ posts }: FunnelChartProps) {
             className="rounded-2xl border border-white/[0.06] bg-zinc-900/60 backdrop-blur-md p-5"
         >
             <div className="flex items-center gap-2 mb-5">
-                <Filter className="h-4 w-4 text-violet-400" />
+                <span className="font-mono text-xs text-violet-400">◎</span>
                 <h3 className="text-sm font-semibold text-zinc-200">Funil de Engajamento</h3>
             </div>
 

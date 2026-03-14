@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Eye, TrendingUp, Users, Bookmark, Share2, Clock, ArrowUpRight, ArrowDownRight, Minus, Zap, Target } from 'lucide-react';
 import type { InstagramPostMetrics, MetaPostMetrics } from '@/types/analytics';
 import { linearTrend, engagementScore } from '@/lib/utils/statistics';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -173,14 +172,14 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             label: 'Seguidores',
             value: accountProfile?.followersCount != null ? formatNumber(accountProfile.followersCount) : 'N/D',
             sub: accountProfile?.name ?? 'Dados do perfil',
-            icon: Users,
+            icon: '◎',
             accentColor: 'var(--v2-accent)',
         },
         {
             label: 'Alcance Total',
             value: formatNumber(kpis.totalReach),
             sub: 'Soma de todos os posts',
-            icon: Eye,
+            icon: '◎',
             accentColor: '#3b82f6', // blue
             sparkData: kpis.reachHistory,
             trend: linearTrend(kpis.reachHistory),
@@ -189,7 +188,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             label: 'Total Likes',
             value: formatNumber(kpis.totalLikes),
             sub: 'Soma de todos os posts',
-            icon: Heart,
+            icon: '▲',
             accentColor: '#ec4899', // pink
             sparkData: kpis.likesHistory,
             trend: linearTrend(kpis.likesHistory),
@@ -198,7 +197,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             label: 'Total Saves',
             value: formatNumber(kpis.totalSaves),
             sub: 'Soma de todos os posts',
-            icon: Bookmark,
+            icon: '◆',
             accentColor: '#f59e0b', // amber
             sparkData: kpis.savesHistory,
             trend: linearTrend(kpis.savesHistory),
@@ -207,7 +206,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             label: 'Total Shares',
             value: formatNumber(kpis.totalShares),
             sub: 'Soma de todos os posts',
-            icon: Share2,
+            icon: '↗',
             accentColor: '#10b981', // emerald
             sparkData: kpis.sharesHistory,
             trend: linearTrend(kpis.sharesHistory),
@@ -216,7 +215,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             label: 'Total Comentários',
             value: formatNumber(kpis.totalComments),
             sub: 'Soma de todos os posts',
-            icon: MessageCircle,
+            icon: '◐',
             accentColor: '#f97316', // orange
             sparkData: kpis.commentsHistory,
             trend: linearTrend(kpis.commentsHistory),
@@ -225,7 +224,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             label: 'Eng. Rate',
             value: kpis.avgEngRate > 0 ? `${kpis.avgEngRate.toFixed(2)}%` : '0%',
             sub: '(Interações / Alcance)',
-            icon: TrendingUp,
+            icon: '↗',
             accentColor: '#a855f7', // purple
             sparkData: kpis.engRateHistory,
             trend: linearTrend(kpis.engRateHistory),
@@ -234,7 +233,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             label: 'Avg Watch Time',
             value: kpis.avgWatchTime != null ? `${kpis.avgWatchTime.toFixed(1)}s` : 'Sem Reels',
             sub: 'Tempo médio (Reels)',
-            icon: Clock,
+            icon: '◷',
             accentColor: '#ef4444', // red
         },
         // Meta-exclusive cards (only when reach data exists)
@@ -243,7 +242,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                 label: 'Save Rate',
                 value: `${kpis.saveRate.toFixed(2)}%`,
                 sub: 'Saves / Alcance',
-                icon: Bookmark,
+                icon: '◆',
                 accentColor: '#14b8a6', // teal
                 sparkData: kpis.saveRateHistory,
                 trend: linearTrend(kpis.saveRateHistory),
@@ -252,7 +251,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                 label: 'Share Rate',
                 value: `${kpis.shareRate.toFixed(2)}%`,
                 sub: 'Shares / Alcance',
-                icon: Share2,
+                icon: '↗',
                 accentColor: '#06b6d4', // cyan
                 sparkData: kpis.shareRateHistory,
                 trend: linearTrend(kpis.shareRateHistory),
@@ -261,7 +260,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                 label: 'Depth Score',
                 value: `${kpis.avgDepthScore.toFixed(0)}/100`,
                 sub: 'Score ponderado (saves>shares>comments>likes)',
-                icon: Zap,
+                icon: '◎',
                 accentColor: '#f43f5e', // rose
                 sparkData: kpis.depthScores,
                 trend: linearTrend(kpis.depthScores),
@@ -270,7 +269,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                 label: 'Melhor Tipo',
                 value: kpis.bestType.type,
                 sub: `${formatNumber(Math.round(kpis.bestType.avgReach))} alcance médio`,
-                icon: Target,
+                icon: '◎',
                 accentColor: '#8b5cf6', // violet
             }] : []),
         ] : []),
@@ -292,7 +291,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                     <div className="relative z-[2]">
                         <div className="flex items-center justify-between">
                             <span className="v2-label">{card.label}</span>
-                            <card.icon className="h-3.5 w-3.5" style={{ color: card.accentColor, opacity: 0.8 }} />
+                             <span className="font-mono text-sm leading-none" style={{ color: card.accentColor, opacity: 0.8 }}>{card.icon}</span>
                         </div>
                         <p className="mt-2 text-2xl font-mono v2-number font-bold tracking-tight" style={{ color: 'var(--v2-text-primary)' }}>
                             {card.value}
@@ -302,11 +301,11 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                         {card.trend && (
                             <div className="mt-2 flex items-center gap-1.5">
                                 {card.trend.direction === 'rising' ? (
-                                    <ArrowUpRight className="h-3 w-3" style={{ color: 'var(--v2-success)' }} />
+                                    <span className="font-mono text-xs" style={{ color: 'var(--v2-success)' }}>↗</span>
                                 ) : card.trend.direction === 'falling' ? (
-                                    <ArrowDownRight className="h-3 w-3" style={{ color: 'var(--v2-danger)' }} />
+                                    <span className="font-mono text-xs" style={{ color: 'var(--v2-danger)' }}>↘</span>
                                 ) : (
-                                    <Minus className="h-3 w-3" style={{ color: 'var(--v2-text-tertiary)' }} />
+                                    <span className="font-mono text-xs" style={{ color: 'var(--v2-text-tertiary)' }}>—</span>
                                 )}
                                 <span className="text-[9px] font-mono" style={{ color: card.trend.direction === 'rising' ? 'var(--v2-success)' : card.trend.direction === 'falling' ? 'var(--v2-danger)' : 'var(--v2-text-tertiary)' }}>
                                     {card.trend.direction === 'rising' ? 'Crescendo' : card.trend.direction === 'falling' ? 'Caindo' : 'Estável'}

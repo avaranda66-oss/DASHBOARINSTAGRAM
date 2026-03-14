@@ -9,6 +9,11 @@ import {
     XAxis, YAxis, Tooltip, CartesianGrid, Legend, PieChart, Pie, Cell,
 } from 'recharts';
 
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
+
 interface Props {
     daily: DailyAdInsight[];
     campaigns: AdCampaign[];

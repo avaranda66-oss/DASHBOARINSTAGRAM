@@ -2,13 +2,6 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-    Sparkles,
-    Send,
-    Loader2,
-    BarChart3,
-    Brain,
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { InstagramPostMetrics, AnalyticsSummary } from '@/types/analytics';
 
@@ -85,7 +78,7 @@ export function InsightsPanel({
             >
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
                     <div className="flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-blue-400" />
+                        <span className="text-blue-400 font-mono text-sm mr-2">◎</span>
                         <h4 className="text-sm font-semibold">Insights de Dados</h4>
                     </div>
                     {!fixedInsights && (
@@ -97,9 +90,9 @@ export function InsightsPanel({
                             className="text-xs"
                         >
                             {isLoadingFixed ? (
-                                <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Analisando...</>
+                                <><span className="mr-1 font-mono text-xs animate-spin">↻</span> Analisando...</>
                             ) : (
-                                <><Sparkles className="mr-1 h-3 w-3" /> Gerar Análise</>
+                                <><span className="mr-1 font-mono text-xs">◎</span> Gerar Análise</>
                             )}
                         </Button>
                     )}
@@ -107,8 +100,8 @@ export function InsightsPanel({
                 <div className="p-4">
                     {isLoadingFixed ? (
                         <div className="flex items-center justify-center py-6">
-                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                            <span className="ml-2 text-sm text-muted-foreground">Processando dados...</span>
+                            <span className="font-mono text-sm animate-spin text-muted-foreground mr-2">↻</span>
+                            <span className="text-sm text-muted-foreground">Processando dados...</span>
                         </div>
                     ) : fixedInsights ? (
                         <div
@@ -131,7 +124,7 @@ export function InsightsPanel({
                 className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/5 to-indigo-500/5 overflow-hidden"
             >
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-purple-500/20 bg-purple-500/5">
-                    <Brain className="h-4 w-4 text-purple-400" />
+                    <span className="text-purple-400 font-mono text-sm mr-2">◎</span>
                     <h4 className="text-sm font-semibold">Análise IA (Gemini)</h4>
                 </div>
                 <div className="p-4 space-y-3">
@@ -152,9 +145,9 @@ export function InsightsPanel({
                             className="bg-purple-600 hover:bg-purple-700 text-white h-9 px-4"
                         >
                             {isLoadingAi ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="animate-spin font-mono text-sm text-white/50">◷</span>
                             ) : (
-                                <Send className="h-4 w-4" />
+                                <span className="font-mono text-sm">↗</span>
                             )}
                         </Button>
                     </form>

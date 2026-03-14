@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Loader2, Brain } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import { Button } from '@/components/ui/button';
 import type { ProfileMetrics } from './comparison-view';
 
@@ -61,7 +61,7 @@ export function ComparisonAIChat({ client, competitors, periodLabel }: Compariso
             className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/5 to-indigo-500/5 overflow-hidden mt-8"
         >
             <div className="flex items-center gap-2 px-4 py-3 border-b border-purple-500/20 bg-purple-500/5">
-                <Brain className="h-4 w-4 text-purple-400" />
+                <span className="font-mono text-xs text-purple-400">◎</span>
                 <h4 className="text-sm font-semibold">Análise Competitiva IA (Gemini)</h4>
             </div>
             <div className="p-4 space-y-3">
@@ -82,9 +82,9 @@ export function ComparisonAIChat({ client, competitors, periodLabel }: Compariso
                         className="bg-purple-600 hover:bg-purple-700 text-white h-9 px-4"
                     >
                         {isLoadingAi ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="font-mono text-sm animate-spin">↻</span>
                         ) : (
-                            <Send className="h-4 w-4" />
+                            <span className="font-mono text-sm">↗</span>
                         )}
                     </Button>
                 </form>

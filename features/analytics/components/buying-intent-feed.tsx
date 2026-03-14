@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingCart, MessageCircle, Tag } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import type { InstagramPostMetrics } from '@/types/analytics';
 import { detectBuyingIntent } from '@/lib/utils/sentiment';
 
@@ -48,7 +48,7 @@ export function BuyingIntentFeed({ posts }: BuyingIntentFeedProps) {
         >
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <ShoppingCart className="h-4 w-4 text-emerald-400" />
+                    <span className="font-mono text-xs text-emerald-400">◎</span>
                     <h3 className="text-sm font-semibold text-zinc-200">Intenção de Compra</h3>
                     <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full">
                         {intentData.intentCount}
@@ -62,7 +62,7 @@ export function BuyingIntentFeed({ posts }: BuyingIntentFeedProps) {
             <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {intentData.enrichedComments.slice(0, 20).map((comment, i) => (
                     <div key={comment.id} className="flex items-start gap-3 p-3 rounded-xl border border-white/[0.04] bg-zinc-800/30">
-                        <MessageCircle className="h-3.5 w-3.5 mt-0.5 text-emerald-400 flex-shrink-0" />
+                        <span className="font-mono text-sm mt-0.5 text-emerald-400 flex-shrink-0">◐</span>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                                 <span className="text-xs font-medium text-zinc-300">@{comment.ownerUsername}</span>
@@ -72,7 +72,7 @@ export function BuyingIntentFeed({ posts }: BuyingIntentFeedProps) {
                             <div className="flex gap-1 mt-1.5 flex-wrap">
                                 {comment.keywords.map(kw => (
                                     <span key={kw} className="inline-flex items-center gap-0.5 text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded-full">
-                                        <Tag className="h-2.5 w-2.5" />
+                                        <span className="font-mono text-[10px]">#</span>
                                         {kw}
                                     </span>
                                 ))}
