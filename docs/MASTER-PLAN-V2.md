@@ -1,8 +1,8 @@
 # DASHBOARD OSS — MASTER PLAN V2
 **Orquestrado por:** Orion (AIOS Master)
-**Data:** 2026-03-14 | **Última atualização:** 2026-03-14 (pós-sprint US-50→US-71)
+**Data:** 2026-03-14 | **Última atualização:** 2026-03-14 (pós-sprint FASE 2 — EPIC-REALTIME + EPIC-EXPORT + US-66)
 **Branch:** v2-dashboard
-**Status do projeto:** FASE 1 CONCLUÍDA — Motor estatístico + indicadores avançados + UI integrada. Próxima fase: EPIC-REALTIME + EPIC-EXPORT
+**Status do projeto:** FASE 2 CONCLUÍDA — Auto-refresh, cache TTL, CSV, PDF, Attribution Window. Próxima fase: EPIC-MULTIACCOUNTS + EPIC-AUTOMATION
 
 ---
 
@@ -335,10 +335,10 @@ FASE 1 — Precisão ✅ CONCLUÍDA (commit 8deeb86, 2026-03-14)
 ├── EPIC-ADVANCED-INDICATORS (US-53, 54, 55) → ✅ DONE
 └── US-71 (weightedRecentTrend)        → ✅ DONE
 
-FASE 2 — Produtividade ← PRÓXIMA
-├── EPIC-REALTIME (US-56, 57)          → dashboard vivo (polling + cache)
-├── EPIC-EXPORT (US-58, 59, 60)        → relatórios para clientes (CSV + PDF)
-└── EPIC-ATTRIBUTION-WINDOW (US-66)    → decisão de atribuição
+FASE 2 — Produtividade ✅ CONCLUÍDA
+├── EPIC-REALTIME (US-56, 57)          → dashboard vivo (polling + cache) ✅
+├── EPIC-EXPORT (US-58, 59, 60*)       → relatórios para clientes (CSV + PDF) ✅ (*US-60 deferido)
+└── EPIC-ATTRIBUTION-WINDOW (US-66)    → decisão de atribuição ✅
 
 FASE 3 — Agência
 ├── EPIC-MULTIACCOUNTS (US-61, 62)     → multi-cliente

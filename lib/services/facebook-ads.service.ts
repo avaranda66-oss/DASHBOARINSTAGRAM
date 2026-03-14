@@ -276,11 +276,12 @@ export async function getInsights(
         timeRange?: { since: string; until: string };
         timeIncrement?: string; // '1' para diário, 'monthly', 'all_days'
         campaignId?: string;
+        attributionWindow?: string; // US-66: '1d_click' | '7d_click' | '28d_click' | '1d_view'
     } = {},
 ): Promise<AdInsight[]> {
-    const { level = 'campaign', datePreset, timeRange, timeIncrement, campaignId } = options;
+    const { level = 'campaign', datePreset, timeRange, timeIncrement, campaignId, attributionWindow } = options;
     const path = campaignId ? `${campaignId}/insights` : `${accountId}/insights`;
-    const cacheKey = `insights:${path}:${level}:${datePreset || ''}:${JSON.stringify(timeRange || {})}:${timeIncrement || ''}`;
+    const cacheKey = `insights:${path}:${level}:${datePreset || ''}:${JSON.stringify(timeRange || {})}:${timeIncrement || ''}:${attributionWindow || ''}`;
     const cached = getCached<AdInsight[]>(cacheKey);
     if (cached) return cached;
 
@@ -292,6 +293,7 @@ export async function getInsights(
     if (datePreset && datePreset !== 'lifetime') params.date_preset = datePreset;
     if (timeRange) params.time_range = JSON.stringify(timeRange);
     if (timeIncrement) params.time_increment = timeIncrement;
+    if (attributionWindow) params.action_attribution_windows = JSON.stringify([attributionWindow]);
 
     const data = await graphGetAll<AdInsight>(path, token, params);
     setCache(cacheKey, data);

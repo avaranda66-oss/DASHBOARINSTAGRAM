@@ -111,7 +111,7 @@ async function getDailyWithFallback(
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { token, accountId, timeRange, level = 'campaign' } = body;
+        const { token, accountId, timeRange, level = 'campaign', attributionWindow } = body;
         const datePreset = timeRange ? undefined : (body.datePreset || 'last_30d') as AdsDatePreset;
 
         if (!token || !accountId) {
@@ -130,11 +130,13 @@ export async function POST(req: NextRequest) {
                 level: level as any,
                 datePreset,
                 timeRange,
+                attributionWindow,
             }),
             getInsights(token, accountId, {
                 level: 'account',
                 datePreset,
                 timeRange,
+                attributionWindow,
             }),
             getInsights(token, accountId, {
                 level: 'account',

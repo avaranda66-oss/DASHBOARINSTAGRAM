@@ -17,8 +17,10 @@ import { KpiCard } from '@/design-system/molecules/KpiCard';
 import { Badge } from '@/design-system/atoms/Badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import type { AdsDatePreset } from '@/types/ads';
+import type { AdsDatePreset, AttributionWindow } from '@/types/ads';
 import { cn } from '@/design-system/utils/cn';
+import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { downloadCsv, csvFilename, campaignsToCSV, dailyInsightsToCSV } from '@/lib/utils/export-csv';
 
 type ViewTab = 'overview' | 'charts' | 'intelligence' | 'creatives';
 
@@ -58,7 +60,8 @@ export default function AdsDashboardPage() {
 
     const {
         campaigns, adSets, kpiSummary, kpiDelta, dailyInsights, dailyFallbackPreset, account,
-        isLoading, error, lastFetchedAt, filters, expandedCampaignId,
+        isLoading, lastFetchedAt, filters, expandedCampaignId,
+        campFromCache, insightFromCache,
         creativeAds, isLoadingCreatives, creativesError,
         fetchAll, fetchCreatives, setFilters, setExpandedCampaign, updateCampaignStatus,
     } = adsStore;
@@ -94,12 +97,16 @@ export default function AdsDashboardPage() {
         }
     }, [adsToken, adsAccountId]);
 
-    const handleRefresh = useCallback(() => {
+    const handleRefresh = useCallback((forceRefresh = true) => {
         if (adsToken && adsAccountId) {
-            fetchAll(adsToken, adsAccountId);
-            toast.success('Atualizando dados de campanhas...');
+            fetchAll(adsToken, adsAccountId, forceRefresh);
+            if (forceRefresh) toast.success('Atualizando dados de campanhas...');
         }
     }, [adsToken, adsAccountId, fetchAll]);
+
+    const { interval: refreshInterval, setInterval: setRefreshInterval, isActive: autoRefreshActive, nextRefreshIn } =
+        useAutoRefresh(handleRefresh, { defaultInterval: 0 });
+
 
     const handleDateChange = useCallback((preset: AdsDatePreset) => {
         setIsCustomRangeActive(false);
@@ -256,6 +263,31 @@ export default function AdsDashboardPage() {
 
     const currency = account?.currency || kpiSummary?.currency || 'BRL';
 
+    // US-59 — PDF Report Generator
+    const handleExportPDF = useCallback(async () => {
+        if (!filteredKpiSummary) return;
+        const periodLabel = filters.customRange
+            ? `${filters.customRange.since} → ${filters.customRange.until}`
+            : DATE_PRESETS.find(p => p.value === filters.datePreset)?.label ?? filters.datePreset;
+        const res = await fetch('/api/ads-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                accountName,
+                accountId: adsAccountId,
+                period: periodLabel,
+                kpiSummary: filteredKpiSummary,
+                campaigns: filteredCampaigns,
+                dailyInsights,
+                currency,
+            }),
+        });
+        if (!res.ok) { toast.error('Erro ao gerar relatório'); return; }
+        const html = await res.text();
+        const win = window.open('', '_blank');
+        if (win) { win.document.open(); win.document.write(html); win.document.close(); } // eslint-disable-line deprecation/deprecation
+    }, [filteredKpiSummary, filters, accountName, adsAccountId, filteredCampaigns, dailyInsights, currency]);
+
     const dataFreshness = useMemo(() => {
         if (!lastFetchedAt) return null;
         // eslint-disable-next-line react-hooks/purity
@@ -331,7 +363,41 @@ export default function AdsDashboardPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button onClick={handleRefresh} isLoading={isLoading} size="sm" variant="subtle" className="font-mono tracking-widest text-[9px]">REFRESH_SYNC</Button>
+                    {/* Auto-refresh interval selector */}
+                    <div className="flex items-center gap-1">
+                        {([0, 5, 15, 30] as const).map(v => (
+                            <button
+                                key={v}
+                                onClick={() => setRefreshInterval(v)}
+                                title={v === 0 ? 'Refresh manual' : `Auto-refresh a cada ${v}min`}
+                                className={cn(
+                                    "px-2 py-1 rounded font-mono text-[9px] uppercase tracking-widest border transition-all",
+                                    refreshInterval === v
+                                        ? "bg-[#A3E635] text-black border-[#A3E635]"
+                                        : "bg-transparent text-[#4A4A4A] border-white/5 hover:border-white/10"
+                                )}
+                            >
+                                {v === 0 ? 'MAN' : `${v}m`}
+                            </button>
+                        ))}
+                    </div>
+                    {/* Cache + countdown indicator */}
+                    {autoRefreshActive && nextRefreshIn !== null && (
+                        <span className="font-mono text-[9px] text-[#4A4A4A] tabular-nums min-w-[4ch]">
+                            {nextRefreshIn >= 60
+                                ? `${Math.floor(nextRefreshIn / 60)}m${(nextRefreshIn % 60).toString().padStart(2, '0')}s`
+                                : `${nextRefreshIn}s`}
+                        </span>
+                    )}
+                    {(campFromCache || insightFromCache) && (
+                        <span className="font-mono text-[9px] text-[#FBBF24] tracking-widest" title="Dados servidos do cache local">
+                            [CACHE]
+                        </span>
+                    )}
+                    <Button onClick={() => handleRefresh(true)} isLoading={isLoading} size="sm" variant="subtle" className="font-mono tracking-widest text-[9px]">REFRESH_SYNC</Button>
+                    {filteredKpiSummary && (
+                        <Button onClick={handleExportPDF} size="sm" variant="outline" className="font-mono tracking-widest text-[9px]">↓ PDF</Button>
+                    )}
                 </div>
             </motion.div>
 
@@ -379,23 +445,55 @@ export default function AdsDashboardPage() {
                     </AnimatePresence>
                 </div>
 
-                <div className="col-span-12 lg:col-span-4 p-6 bg-[#0A0A0A] border rounded-[8px]" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                    <span className="font-mono text-[10px] text-[#4A4A4A] tracking-[0.2em] uppercase block mb-6">Status da Mídia</span>
-                    <div className="flex flex-wrap gap-2">
-                        {STATUS_FILTERS.map(s => (
-                            <button
-                                key={s.value}
-                                onClick={() => handleStatusFilter(s.value)}
-                                className={cn(
-                                    "px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest border transition-all",
-                                    filters.statusFilter === s.value 
-                                        ? "bg-[#A3E635] text-black border-[#A3E635]" 
-                                        : "bg-transparent text-[#4A4A4A] border-white/5 hover:border-white/10"
-                                )}
-                            >
-                                {s.label}
-                            </button>
-                        ))}
+                <div className="col-span-12 lg:col-span-4 p-6 bg-[#0A0A0A] border rounded-[8px] space-y-6" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <div>
+                        <span className="font-mono text-[10px] text-[#4A4A4A] tracking-[0.2em] uppercase block mb-4">Status da Mídia</span>
+                        <div className="flex flex-wrap gap-2">
+                            {STATUS_FILTERS.map(s => (
+                                <button
+                                    key={s.value}
+                                    onClick={() => handleStatusFilter(s.value)}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest border transition-all",
+                                        filters.statusFilter === s.value
+                                            ? "bg-[#A3E635] text-black border-[#A3E635]"
+                                            : "bg-transparent text-[#4A4A4A] border-white/5 hover:border-white/10"
+                                    )}
+                                >
+                                    {s.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* US-66 — Attribution Window Selector */}
+                    <div className="pt-4 border-t border-white/5">
+                        <span className="font-mono text-[10px] text-[#4A4A4A] tracking-[0.2em] uppercase block mb-4">Janela de Atribuição</span>
+                        <div className="flex flex-wrap gap-1.5">
+                            {([
+                                { value: undefined, label: 'PADRÃO' },
+                                { value: '1d_click', label: '1D CLICK' },
+                                { value: '7d_click', label: '7D CLICK' },
+                                { value: '28d_click', label: '28D CLICK' },
+                                { value: '1d_view', label: '1D VIEW' },
+                            ] as const).map(w => (
+                                <button
+                                    key={w.label}
+                                    onClick={() => {
+                                        setFilters({ attributionWindow: w.value as AttributionWindow | undefined });
+                                        if (adsToken && adsAccountId) fetchAll(adsToken, adsAccountId, true);
+                                    }}
+                                    className={cn(
+                                        "px-2 py-1 rounded font-mono text-[9px] uppercase tracking-widest border transition-all",
+                                        filters.attributionWindow === w.value
+                                            ? "bg-[#A3E635] text-black border-[#A3E635]"
+                                            : "bg-transparent text-[#4A4A4A] border-white/5 hover:border-white/10"
+                                    )}
+                                >
+                                    {w.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </motion.div>
@@ -541,6 +639,17 @@ export default function AdsDashboardPage() {
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                     {activeTab === 'overview' && (
                         <div className="space-y-12">
+                            {/* US-58 — Export CSV: Campanhas */}
+                            {filteredCampaigns.length > 0 && (
+                                <div className="flex justify-end">
+                                    <button
+                                        onClick={() => downloadCsv(campaignsToCSV(filteredCampaigns, currency), csvFilename('campanhas'))}
+                                        className="px-3 py-1.5 rounded font-mono text-[9px] uppercase tracking-widest border border-white/5 text-[#4A4A4A] hover:border-[#A3E635] hover:text-[#A3E635] transition-all"
+                                    >
+                                        ↓ EXPORT CSV
+                                    </button>
+                                </div>
+                            )}
                             <CampaignsTable
                                 campaigns={filteredCampaigns}
                                 adSets={filteredAdSets}
@@ -570,6 +679,17 @@ export default function AdsDashboardPage() {
 
                     {activeTab === 'charts' && (
                         <div className="space-y-3">
+                            {/* US-58 — Export CSV: Insights diários */}
+                            {dailyInsights.length > 0 && (
+                                <div className="flex justify-end">
+                                    <button
+                                        onClick={() => downloadCsv(dailyInsightsToCSV(dailyInsights, currency), csvFilename('insights-diarios'))}
+                                        className="px-3 py-1.5 rounded font-mono text-[9px] uppercase tracking-widest border border-white/5 text-[#4A4A4A] hover:border-[#A3E635] hover:text-[#A3E635] transition-all"
+                                    >
+                                        ↓ EXPORT CSV
+                                    </button>
+                                </div>
+                            )}
                             {dailyFallbackPreset && (
                                 <div className="flex items-center gap-2 px-3 py-2 rounded-[4px] bg-[#FBBF24]/10 border border-[#FBBF24]/20 font-mono text-[10px] text-[#FBBF24] tracking-widest">
                                     <span>⚠</span>

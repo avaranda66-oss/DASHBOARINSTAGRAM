@@ -203,11 +203,14 @@ export interface DailyAdInsight {
 export type AdsDatePreset = 'today' | 'yesterday' | 'last_7d' | 'last_14d' | 'last_30d' | 'last_90d' | 'this_month' | 'last_month' | 'lifetime';
 
 /** Filtros do painel de ads */
+export type AttributionWindow = '1d_click' | '7d_click' | '28d_click' | '1d_view' | '7d_view';
+
 export interface AdsFilters {
     datePreset: AdsDatePreset;
     customRange?: { since: string; until: string };
     statusFilter: 'all' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
     accountId?: string;
+    attributionWindow?: AttributionWindow;
 }
 
 // ─── Intelligence Metrics Types ─────────────────────────────────────────────
