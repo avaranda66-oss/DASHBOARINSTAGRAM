@@ -17,6 +17,52 @@ import { scorePerformance } from '@/lib/utils/creative-scorer';
 import type { CreativeStats, CreativeBenchmark } from '@/lib/utils/creative-scorer';
 import type { Ad } from '@/types/ads';
 
+// US-54: half-life proxy via modelo de decaimento exponencial single-point.
+// A API Meta retorna apenas CTR agregado por período (não diário por criativo).
+// Usamos CTR relativo ao benchmark + duração do período para estimar lambda.
+//
+// Modelo: CTR(t) = CTR_0 * e^(-lambda * t)
+//   Se CTR_0 = bench.avgCtr e CTR(t) = stats.ctr após daysRunning dias →
+//   lambda = -ln(ctrRatio) / daysRunning
+//   halfLife = ln(2) / lambda = daysRunning * ln(2) / -ln(ctrRatio)
+//
+// Interpretação: quanto mais o CTR caiu em relação ao benchmark no período rodando,
+// mais rápido é o decaimento implícito.
+function estimateHalfLife(
+    stats: CreativeStats,
+    bench: CreativeBenchmark,
+): { halfLife: number; badge: 'FRESCO' | 'ENVELHECENDO' | 'ESGOTADO'; badgeColor: string } {
+    const daysRunning = stats.period
+        ? Math.max((stats.period.end - stats.period.start) / (1000 * 60 * 60 * 24), 1)
+        : 0;
+
+    if (daysRunning < 1 || bench.avgCtr <= 0 || stats.ctr <= 0) {
+        return { halfLife: Infinity, badge: 'FRESCO', badgeColor: '#A3E635' };
+    }
+
+    const ctrRatio = stats.ctr / bench.avgCtr;
+
+    // Se CTR >= benchmark: sem decaimento detectado → criativo fresco
+    if (ctrRatio >= 1) {
+        return { halfLife: Infinity, badge: 'FRESCO', badgeColor: '#A3E635' };
+    }
+
+    // ctrRatio muito baixo (< 0.01): evitar log de zero
+    const clampedRatio = Math.max(ctrRatio, 0.01);
+    const lambda = -Math.log(clampedRatio) / daysRunning;
+    const halfLife = lambda > 0 ? Math.LN2 / lambda : Infinity;
+
+    const badge: 'FRESCO' | 'ENVELHECENDO' | 'ESGOTADO' =
+        halfLife < 3   ? 'ESGOTADO' :
+        halfLife < 7   ? 'ENVELHECENDO' : 'FRESCO';
+
+    const badgeColor =
+        badge === 'FRESCO'       ? '#A3E635' :
+        badge === 'ENVELHECENDO' ? '#FBBF24' : '#EF4444';
+
+    return { halfLife: Math.round(halfLife * 10) / 10, badge, badgeColor };
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -153,6 +199,7 @@ function CreativeCard({
     stats,
     perfScore,
     fatigue,
+    halfLifeData,
     rank,
     bench,
 }: {
@@ -160,6 +207,7 @@ function CreativeCard({
     stats: CreativeStats;
     perfScore: number;
     fatigue: ReturnType<typeof estimateFatigue>;
+    halfLifeData: ReturnType<typeof estimateHalfLife>;
     rank: number;
     bench: CreativeBenchmark;
 }) {
@@ -212,6 +260,19 @@ function CreativeCard({
                             {/* Fatigue badge */}
                             <div className={`text-[8px] px-2 py-0.5 rounded border font-black uppercase tracking-widest ${fc.bg}`} style={{ color: fc.text }}>
                                 {fatigue.level === 'healthy' ? '▲ SAUDÁVEL' : fatigue.level === 'watch' ? '◈ ATENÇÃO' : '▼ FATIGADO'}
+                            </div>
+                            {/* US-54: Half-Life badge */}
+                            <div
+                                className="text-[8px] px-2 py-0.5 rounded border font-black uppercase tracking-widest"
+                                style={{
+                                    color: halfLifeData.badgeColor,
+                                    borderColor: `${halfLifeData.badgeColor}40`,
+                                    backgroundColor: `${halfLifeData.badgeColor}10`,
+                                }}
+                                title={`Meia-vida estimada: ${halfLifeData.halfLife === Infinity ? 'sem decaimento' : `${halfLifeData.halfLife}d`}`}
+                            >
+                                {halfLifeData.badge === 'FRESCO'       ? '⚡ FRESCO' :
+                                 halfLifeData.badge === 'ENVELHECENDO' ? '⚠ ENVELHEC.' : '● ESGOTADO'}
                             </div>
                         </div>
                     </div>
@@ -272,6 +333,7 @@ export function AdsCreativePerformance({ ads }: Props) {
                 stats,
                 perfScore: scorePerformance(stats, bench),
                 fatigue: estimateFatigue(stats, bench),
+                halfLifeData: estimateHalfLife(stats, bench),
             }))
             .sort((a, b) => b.perfScore - a.perfScore);
 
@@ -349,6 +411,7 @@ export function AdsCreativePerformance({ ads }: Props) {
                         stats={item.stats}
                         perfScore={item.perfScore}
                         fatigue={item.fatigue}
+                        halfLifeData={item.halfLifeData}
                         rank={idx + 1}
                         bench={bench}
                     />

@@ -6,7 +6,7 @@
 // Referência: GA4 Automated Insights + Amplitude Smart Alerts patterns
 // =============================================================================
 
-import { madScore } from './anomaly-detection';
+import { madScore, stlCusum } from './anomaly-detection';
 import { holtWintersWithPI } from './hw-optimizer';
 import { bayesianAB } from './bayesian-ab';
 
@@ -172,6 +172,70 @@ export function kpiPointFromABTest(
     stdDev: Math.abs(ctrB - ctrA) / Math.max(syntheticZ, 0.1),
     revenueBaseline: undefined,
   };
+}
+
+/**
+ * Popula KpiPoint a partir de STL-CUSUM nos resíduos da série.
+ *
+ * US-51: STL remove sazonalidade semanal antes do CUSUM → elimina falsos positivos
+ * de fim de semana que ocorrem com CUSUM raw sobre a série bruta.
+ *
+ * Retorna KpiPoint sintético somente se o ÚLTIMO ponto da série trigou alarme CUSUM.
+ * O "expected" é o valor ajustado (trend + seasonal) e "value" é o resíduo + expected.
+ *
+ * @param kpiId - Identificador da métrica
+ * @param values - Série temporal (mínimo 14 pontos para decomposição robusta)
+ * @param period - Período sazonal (default 7 = semanal)
+ * @param entityId - Entidade opcional
+ */
+export function kpiPointFromSTLCUSUM(
+  kpiId: string,
+  values: number[],
+  period: number = 7,
+  entityId?: string,
+): KpiPoint | null {
+  // Mínimo = 2 × period para STL ter sazonalidade estimável
+  if (values.length < period * 2) return null;
+
+  const result = stlCusum(values, { period });
+  const n = result.cusumPos.length;
+  const lastIdx = n - 1;
+
+  // Só emite insight se o ÚLTIMO ponto trigou alarme CUSUM
+  if (!result.changePoints.includes(lastIdx)) return null;
+
+  const decomp = result.decomposition;
+
+  // expected = trend[t] + seasonal[t] (valor "normal" para o contexto sazonal)
+  const expected = decomp.trend[lastIdx] + decomp.seasonal[lastIdx];
+  const residual = decomp.residual[lastIdx];
+
+  // stdDev via MAD dos resíduos (robusto a outliers)
+  const residuals = decomp.residual.filter(r => isFinite(r));
+  if (residuals.length < 4) return null;
+
+  const sorted = [...residuals].sort((a, b) => a - b);
+  const medianResidual = sorted[Math.floor(sorted.length / 2)];
+  const madResiduals = sorted.map(r => Math.abs(r - medianResidual)).sort((a, b) => a - b);
+  const mad = madResiduals[Math.floor(madResiduals.length / 2)];
+  const stdDev = Math.max(mad * 1.4826, 0.001);
+
+  // z-score sintético do resíduo final
+  const zSynth = Math.abs(residual / stdDev);
+
+  return {
+    kpiId,
+    entityId,
+    timestamp: Date.now(),
+    value: values[values.length - 1],
+    expected,
+    stdDev,
+    // Revenuebaseline não disponível neste contexto
+    revenueBaseline: undefined,
+  };
+
+  // Garante que z-score mínimo seja usado pelo engine (via value - expected > z * stdDev)
+  void zSynth; // usado implicitamente pelo InsightEngine ao calcular z = (value-expected)/stdDev
 }
 
 // =============================================================================

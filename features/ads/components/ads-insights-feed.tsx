@@ -17,6 +17,7 @@ import {
     CONFIG_CONSERVATIVE,
     kpiPointFromMAD,
     kpiPointFromForecast,
+    kpiPointFromSTLCUSUM,
 } from '@/lib/utils/insight-engine';
 import type { Insight, InsightSeverity } from '@/lib/utils/insight-engine';
 import type { DailyAdInsight } from '@/types/ads';
@@ -99,6 +100,16 @@ function useInsights(daily: DailyAdInsight[], maxInsights: number): Insight[] {
                 const fcPoint  = kpiPointFromForecast(kpi.id, history, lastValue);
                 if (fcPoint) {
                     engine.processPoint(fcPoint, 'FORECAST_MISS');
+                }
+            }
+
+            // 3. STL-CUSUM: detecta mudanças estruturais nos resíduos após remover sazonalidade
+            // US-51: elimina falsos positivos de fim de semana que afetam CUSUM raw.
+            // Requer >= 14 pontos (2 × period=7) para decomposição robusta.
+            if (series.length >= 14) {
+                const cusumPoint = kpiPointFromSTLCUSUM(kpi.id, series, 7);
+                if (cusumPoint) {
+                    engine.processPoint(cusumPoint, 'ANOMALY');
                 }
             }
         }
@@ -225,9 +236,9 @@ export function AdsInsightsFeed({ daily, maxInsights = DEFAULT_MAX }: Props) {
 
             {/* Technical metadata */}
             <div className="flex items-center gap-6 text-[8px] font-mono text-[#3A3A3A] uppercase tracking-[0.3em]">
-                <span>ENGINE: INSIGHT_v1.0</span>
+                <span>ENGINE: INSIGHT_v1.1</span>
                 <span>CONFIG: CONSERVATIVE (z≥2.6)</span>
-                <span>METHODS: MAD_ZSCORE + HW_PI</span>
+                <span>METHODS: MAD_ZSCORE + HW_PI + STL_CUSUM</span>
                 <span>WINDOW: {Math.min(daily.length, 90)}D</span>
             </div>
 

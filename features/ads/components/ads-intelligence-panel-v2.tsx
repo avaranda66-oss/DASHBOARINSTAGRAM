@@ -19,6 +19,7 @@ import { AdsAnomalyMultivariate } from './ads-anomaly-multivariate';
 import { AdsAttributionSection } from './ads-attribution-section';
 import { AdsVideoMetricsSection } from './ads-video-metrics-section';
 import { AdsQualityRankingsSection } from './ads-quality-rankings-section';
+import { AdsEfficiencyPanel } from './ads-efficiency-panel';
 import type { DailyAdInsight, AdCampaign } from '@/types/ads';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -668,6 +669,8 @@ export function AdsIntelligencePanelV2({ token, accountId, daily, campaigns }: P
             <ABTestSection tests={intelligenceMetrics.abTests} />
             {campaigns && campaigns.length > 0 && <AdsVideoMetricsSection campaigns={campaigns} />}
             {campaigns && campaigns.length > 0 && <AdsQualityRankingsSection campaigns={campaigns} />}
+            {/* US-53: Painel de Eficiência — Michaelis-Menten + Elasticidade */}
+            {campaigns && campaigns.length >= 3 && <AdsEfficiencyPanel campaigns={campaigns} />}
             
             {/* Footer markers */}
             <div className="flex items-center justify-center gap-8 opacity-10 font-mono text-[8px] uppercase tracking-[0.6em] py-12">
