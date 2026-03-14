@@ -32,7 +32,7 @@
   <img src="https://img.shields.io/badge/ESLint-0_warnings-00C853?style=for-the-badge" alt="ESLint 0 warnings" />
 </p>
 
-> **Branch `v2-dashboard`** — Esta e a versao ativa do projeto. O design system foi completamente reescrito (V2 Industrial HUD), o Meta Ads Manager recebeu um motor estatistico avancado com 12 modulos puros em TypeScript e 9 componentes de UI conectados. Branch `main` = V1 (versao estavel anterior).
+> **Branch `v2-dashboard`** — Esta e a versao ativa do projeto. O design system foi completamente reescrito (V2 Industrial HUD), o Meta Ads Manager recebeu um motor estatistico avancado com 18 modulos puros em TypeScript (~7.728 LOC) e 22 componentes de UI conectados. Inclui: Bayesian A/B Testing, Holt-Winters Forecasting, Isolation Forest, Shapley Attribution, Marketing Mix Modeling, Demographics Breakdown, Multi-Account Management, Auto-Refresh, CSV/PDF Export e Attribution Windows. Branch `main` = V1 (versao estavel anterior).
 
 ---
 
@@ -440,6 +440,54 @@ Esta e a nova aba de **Storyboard de Campanhas**:
 - **A/B Testing**: Deteccao automatica de testes com significancia estatistica (Z-test)
 - **Benchmark Comparativo**: Performance vs benchmarks da industria (Food & Beverage)
 
+### Features Recentes (V2 Sprint — 2026-03-14)
+
+#### Auto-Refresh Inteligente (US-56)
+- Intervalo configurável: 5min / 15min / 30min / manual
+- Pausa automática quando aba perde foco (Page Visibility API)
+- Countdown visual na interface
+- Persistência de preferência via localStorage
+
+#### Request Cache + Deduplicação (US-57)
+- Cache com TTL por endpoint (campanhas=5min, insights=15min)
+- Deduplicação de requests in-flight idênticos
+- Badge visual "[CACHE]" vs dados ao vivo
+- Botão de forçar refresh
+
+#### Export CSV (US-58)
+- Exportação de campanhas e insights diários para CSV
+- BOM (\\uFEFF) para compatibilidade Excel
+- Formatação de moeda, percentuais e ROAS
+
+#### PDF Report (US-59 MVP)
+- Endpoint `/api/ads-report` gera HTML completo
+- window.print() para salvar como PDF
+- Layout de relatório de agência (KPIs, campanhas, insights)
+
+#### Attribution Window Selector (US-66)
+- Seletor: PADRÃO, 1D CLICK, 7D CLICK, 28D CLICK, 1D VIEW
+- End-to-end: UI → Store → API → Meta API `action_attribution_windows`
+
+#### Demographics Breakdown (US-69 + US-70)
+- Heatmap age×gender com segmento de ouro (melhor ROAS)
+- Tabela de placement por platform×position
+- Breakdown via Meta API v25 (campo `platform_position`)
+
+#### Multi-Account Management (US-61 + US-62)
+- Account Switcher: dropdown no header com histórico das últimas 5 contas
+- Multi-Account Overview: grid spend+ROAS das top-5 contas
+- Promise.all com concorrência máx 3 (respeita rate limit por conta)
+- ROAS colorido: verde ≥2x, amarelo ≥1x, vermelho <1x
+
+#### Motor Estatístico Avançado (US-50 a US-55, US-71)
+- engagementScore com midpoint dinâmico via histórico da conta
+- STL-CUSUM bridge para InsightEngine (elimina falsos positivos de sazonalidade)
+- postingConsistencyIndex com target configurável por tipo de conta
+- Ads Efficiency Panel com curva Michaelis-Menten (spend×ROAS)
+- Creative Half-Life badge (FRESCO / ENVELHECENDO / ESGOTADO)
+- Viral Potential Index (sigmoid com classificação VIRAL/ALTO/MODERADO/BAIXO)
+- weightedRecentTrend com WLS e decaimento exponencial (halflife=14d)
+
 ### Infraestrutura Tecnica de Ads
 
 | Feature | Implementacao |
@@ -533,7 +581,7 @@ Dados **privados e precisos** (alcance real, saves, shares). Cache automatico co
 
 ## Motor Estatistico Avancado
 
-O dashboard possui um motor de analytics proprio — **Statistical Engine v3.0** — implementado em TypeScript puro (zero dependencias externas), com 12 modulos de nivel academico para analise de dados de marketing digital.
+O dashboard possui um motor de analytics proprio — **Statistical Engine v3.0** — implementado em TypeScript puro (zero dependencias externas), com 18 modulos de nivel academico para analise de dados de marketing digital (7.728 linhas de codigo).
 
 ### Modulos Core (`lib/utils/`)
 
@@ -662,7 +710,7 @@ Mede o impacto real (incremental) dos anuncios:
 
 ### Intelligence Panel v2 — UI Integrada
 
-9 componentes de UI conectados ao motor estatistico:
+22 componentes de UI conectados ao motor estatistico:
 
 | Componente | Modulo | Descricao |
 |------------|--------|-----------|
@@ -670,11 +718,24 @@ Mede o impacto real (incremental) dos anuncios:
 | `Binary_Verification_Kernels` | bayesian-ab | Painel A/B com Bayesian + Z-test, declaracao de vencedor |
 | `Ecosystem_Calibration` | attribution | Benchmark SECTOR_HUB vs HIST_CORE (periodo anterior) |
 | `Multivariate_Coherence_Probe` | anomaly-detection | Score SYSTEM_NOMINAL para coherencia de metricas |
-| `Creative Performance Ranking` | creative-scorer | Ranking com score 0-100 e lifecycle stage por criativo |
+| `Creative Performance Ranking` | creative-scorer | Ranking com score 0-100 e lifecycle stage + half-life badge |
 | `Ads Forecast Chart` | hw-optimizer | Previsao 7 dias com IC de confianca (Holt-Winters) |
 | `Budget Optimizer` | budget-optimizer | Sugestao de realocacao de orcamento por ROAS |
-| `Ads Intelligence Panel` | insight-engine | Feed de insights narrativos priorizados |
+| `Ads Intelligence Panel` | insight-engine | Feed de insights: MAD_ZSCORE + HW_PI + STL_CUSUM |
 | `Anomaly Multivariate` | isolation-forest | Mapa de anomalias multivariado por campanha |
+| `Ads Efficiency Panel` | advanced-indicators | Curva Michaelis-Menten spend×ROAS + SaturationBar |
+| `Ads Demographics Section` | facebook-ads.service | Heatmap age×gender + Golden Segment + Placement table |
+| `Ads Account Switcher` | ads-slice | Dropdown multi-conta com historico localStorage |
+| `Ads Multi-Account Overview` | ads-slice | Grid spend+ROAS das top-5 contas (Promise.all max 3) |
+| `Ads KPI Cards` | statistics | 9 KPIs incluindo Viral Potential Index |
+| `Ads Video Metrics` | facebook-ads.service | Retention funnel + ThruPlay + video completion rates |
+| `Ads Quality Rankings` | facebook-ads.service | Quality ranking + engagement ranking + conversion ranking |
+| `Ads Report Print` | — | Relatorio PDF via window.print() (server-side HTML) |
+| `Campaigns Table` | — | Tabela com toggle status, expand AdSets, metricas |
+| `Creatives Gallery` | creative-scorer | Galeria visual com score + lifecycle + busca |
+| `Ads Charts` | — | Timeline gastos + impressoes + cliques (Recharts) |
+| `Ads AI Panel` | ai-adapter | Recomendacoes IA via Gemini |
+| `Ads Attribution Section` | attribution | Shapley Values + Markov Chain por canal |
 
 ---
 
@@ -816,7 +877,7 @@ Central de pesquisa com **3 abas**:
 | **Automacao** | Playwright (browser automation) |
 | **Imagem** | Sharp (composicao, resize, thumbnails) |
 
-### API Routes (36)
+### API Routes (45)
 
 | Rota | Funcao |
 |------|--------|
@@ -827,6 +888,10 @@ Central de pesquisa com **3 abas**:
 | `POST /api/ads-ai-analysis` | Analise IA de performance de campanhas |
 | `POST /api/ads-intelligence` | Metricas de inteligencia (fadiga, saturacao, saude, A/B tests) |
 | `POST /api/ads-creative-score` | Score de qualidade de criativos |
+| `POST /api/ads-demographics` | Breakdown demográfico age×gender + placement |
+| `POST /api/ads-report` | Geração de relatório PDF (HTML + window.print) |
+| `POST /api/ads-debug` | Debug de problemas com Meta API |
+| `GET /api/meta/adaccounts` | Lista contas de anúncio (multi-account) |
 | `POST /api/meta-insights` | Metricas privadas da conta (token refresh + circuit breaker) |
 | `POST /api/meta-publish` | Publicacao via Meta API |
 | `POST /api/meta-discovery` | Business Discovery de concorrentes |
@@ -846,6 +911,7 @@ Central de pesquisa com **3 abas**:
 | `POST /api/maps-scrape` | Scraping Google Maps |
 | `POST /api/maps-analysis` | Analise IA de reviews |
 | `POST /api/firecrawl` | Web scraping |
+| `POST /api/apify/insights` | Insights públicos via scraping |
 | `POST /api/image-proxy` | Proxy de imagens externas |
 | `POST /api/upload` | Upload de midia |
 | `POST /api/import-md` | Importacao de conteudo via Markdown |
@@ -908,7 +974,7 @@ instagram-dashboard/
 │   │   ├── collections/          # Colecoes/Campanhas
 │   │   ├── intelligence/         # Hub de Inteligencia
 │   │   └── settings/             # Configuracoes
-│   ├── api/                      # 36 API Routes
+│   ├── api/                      # 45 API Routes
 │   └── actions/                  # 9 Server Actions
 ├── features/                     # Modulos de funcionalidade
 │   ├── ads/components/           # Ads: tabela, graficos, criativos, inteligencia v2
@@ -927,13 +993,26 @@ instagram-dashboard/
 │   │   ├── ai-adapter.ts              # Gemini/OpenRouter adapter
 │   │   ├── maps-playwright.service.ts  # Google Maps scraper
 │   │   └── scheduler.service.ts        # Fila de publicacao
-│   └── utils/                      # Motor estatistico (pure TypeScript)
-│       ├── statistics.ts             # 34 funcoes: descritivas, tendencia, outliers, Shannon entropy
+│   └── utils/                      # Motor estatistico (pure TypeScript — 18 arquivos, 7.728 LOC)
+│       ├── statistics.ts             # 2.057 LOC — 34+ funcoes: descritivas, tendencia, engagement, viral index
 │       ├── math-core.ts              # Primitivas: normalCDF, bootstrap CI, OLS regression
 │       ├── forecasting.ts            # Holt-Winters, CUSUM change-point detection
-│       ├── advanced-indicators.ts    # Elasticidade, meia-vida criativa, retornos decrescentes
-│       └── sentiment.ts              # Analise de sentimento em portugues
-├── stores/                       # Zustand (9 slices)
+│       ├── advanced-indicators.ts    # Elasticidade, meia-vida criativa, retornos decrescentes (Michaelis-Menten)
+│       ├── bayesian-ab.ts            # Beta-Binomial, Chi², SPRT, Fisher exact test
+│       ├── anomaly-detection.ts      # STL decomposition + MAD z-score
+│       ├── hw-optimizer.ts           # Holt-Winters autotuning (grid search 729 params)
+│       ├── causal-behavioral.ts      # Granger causality, Fogg behavior model, hook rate
+│       ├── isolation-forest.ts       # Isolation Forest multivariado
+│       ├── attribution.ts            # Shapley Values + Markov Chain
+│       ├── mmm.ts                    # Marketing Mix Model + Adstock transform
+│       ├── budget-optimizer.ts       # Markowitz-like allocation + diminishing returns
+│       ├── creative-scorer.ts        # Score 0-100: CTR(35%) + CPM(25%) + Eng(20%) + Trend(20%)
+│       ├── insight-engine.ts         # Binary max-heap, dedup, scoring composto (MAD+HW+CUSUM)
+│       ├── incrementality.ts         # ITS, bootstrap diff means, synthetic control
+│       ├── sentiment.ts              # Analise de sentimento em portugues
+│       ├── request-cache.ts          # Cache TTL + request deduplication
+│       └── export-csv.ts             # CSV export com BOM para Excel
+├── stores/                       # Zustand (10 slices)
 ├── components/                   # UI (Shadcn/UI) + Layout + Shared
 ├── hooks/                        # Custom hooks
 ├── types/                        # TypeScript interfaces

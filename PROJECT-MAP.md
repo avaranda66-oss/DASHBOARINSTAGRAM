@@ -20,13 +20,13 @@ de anúncios com inteligência artificial.
 | Pasta | Equivalente clássico | O que tem dentro |
 |-------|---------------------|-----------------|
 | `app/` | `pages/` | Páginas do dashboard + rotas de API (Next.js App Router) |
-| `app/api/` | `pages/api/` | ~30 endpoints: Meta Graph API, Ads, upload, scraping |
+| `app/api/` | `pages/api/` | 45 endpoints: Meta Graph API, Ads, demographics, multi-account, upload, scraping |
 | `app/actions/` | — | Server Actions: operações diretas no banco de dados |
 | `components/` | `pages/components/` | Componentes reutilizáveis: layout, UI, filtros |
-| `features/` | — | 7 módulos por domínio: accounts, ads, analytics, calendar, collections, content, storyboard |
+| `features/` | — | 7 módulos por domínio: accounts, ads (22 componentes), analytics, calendar, collections, content, storyboard |
 | `lib/` | `models/` | Serviços, integrações de API, utilitários, banco de dados |
 | `lib/services/` | `models/` | Instagram, Meta Ads, Apify, FireCrawl, Scheduler, AI |
-| `lib/utils/` | — | Motor estatístico: estatísticas, forecasting, sentimento |
+| `lib/utils/` | — | Motor estatístico: 18 módulos, 7.728 LOC (Bayesian A/B, HW, Isolation Forest, Shapley, MMM, CUSUM, cache, CSV export) |
 | `lib/db.ts` | `infra/database.js` | Conexão com banco de dados (Prisma singleton) |
 | `hooks/` | — | Custom React hooks |
 | `stores/` | — | Estado global Zustand (por domínio) |
@@ -121,6 +121,9 @@ npm run tunnel     # Expõe localhost via Cloudflared (necessário para Meta API
 - **Versão atual:** v25.0
 - **Campo correto:** `instagram_user_id` (NÃO usar `instagram_actor_id` — depreciado em v22+)
 - **Campos obrigatórios v25:** `is_adset_budget_sharing_enabled`, `targeting_automation`, `bid_strategy`
+- **Campo correto para breakdowns:** `platform_position` (NÃO `platform_placement`)
+- **Multi-account:** `GET /me/adaccounts` — token único funciona para todas as contas
+- **Account status:** 1=ACTIVE, 2=DISABLED, 3=UNSETTLED, 101=CLOSED (filtrar)
 - **Agendamento nativo:** NÃO existe para Instagram via API (apenas Facebook Pages)
 - **Imagens:** A API aceita aspect ratios de 4:5 até 1.91:1 — não forçar crop
 - **Tokens:** Curtos (~1h) → trocar por longos (~60 dias) no OAuth callback
@@ -210,4 +213,19 @@ UI (storyboard) → content.actions.ts → banco SQLite
 
 ---
 
-*Última atualização: 2026-03-13*
+## Estatísticas do Projeto (2026-03-14)
+
+| Categoria | Quantidade | LOC |
+|-----------|-----------|-----|
+| API Endpoints | 45 | ~5.000 |
+| Ads Components | 22 | 6.473 |
+| Statistical Utils | 18 | 7.728 |
+| Services | 9 | 4.492 |
+| Zustand Stores | 10 | 1.895 |
+| Types | 7 | 522 |
+| Hooks | 5 | 279 |
+| **TOTAL** | **~169 arquivos** | **~25.000+** |
+
+---
+
+*Última atualização: 2026-03-14*
