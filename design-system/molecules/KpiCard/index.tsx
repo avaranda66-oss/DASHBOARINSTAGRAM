@@ -129,15 +129,18 @@ export function KpiCard({
                       'font-mono text-xs',
                       isPositive && 'text-[#10B981]',
                       isNegative && 'text-[#EF4444]',
-                      isNeutral && 'text-[#8A8A8A]'
+                      isNeutral && 'text-[#4A4A4A]'
                     )}
                   >
                     {isPositive && `↑ +${delta}%`}
                     {isNegative && `↓ ${delta}%`}
-                    {isNeutral && '—'}
+                    {isNeutral && (deltaLabel ? 'S/C' : '—')}
                   </span>
-                  {deltaLabel && !isNeutral && (
-                    <span className="text-[10px] text-[#4A4A4A] font-body uppercase tracking-[0.05em]">
+                  {deltaLabel && (
+                    <span className={cn(
+                      'text-[10px] font-body uppercase tracking-[0.05em]',
+                      isNeutral ? 'text-[#3A3A3A]' : 'text-[#4A4A4A]'
+                    )}>
                       {deltaLabel}
                     </span>
                   )}

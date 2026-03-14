@@ -47,11 +47,13 @@ function getPreviousPeriodRange(
         return { since: fmt(firstOfPrevMonth), until: fmt(lastOfPrevMonth) };
     }
     if (datePreset === 'last_month') {
+        // last_month = mês passado → comparar com retrasado (2 meses atrás)
         const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const lastOfPrevMonth = sub(firstOfMonth, 1);
-        const firstOfPrevMonth = new Date(lastOfPrevMonth.getFullYear(), lastOfPrevMonth.getMonth(), 1);
-        const twoMonthsAgo = new Date(firstOfPrevMonth.getFullYear(), firstOfPrevMonth.getMonth(), 1);
-        return { since: fmt(twoMonthsAgo), until: fmt(sub(firstOfPrevMonth, 1)) };
+        const lastOfPrevMonth = sub(firstOfMonth, 1);                    // último dia do mês passado
+        const firstOfPrevMonth = new Date(lastOfPrevMonth.getFullYear(), lastOfPrevMonth.getMonth(), 1); // 1º do mês passado
+        const lastOfTwoMonthsAgo = sub(firstOfPrevMonth, 1);            // último dia de 2 meses atrás
+        const firstOfTwoMonthsAgo = new Date(lastOfTwoMonthsAgo.getFullYear(), lastOfTwoMonthsAgo.getMonth(), 1); // 1º de 2 meses atrás
+        return { since: fmt(firstOfTwoMonthsAgo), until: fmt(lastOfTwoMonthsAgo) };
     }
 
     // Caso geral: período simétrico anterior
@@ -149,16 +151,19 @@ export async function POST(req: NextRequest) {
         const prevKpi = computeKpiSummary(prevInsights, []);
 
         const kpiDelta: AdsKpiDelta = {
-            totalSpend:       delta(currKpiForDelta.totalSpend, prevKpi.totalSpend),
-            totalImpressions: delta(currKpiForDelta.totalImpressions, prevKpi.totalImpressions),
-            totalClicks:      delta(currKpiForDelta.totalClicks, prevKpi.totalClicks),
-            totalReach:       delta(currKpiForDelta.totalReach, prevKpi.totalReach),
-            avgCtr:           delta(currKpiForDelta.avgCtr, prevKpi.avgCtr),
-            avgCpc:           delta(currKpiForDelta.avgCpc, prevKpi.avgCpc),
-            avgCpm:           delta(currKpiForDelta.avgCpm, prevKpi.avgCpm),
-            totalConversions: delta(currKpiForDelta.totalConversions, prevKpi.totalConversions),
-            roas:             delta(currKpiForDelta.roas, prevKpi.roas),
-            cpa:              delta(currKpiForDelta.cpa, prevKpi.cpa),
+            totalSpend:        delta(currKpiForDelta.totalSpend, prevKpi.totalSpend),
+            totalImpressions:  delta(currKpiForDelta.totalImpressions, prevKpi.totalImpressions),
+            totalClicks:       delta(currKpiForDelta.totalClicks, prevKpi.totalClicks),
+            totalReach:        delta(currKpiForDelta.totalReach, prevKpi.totalReach),
+            avgCtr:            delta(currKpiForDelta.avgCtr, prevKpi.avgCtr),
+            avgCpc:            delta(currKpiForDelta.avgCpc, prevKpi.avgCpc),
+            avgCpm:            delta(currKpiForDelta.avgCpm, prevKpi.avgCpm),
+            avgFrequency:      delta(currKpiForDelta.avgFrequency, prevKpi.avgFrequency),
+            totalConversions:  delta(currKpiForDelta.totalConversions, prevKpi.totalConversions),
+            roas:              delta(currKpiForDelta.roas, prevKpi.roas),
+            cpa:               delta(currKpiForDelta.cpa, prevKpi.cpa),
+            totalEngagements:  delta(currKpiForDelta.totalEngagements, prevKpi.totalEngagements),
+            costPerEngagement: delta(currKpiForDelta.costPerEngagement, prevKpi.costPerEngagement),
         };
 
         return NextResponse.json({
@@ -172,8 +177,25 @@ export async function POST(req: NextRequest) {
         });
     } catch (e: any) {
         console.error('[ads-insights] Erro:', e);
+        const msg: string = e.message || '';
+        const isAuthError =
+            msg.includes('190') ||
+            msg.includes('OAuthException') ||
+            msg.includes('Invalid OAuth') ||
+            msg.includes('access token') ||
+            msg.includes('Error validating access token');
+        if (isAuthError) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'TOKEN_EXPIRED',
+                    errorMessage: 'Token Meta expirado ou inválido. Renove em business.facebook.com → Configurações → Tokens de acesso.',
+                },
+                { status: 401 },
+            );
+        }
         return NextResponse.json(
-            { success: false, error: e.message || 'Erro interno.' },
+            { success: false, error: msg || 'Erro interno.' },
             { status: 500 },
         );
     }

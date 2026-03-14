@@ -1,10 +1,11 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip,
     ResponsiveContainer, CartesianGrid, Cell
 } from 'recharts';
+import { hookRate } from '@/lib/utils/causal-behavioral';
 
 interface MetaPost {
     reach?: number;
@@ -13,6 +14,7 @@ interface MetaPost {
     commentsCount: number;
     likesCount: number;
     media_product_type?: string;
+    ig_reels_avg_watch_time?: number; // ms — disponível em MetaPostMetrics
 }
 
 interface Props {
@@ -28,6 +30,15 @@ function fmt(n: number) {
 export const MetaReelsChart = memo(function MetaReelsChart({ posts }: Props) {
     const reels = posts.filter(p => p.media_product_type === 'REELS');
     const feed = posts.filter(p => !p.media_product_type || p.media_product_type === 'FEED' || p.media_product_type === 'CAROUSEL_ALBUM');
+
+    // Hook Rate médio dos reels — usa ig_reels_avg_watch_time se disponível
+    // Assume duração padrão de reel = 30s (benchmark do setor)
+    const hookRateResult = useMemo(() => {
+        const reelsWithWatch = reels.filter(r => (r.ig_reels_avg_watch_time ?? 0) > 0);
+        if (reelsWithWatch.length === 0) return null;
+        const avgWatchMs = reelsWithWatch.reduce((s, r) => s + (r.ig_reels_avg_watch_time ?? 0), 0) / reelsWithWatch.length;
+        return hookRate(avgWatchMs, 30_000, 'reel');
+    }, [reels]);
 
     const totalReelsReach = reels.reduce((acc, p) => acc + (p.reach ?? 0), 0);
     const avgReelsReach = reels.length > 0 ? Math.round(totalReelsReach / reels.length) : 0;
@@ -73,6 +84,34 @@ export const MetaReelsChart = memo(function MetaReelsChart({ posts }: Props) {
                     <p className="font-mono text-[9px] text-[#3A3A3A] mt-1">likes + saves + shares</p>
                 </div>
             </div>
+
+            {hookRateResult && (
+                <div className="rounded-[6px] border p-3 mb-4 flex items-center justify-between"
+                     style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#0A0A0A' }}>
+                    <div>
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-[#3A3A3A] mb-1">Hook Rate Médio</p>
+                        <p className="font-mono text-xl font-bold" style={{
+                            color: hookRateResult.classification === 'excelente' ? '#A3E635'
+                                 : hookRateResult.classification === 'bom' ? '#FBBF24'
+                                 : hookRateResult.classification === 'medio' ? '#8A8A8A'
+                                 : '#EF4444'
+                        }}>
+                            {hookRateResult.hookRate.toFixed(1)}%
+                        </p>
+                    </div>
+                    <div className="text-right">
+                        <p className="font-mono text-[9px] uppercase tracking-widest"
+                           style={{
+                               color: hookRateResult.classification === 'excelente' ? '#A3E635'
+                                    : hookRateResult.classification === 'bom' ? '#FBBF24'
+                                    : '#4A4A4A'
+                           }}>
+                            {hookRateResult.classification.toUpperCase()}
+                        </p>
+                        <p className="font-mono text-[8px] text-[#3A3A3A] mt-0.5">{hookRateResult.benchmark}</p>
+                    </div>
+                </div>
+            )}
 
             <div className="space-y-2">
                 <span className="font-mono text-[9px] uppercase tracking-widest text-[#3A3A3A] block mb-2">Reels vs Feed · alcance médio</span>

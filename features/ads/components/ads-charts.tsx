@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, PieChart, Pie } from 'recharts';
 import { cn } from '@/design-system/utils/cn';
 import type { DailyAdInsight, AdCampaign } from '@/types/ads';
+import { AdsForecastChart } from './ads-forecast-chart';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -166,8 +167,8 @@ export function AdsCharts({ daily, campaigns, isLoading = false, dateLabel }: Ad
                             <AreaChart data={daily} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="blueprintArea" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#A3E635" stopOpacity={0.15} />
-                                        <stop offset="95%" stopColor="#A3E635" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="#A3E635" stopOpacity={0.35} />
+                                        <stop offset="95%" stopColor="#A3E635" stopOpacity={0.02} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.03)" vertical={false} />
@@ -299,6 +300,16 @@ export function AdsCharts({ daily, campaigns, isLoading = false, dateLabel }: Ad
                     </div>
                 </BlueprintChartContainer>
             </div>
+
+            {/* Forecast de Gasto — Holt-Winters com Intervalos de Predição */}
+            <BlueprintChartContainer
+                title="Forecast_Spend"
+                subtitle="Holt-Winters · PI 80% / 95% · +7 dias"
+                footer="Statistical_Engine_v3"
+                className="col-span-12"
+            >
+                <AdsForecastChart daily={daily} currency="BRL" />
+            </BlueprintChartContainer>
         </div>
     );
 }

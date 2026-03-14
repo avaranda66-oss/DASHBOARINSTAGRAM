@@ -331,7 +331,7 @@ export function computeKpiSummary(
     currency: string = 'BRL',
 ): AdsKpiSummary {
     let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalReach = 0;
-    let totalConversions = 0, totalConversionValue = 0;
+    let totalConversions = 0, totalConversionValue = 0, totalEngagements = 0;
     let weightedCpc = 0, weightedCpm = 0, weightedCtr = 0, weightedFreq = 0;
 
     for (const r of insights) {
@@ -350,6 +350,7 @@ export function computeKpiSummary(
             'offsite_conversion.fb_pixel_complete_registration',
             'lead',
         ]);
+        totalEngagements += sumActions(r.actions, ['post_engagement']);
         const roasValue = parseFloat(r.purchase_roas?.[0]?.value || '0') || 0;
         totalConversionValue += roasValue * spend; // ROAS * spend = revenue
 
@@ -380,6 +381,8 @@ export function computeKpiSummary(
         totalConversionValue,
         roas: totalSpend > 0 ? totalConversionValue / totalSpend : 0,
         cpa: totalConversions > 0 ? totalSpend / totalConversions : 0,
+        totalEngagements,
+        costPerEngagement: totalEngagements > 0 ? totalSpend / totalEngagements : 0,
         activeCampaigns,
         pausedCampaigns,
         currency,
@@ -679,18 +682,8 @@ export function detectABTests(
     return results;
 }
 
-export function computeBenchmarkComparison(
-    kpi: AdsKpiSummary,
-    mode: 'sector' | 'historical' = 'sector',
-    historicalKpi?: AdsKpiSummary,
-): BenchmarkComparison {
-    const bench = mode === 'historical' && historicalKpi ? {
-        ctr: historicalKpi.avgCtr, cpc: historicalKpi.avgCpc, cpm: historicalKpi.avgCpm,
-        cvr: historicalKpi.totalConversions > 0 ? (historicalKpi.totalConversions / historicalKpi.totalClicks) * 100 : 0,
-        cpa: historicalKpi.cpa, roas: historicalKpi.roas,
-    } : FOOD_BEV_BENCHMARKS;
-
-    const entries: BenchmarkEntry[] = [
+function buildBenchmarkEntries(kpi: AdsKpiSummary, bench: typeof FOOD_BEV_BENCHMARKS): BenchmarkEntry[] {
+    return [
         { metric: 'ctr', label: 'CTR (%)', clientValue: kpi.avgCtr, benchmarkValue: bench.ctr },
         { metric: 'cpc', label: 'CPC (R$)', clientValue: kpi.avgCpc, benchmarkValue: bench.cpc },
         { metric: 'cpm', label: 'CPM (R$)', clientValue: kpi.avgCpm, benchmarkValue: bench.cpm },
@@ -698,19 +691,31 @@ export function computeBenchmarkComparison(
         { metric: 'roas', label: 'ROAS', clientValue: kpi.roas, benchmarkValue: bench.roas },
     ].map(e => {
         const ratio = e.benchmarkValue > 0 ? e.clientValue / e.benchmarkValue : 1;
-        // For CPC, CPA, CPM: lower is better (invert comparison)
         const invertedMetrics = ['cpc', 'cpm', 'cpa'];
         const isInverted = invertedMetrics.includes(e.metric);
         const adjustedRatio = isInverted ? (ratio > 0 ? 1 / ratio : 1) : ratio;
-
         return {
             ...e,
             indexRatio: Math.round(ratio * 100) / 100,
             status: adjustedRatio < 0.85 ? 'below' as const : adjustedRatio > 1.15 ? 'above' as const : 'average' as const,
         };
     });
+}
 
-    return { entries, industry: 'Food & Beverage', mode };
+export function computeBenchmarkComparison(
+    kpi: AdsKpiSummary,
+    historicalKpi?: AdsKpiSummary,
+): BenchmarkComparison {
+    const entries = buildBenchmarkEntries(kpi, FOOD_BEV_BENCHMARKS);
+
+    const histBench = historicalKpi ? {
+        ctr: historicalKpi.avgCtr, cpc: historicalKpi.avgCpc, cpm: historicalKpi.avgCpm,
+        cvr: historicalKpi.totalConversions > 0 ? (historicalKpi.totalConversions / historicalKpi.totalClicks) * 100 : 0,
+        cpa: historicalKpi.cpa, roas: historicalKpi.roas,
+    } : FOOD_BEV_BENCHMARKS;
+    const historicalEntries = buildBenchmarkEntries(kpi, histBench);
+
+    return { entries, historicalEntries, industry: 'Food & Beverage', mode: 'sector' };
 }
 
 export function computeAccountHealthScore(
@@ -765,18 +770,29 @@ export async function computeIntelligenceMetrics(
     kpi: AdsKpiSummary,
     datePreset: AdsDatePreset = 'last_14d',
 ): Promise<IntelligenceMetrics> {
-    // Fetch ad-level daily insights + adset insights in parallel
-    const [adDailyInsights, adsetInsights, adInsights, ads] = await Promise.all([
+    const daysMap: Record<string, number> = { last_7d: 7, last_14d: 14, last_30d: 30, last_90d: 90 };
+    const days = daysMap[datePreset] ?? 14;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    const sub = (d: Date, n: number) => { const r = new Date(d); r.setDate(r.getDate() - n); return r; };
+    const prevUntil = sub(today, days + 1);
+    const prevRange = { since: fmt(sub(prevUntil, days - 1)), until: fmt(prevUntil) };
+
+    // Fetch ad-level daily insights + adset insights + previous period in parallel
+    const [adDailyInsights, adsetInsights, adInsights, ads, prevInsights] = await Promise.all([
         getAdLevelDailyInsights(token, accountId, datePreset).catch(() => [] as AdInsight[]),
         getInsights(token, accountId, { level: 'adset', datePreset }).catch(() => [] as AdInsight[]),
         getInsights(token, accountId, { level: 'ad', datePreset }).catch(() => [] as AdInsight[]),
         getAds(token, accountId).catch(() => [] as Ad[]),
+        getInsights(token, accountId, { level: 'account', datePreset: undefined, timeRange: prevRange }).catch(() => [] as AdInsight[]),
     ]);
+
+    const historicalKpi = prevInsights.length > 0 ? computeKpiSummary(prevInsights, []) : undefined;
 
     const fatigueScores = computeCreativeFatigueScores(adDailyInsights, ads);
     const saturationIndexes = computeAudienceSaturationIndexes(adsetInsights);
     const abTests = detectABTests(adInsights);
-    const benchmarkComparison = computeBenchmarkComparison(kpi);
+    const benchmarkComparison = computeBenchmarkComparison(kpi, historicalKpi);
     const healthScore = computeAccountHealthScore(fatigueScores, saturationIndexes, kpi);
 
     return {

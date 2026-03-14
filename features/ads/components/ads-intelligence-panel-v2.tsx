@@ -14,12 +14,20 @@ import type {
     AccountHealthScore,
 } from '@/types/ads';
 import { cn } from '@/design-system/utils/cn';
+import { AdsInsightsFeed } from './ads-insights-feed';
+import { AdsAnomalyMultivariate } from './ads-anomaly-multivariate';
+import { AdsAttributionSection } from './ads-attribution-section';
+import type { DailyAdInsight, AdCampaign } from '@/types/ads';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 interface Props {
     token: string | null;
     accountId: string | null;
+    /** Série temporal diária para o feed de alertas automáticos (InsightEngine) */
+    daily?: DailyAdInsight[];
+    /** Campanhas para Shapley Attribution (US-45) */
+    campaigns?: AdCampaign[];
 }
 
 // ─── Constants & Glyphs ──────────────────────────────────────────────────────
@@ -441,13 +449,13 @@ function BenchmarkSection({ benchmark }: { benchmark: BenchmarkComparison }) {
                         <tr className="bg-white/5 text-[9px] uppercase tracking-widest text-[#4A4A4A]">
                             <th className="px-6 py-4 font-bold">Metric_Node</th>
                             <th className="px-6 py-4 text-right font-bold">Local_Data</th>
-                            <th className="px-6 py-4 text-right font-bold">Baseline</th>
+                            <th className="px-6 py-4 text-right font-bold">{mode === 'historical' ? 'Período Ant.' : 'Baseline'}</th>
                             <th className="px-6 py-4 text-right font-bold">Delta_Idx</th>
                             <th className="px-6 py-4 text-center font-bold">Protocol</th>
                         </tr>
                     </thead>
                     <tbody className="text-[11px]">
-                        {benchmark.entries.map((entry) => (
+                        {(mode === 'historical' ? benchmark.historicalEntries : benchmark.entries).map((entry) => (
                             <tr key={entry.metric} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                                 <td className="px-6 py-4 text-[#F5F5F5] font-bold uppercase">{entry.label}</td>
                                 <td className="px-6 py-4 text-right text-[#F5F5F5]">{entry.clientValue.toFixed(2)}</td>
@@ -559,7 +567,7 @@ function ABTestSection({ tests }: { tests: ABTestResult[] }) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export function AdsIntelligencePanelV2({ token, accountId }: Props) {
+export function AdsIntelligencePanelV2({ token, accountId, daily, campaigns }: Props) {
     const {
         intelligenceMetrics,
         isLoadingIntelligence,
@@ -575,9 +583,43 @@ export function AdsIntelligencePanelV2({ token, accountId }: Props) {
 
     if (isLoadingIntelligence) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 font-mono">
-                <span className="text-4xl text-[#A3E635] animate-spin mb-6">{wrap(GLYPHS.LOADING)}</span>
-                <span className="text-[11px] text-[#4A4A4A] uppercase tracking-[0.5em] animate-pulse">Running_Intelligence_Kernels...</span>
+            <div className="space-y-10">
+                {/* Skeleton: header */}
+                <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-white/10 animate-pulse" />
+                    <div className="h-3 w-48 rounded bg-white/8 animate-pulse" />
+                    <div className="h-px flex-1 bg-white/5" />
+                </div>
+                {/* Skeleton: KPI strip */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="bg-[#0A0A0A] border border-white/5 rounded-lg p-4 space-y-2 animate-pulse">
+                            <div className="h-2 w-20 rounded bg-white/8" />
+                            <div className="h-6 w-14 rounded bg-white/10" />
+                            <div className="h-2 w-24 rounded bg-white/5" />
+                        </div>
+                    ))}
+                </div>
+                {/* Skeleton: chart placeholder */}
+                <div className="bg-[#0A0A0A] border border-white/5 rounded-lg p-6 animate-pulse">
+                    <div className="h-3 w-40 rounded bg-white/8 mb-6" />
+                    <div className="h-[160px] rounded bg-white/[0.03]" />
+                </div>
+                {/* Skeleton: table rows */}
+                <div className="bg-[#0A0A0A] border border-white/5 rounded-lg overflow-hidden animate-pulse">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-white/5">
+                            <div className="h-3 w-32 rounded bg-white/8" />
+                            <div className="flex-1 h-2 rounded bg-white/5" />
+                            <div className="h-3 w-16 rounded bg-white/8" />
+                        </div>
+                    ))}
+                </div>
+                <div className="flex justify-center">
+                    <span className="font-mono text-[9px] text-[#3A3A3A] uppercase tracking-[0.4em] animate-pulse">
+                        Calculando modelos estatísticos...
+                    </span>
+                </div>
             </div>
         );
     }
@@ -614,6 +656,9 @@ export function AdsIntelligencePanelV2({ token, accountId }: Props) {
 
     return (
         <div className="space-y-12 pb-20">
+            {daily && daily.length >= 4 && <AdsInsightsFeed daily={daily} />}
+            {daily && daily.length >= 7 && <AdsAnomalyMultivariate daily={daily} />}
+            {campaigns && campaigns.length >= 2 && <AdsAttributionSection campaigns={campaigns} />}
             {intelligenceMetrics.healthScore && <AccountHealthSection health={intelligenceMetrics.healthScore} />}
             {intelligenceMetrics.fatigueScores && <CreativeFatigueSection scores={intelligenceMetrics.fatigueScores} />}
             {intelligenceMetrics.saturationIndexes && <AudienceSaturationSection indexes={intelligenceMetrics.saturationIndexes} />}

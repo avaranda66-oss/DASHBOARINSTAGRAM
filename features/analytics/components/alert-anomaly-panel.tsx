@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 // Lucide icons removed in favor of ASCII HUD glyphs
 import type { InstagramPostMetrics } from '@/types/analytics';
 import { detectOutliers, periodComparison, linearTrend, bestTimeToPost } from '@/lib/utils/statistics';
+import { stlCusum } from '@/lib/utils/anomaly-detection';
 
 interface AlertAnomalyPanelProps {
     posts: InstagramPostMetrics[];
@@ -98,7 +99,33 @@ export function AlertAnomalyPanel({ posts }: AlertAnomalyPanelProps) {
             }
         }
 
-        // 4. Best day analysis
+        // 4. STL-CUSUM: mudança de regime no engajamento
+        if (posts.length >= 14) {
+            const sortedByTime = [...posts]
+                .filter(p => p.timestamp)
+                .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+            const engSeries = sortedByTime.map(p => p.likesCount + p.commentsCount);
+            const cusumResult = stlCusum(engSeries, { period: 7 });
+
+            if (cusumResult.changePoints.length > 0) {
+                const lastCP = cusumResult.changePoints[cusumResult.changePoints.length - 1];
+                const cusumFinal = cusumResult.cusumPos[cusumResult.cusumPos.length - 1]
+                                 - cusumResult.cusumNeg[cusumResult.cusumNeg.length - 1];
+                const isPositive = cusumFinal > 0;
+                result.push({
+                    id: 'cusum_shift',
+                    type: 'trend_change',
+                    severity: 'medium',
+                    title: `Mudança de regime detectada (STL-CUSUM)`,
+                    description: `${isPositive ? 'Aumento' : 'Queda'} estatisticamente robusto de engajamento detectado no post #${lastCP + 1} após remoção de tendência e sazonalidade.`,
+                    icon: isPositive ? '⬆' : '⬇',
+                    color: isPositive ? 'text-emerald-400' : 'text-orange-400',
+                });
+            }
+        }
+
+        // 5. Best day analysis
         if (posts.length >= 7) {
             const postsForDay = posts
                 .filter(p => p.timestamp)

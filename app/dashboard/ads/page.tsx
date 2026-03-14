@@ -3,8 +3,13 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAdsStore, useAccountStore, useSettingsStore } from '@/stores';
 import { CampaignsTable } from '@/features/ads/components/campaigns-table';
+import { AdsABTestCard } from '@/features/ads/components/ads-ab-test-card';
 import { AdsCharts } from '@/features/ads/components/ads-charts';
 import { AdsIntelligencePanelV2 } from '@/features/ads/components/ads-intelligence-panel-v2';
+import { AdsMMMSection } from '@/features/ads/components/ads-mmm-section';
+import { AdsIncrementalitySection } from '@/features/ads/components/ads-incrementality-section';
+import { AdsBudgetAllocation } from '@/features/ads/components/ads-budget-allocation';
+import { AdsCreativePerformance } from '@/features/ads/components/ads-creative-performance';
 import { CreativesGallery } from '@/features/ads/components/creatives-gallery';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Button } from '@/design-system/atoms/Button';
@@ -156,16 +161,20 @@ export default function AdsDashboardPage() {
         return adSets.filter(s => campaignIds.has(s.campaign_id));
     }, [adSets, filteredCampaigns, filters.statusFilter, selectedCampaignFilter]);
 
+    // filteredKpiSummary: recalcula KPIs APENAS quando uma campanha específica é selecionada.
+    // O filtro de STATUS afeta só a tabela — KPIs sempre mostram dados da conta completa.
+    // Isso segue o padrão de ferramentas como Meta Ads Manager e Google Ads.
     const filteredKpiSummary = useMemo(() => {
         if (!kpiSummary) return kpiSummary;
-        if (selectedCampaignFilter === 'all' && filters.statusFilter === 'all') return kpiSummary;
+        // Status filter: não recalcula KPIs (afeta só a tabela)
+        if (selectedCampaignFilter === 'all') return kpiSummary;
 
-        const filtered = filteredCampaigns;
+        // Campanha específica selecionada: recalcula KPIs para aquela campanha
+        const filtered = campaigns.filter(c => c.id === selectedCampaignFilter);
         let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalReach = 0;
-        let totalConversions = 0, totalConversionValue = 0;
+        let totalConversions = 0, totalConversionValue = 0, totalEngagements = 0;
         let weightedCtr = 0, weightedCpm = 0, weightedCpc = 0;
 
-        // Exact action_type matching — evita double-count de eventos pai/filho
         const exactConvTypes = new Set([
             'offsite_conversion.fb_pixel_purchase',
             'offsite_conversion.fb_pixel_lead',
@@ -184,8 +193,6 @@ export default function AdsDashboardPage() {
             totalImpressions += impressions;
             totalClicks += clicks;
             totalReach += reach;
-            // outbound_clicks_ctr é AdActionStat[] — extrair o value do primeiro elemento
-            // (igual ao que computeKpiSummary faz no service)
             const outboundCtr = parseFloat(i.outbound_clicks_ctr?.[0]?.value || '0') || 0;
             const ctrVal = outboundCtr > 0 ? outboundCtr : (parseFloat(i.ctr || '0') || 0);
             weightedCtr += ctrVal * impressions;
@@ -196,6 +203,9 @@ export default function AdsDashboardPage() {
                 for (const a of i.actions) {
                     if (exactConvTypes.has(a.action_type)) {
                         totalConversions += parseInt(a.value) || 0;
+                    }
+                    if (a.action_type === 'post_engagement') {
+                        totalEngagements += parseInt(a.value) || 0;
                     }
                 }
             }
@@ -215,11 +225,21 @@ export default function AdsDashboardPage() {
             totalConversions,
             roas: totalSpend > 0 ? totalConversionValue / totalSpend : 0,
             cpa: totalConversions > 0 ? totalSpend / totalConversions : 0,
+            totalEngagements,
+            costPerEngagement: totalEngagements > 0 ? totalSpend / totalEngagements : 0,
         };
-    }, [filteredCampaigns, kpiSummary, selectedCampaignFilter, filters.statusFilter]);
+    }, [campaigns, kpiSummary, selectedCampaignFilter]);
 
-    // kpiDelta vem do full account — suprimir quando filtros ativos para evitar comparação inconsistente
-    const isFiltered = filters.statusFilter !== 'all' || selectedCampaignFilter !== 'all';
+    // isFiltered: delta suprimido apenas quando campanha específica selecionada
+    // (bases incompatíveis: KPI da campanha vs delta da conta completa)
+    // Filtro de status NÃO suprime delta — KPIs continuam sendo da conta completa
+    const isFiltered = selectedCampaignFilter !== 'all';
+
+    // Modo awareness: conta tem apenas campanhas de alcance/awareness sem conversões por pixel.
+    // Quando totalConversions===0 E totalEngagements>0, substituímos o bloco
+    // Resultados/CPA/ROAS por métricas relevantes: Engajamentos, Custo/Engaj., Frequência.
+    const isAwarenessMode = (filteredKpiSummary?.totalConversions ?? 0) === 0
+        && (filteredKpiSummary?.totalEngagements ?? 0) > 0;
 
     // Dados incompletos: today/yesterday têm latência de 15-72h na Meta (conversões especialmente)
     const isIncompleteData = !filters.customRange && (filters.datePreset === 'today' || filters.datePreset === 'yesterday');
@@ -235,6 +255,20 @@ export default function AdsDashboardPage() {
     const showConversionDelta = showDelta && !isIncompleteData;
 
     const currency = account?.currency || kpiSummary?.currency || 'BRL';
+
+    const dataFreshness = useMemo(() => {
+        if (!lastFetchedAt) return null;
+        // eslint-disable-next-line react-hooks/purity
+        const diffMs = Date.now() - new Date(lastFetchedAt).getTime();
+        const diffH = diffMs / 3600000;
+        const stale = diffH >= 24;
+        const label = diffH < 1
+            ? `${Math.round(diffMs / 60000)}min atrás`
+            : diffH < 24
+            ? `${Math.floor(diffH)}h atrás`
+            : `${Math.floor(diffH / 24)}d atrás`;
+        return { stale, label };
+    }, [lastFetchedAt]);
 
     // Sparklines reais dos últimos dias disponíveis
     const spendSparkline = dailyInsights.slice(-14).map(d => d.spend);
@@ -283,10 +317,15 @@ export default function AdsDashboardPage() {
                     </div>
                     <div className="flex items-center gap-4 text-[12px] font-mono text-[#4A4A4A] tracking-tight">
                         <span>ID: {adsAccountId}</span>
-                        {lastFetchedAt && (
-                            <span className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#A3E635]" />
-                                UPDATED: {new Date(lastFetchedAt).toLocaleTimeString('pt-BR')}
+                        {dataFreshness && (
+                            <span
+                                className="flex items-center gap-1.5"
+                                title={dataFreshness.stale ? 'Dados podem estar desatualizados. Clique em REFRESH_SYNC.' : 'Dados recentes'}
+                            >
+                                <span className={`w-1.5 h-1.5 rounded-full ${dataFreshness.stale ? 'bg-[#EF4444]' : 'bg-[#A3E635]'}`} />
+                                <span className={dataFreshness.stale ? 'text-[#EF4444]' : ''}>
+                                    ATUALIZADO: {dataFreshness.label}
+                                </span>
                             </span>
                         )}
                     </div>
@@ -364,7 +403,7 @@ export default function AdsDashboardPage() {
             {/* ─── Hero KPI Band ─── */}
             {filteredKpiSummary && (
                 <motion.div variants={item} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-                    {/* Gasto/CTR/CPM: métricas de entrega — ok em today/yesterday */}
+                    {/* Gasto: sempre presente */}
                     <KpiCard
                         label="Gasto Total"
                         value={formatCompact(filteredKpiSummary.totalSpend, true)}
@@ -372,27 +411,55 @@ export default function AdsDashboardPage() {
                         deltaLabel={deltaLabel}
                         sparkline={spendSparkline.length > 1 ? spendSparkline : undefined}
                     />
-                    {/* Resultados/CPA/ROAS: dependem de atribuição — suprimidos em today/yesterday */}
-                    <KpiCard
-                        label="Resultados"
-                        value={filteredKpiSummary.totalConversions.toString()}
-                        delta={showConversionDelta ? (kpiDelta?.totalConversions ?? undefined) : undefined}
-                        deltaLabel={deltaLabel}
-                        sparkline={conversionsSparkline.length > 1 ? conversionsSparkline : undefined}
-                    />
-                    <KpiCard
-                        label="Custo/Resu"
-                        value={formatCurrency(filteredKpiSummary.cpa)}
-                        delta={showConversionDelta && kpiDelta?.cpa != null ? -kpiDelta.cpa : undefined}
-                        deltaLabel={deltaLabel}
-                    />
-                    <KpiCard
-                        label="ROAS"
-                        value={`${filteredKpiSummary.roas.toFixed(2)}x`}
-                        delta={showConversionDelta ? (kpiDelta?.roas ?? undefined) : undefined}
-                        deltaLabel={deltaLabel}
-                        sparkline={roasSparkline.length > 1 ? roasSparkline : undefined}
-                    />
+
+                    {isAwarenessMode ? (
+                        <>
+                            {/* Awareness/Alcance: sem conversões por pixel — exibir engajamento */}
+                            <KpiCard
+                                label="Engajamentos"
+                                value={filteredKpiSummary.totalEngagements.toString()}
+                                delta={showDelta ? (kpiDelta?.totalEngagements ?? undefined) : undefined}
+                                deltaLabel={deltaLabel}
+                            />
+                            <KpiCard
+                                label="Custo/Engaj."
+                                value={formatCurrency(filteredKpiSummary.costPerEngagement)}
+                                delta={showDelta && kpiDelta?.costPerEngagement != null ? -kpiDelta.costPerEngagement : undefined}
+                                deltaLabel={deltaLabel}
+                            />
+                            <KpiCard
+                                label="Frequência"
+                                value={filteredKpiSummary.avgFrequency.toFixed(2)}
+                                delta={showDelta ? (kpiDelta?.avgFrequency ?? undefined) : undefined}
+                                deltaLabel={deltaLabel}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            {/* Conversão: campanhas com pixel — Resultados/CPA/ROAS */}
+                            <KpiCard
+                                label="Resultados"
+                                value={filteredKpiSummary.totalConversions.toString()}
+                                delta={showConversionDelta ? (kpiDelta?.totalConversions ?? undefined) : undefined}
+                                deltaLabel={deltaLabel}
+                                sparkline={conversionsSparkline.length > 1 ? conversionsSparkline : undefined}
+                            />
+                            <KpiCard
+                                label="Custo/Resu"
+                                value={formatCurrency(filteredKpiSummary.cpa)}
+                                delta={showConversionDelta && kpiDelta?.cpa != null ? -kpiDelta.cpa : undefined}
+                                deltaLabel={deltaLabel}
+                            />
+                            <KpiCard
+                                label="ROAS"
+                                value={`${filteredKpiSummary.roas.toFixed(2)}x`}
+                                delta={showConversionDelta ? (kpiDelta?.roas ?? undefined) : undefined}
+                                deltaLabel={deltaLabel}
+                                sparkline={roasSparkline.length > 1 ? roasSparkline : undefined}
+                            />
+                        </>
+                    )}
+
                     <KpiCard
                         label="CTR"
                         value={`${filteredKpiSummary.avgCtr.toFixed(2)}%`}
@@ -405,6 +472,17 @@ export default function AdsDashboardPage() {
                         delta={showDelta && kpiDelta?.avgCpm != null ? -kpiDelta.avgCpm : undefined}
                         deltaLabel={deltaLabel}
                     />
+                </motion.div>
+            )}
+
+            {/* Badge: modo awareness — explica substituição dos KPI cards */}
+            {isAwarenessMode && filteredKpiSummary && (
+                <motion.div variants={item} className="flex items-center gap-2 px-3 py-2 rounded-[4px] bg-[#A3E635]/10 border border-[#A3E635]/20 font-mono text-[10px] text-[#A3E635] tracking-widest">
+                    <span>◈</span>
+                    <span>
+                        <strong>Modo Awareness</strong> — campanhas desta conta focam em alcance e engajamento, sem conversões por pixel.
+                        Exibindo <strong>Engajamentos, Custo/Engaj. e Frequência</strong> em vez de Resultados/CPA/ROAS.
+                    </span>
                 </motion.div>
             )}
 
@@ -423,7 +501,15 @@ export default function AdsDashboardPage() {
             {!hasEnoughSample && filteredKpiSummary && !isLoading && (
                 <motion.div variants={item} className="flex items-center gap-2 px-3 py-2 rounded-[4px] bg-zinc-500/10 border border-zinc-500/20 font-mono text-[10px] text-zinc-400 tracking-widest">
                     <span>⊘</span>
-                    <span>Nenhuma impressão no período selecionado. Variações indisponíveis.</span>
+                    <span>Nenhuma atividade no período &quot;{DATE_PRESETS.find(p => p.value === filters.datePreset)?.label ?? 'selecionado'}&quot;. Tente um período mais amplo (ex: 30 dias).</span>
+                </motion.div>
+            )}
+
+            {/* Badge: filtro de status ativo — KPIs mostram conta completa */}
+            {filters.statusFilter !== 'all' && (
+                <motion.div variants={item} className="flex items-center gap-2 px-3 py-2 rounded-[4px] bg-blue-500/10 border border-blue-500/20 font-mono text-[10px] text-blue-400 tracking-widest">
+                    <span>◈</span>
+                    <span>Filtro <strong>{STATUS_FILTERS.find(s => s.value === filters.statusFilter)?.label}</strong> ativo — KPIs e gráficos mostram dados da conta completa. Apenas a tabela é filtrada.</span>
                 </motion.div>
             )}
 
@@ -463,17 +549,23 @@ export default function AdsDashboardPage() {
                                 onExpandCampaign={setExpandedCampaign}
                                 expandedCampaignId={expandedCampaignId}
                             />
+                            <AdsABTestCard adSets={filteredAdSets} currency={currency} />
                         </div>
                     )}
 
                     {activeTab === 'creatives' && (
-                        <CreativesGallery
-                            ads={creativeAds}
-                            currency={currency}
-                            isLoading={isLoadingCreatives}
-                            error={creativesError}
-                            onFetchCreatives={handleFetchCreatives}
-                        />
+                        <div className="space-y-12">
+                            <CreativesGallery
+                                ads={creativeAds}
+                                currency={currency}
+                                isLoading={isLoadingCreatives}
+                                error={creativesError}
+                                onFetchCreatives={handleFetchCreatives}
+                            />
+                            {creativeAds.length >= 2 && (
+                                <AdsCreativePerformance ads={creativeAds} currency={currency} />
+                            )}
+                        </div>
                     )}
 
                     {activeTab === 'charts' && (
@@ -482,14 +574,14 @@ export default function AdsDashboardPage() {
                                 <div className="flex items-center gap-2 px-3 py-2 rounded-[4px] bg-[#FBBF24]/10 border border-[#FBBF24]/20 font-mono text-[10px] text-[#FBBF24] tracking-widest">
                                     <span>⚠</span>
                                     <span>
-                                        Sem dados para "{DATE_PRESETS.find(p => p.value === filters.datePreset)?.label}".
+                                        Sem dados para &quot;{DATE_PRESETS.find(p => p.value === filters.datePreset)?.label}&quot;.
                                         Exibindo período mais amplo: <strong>{DATE_PRESETS.find(p => p.value === dailyFallbackPreset)?.label ?? dailyFallbackPreset}</strong>.
                                     </span>
                                 </div>
                             )}
                             <AdsCharts
                                 daily={dailyInsights}
-                                campaigns={filteredCampaigns}
+                                campaigns={campaigns}
                                 currency={currency}
                                 isLoading={isLoading}
                                 dateLabel={filters.customRange
@@ -500,10 +592,23 @@ export default function AdsDashboardPage() {
                     )}
 
                     {activeTab === 'intelligence' && (
-                        <AdsIntelligencePanelV2
-                            token={adsToken}
-                            accountId={adsAccountId}
-                        />
+                        <div className="space-y-16">
+                            <AdsIntelligencePanelV2
+                                token={adsToken}
+                                accountId={adsAccountId}
+                                daily={dailyInsights}
+                                campaigns={campaigns}
+                            />
+                            {dailyInsights.length >= 14 && (
+                                <AdsMMMSection daily={dailyInsights} currency={currency} />
+                            )}
+                            {dailyInsights.length >= 14 && (
+                                <AdsIncrementalitySection daily={dailyInsights} currency={currency} />
+                            )}
+                            {campaigns.length >= 2 && (
+                                <AdsBudgetAllocation campaigns={campaigns} currency={currency} />
+                            )}
+                        </div>
                     )}
                 </div>
             </motion.div>

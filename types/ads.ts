@@ -101,6 +101,14 @@ export interface Ad {
         body?: string;
         title?: string;
         link_url?: string;
+        // Metadados offline para Creative Intelligence Scorer (US-36)
+        // Anotados fora do Graph API (admin panel, planilha ou visão computacional offline)
+        dominant_hue?: 'RED' | 'BLUE' | 'GREEN' | 'YELLOW' | 'BLACK' | 'OTHER';
+        has_face?: boolean;
+        text_density?: 'LOW' | 'MEDIUM' | 'HIGH';
+        caption_type?: 'QUESTION' | 'STATEMENT' | 'LIST' | 'HOW_TO' | 'OTHER';
+        emoji_count?: number;
+        is_ugc?: boolean;
     };
     created_time: string;
     insights?: AdInsight;
@@ -133,6 +141,10 @@ export interface AdsKpiSummary {
     totalConversionValue: number;
     roas: number;
     cpa: number;
+    /** Soma de post_engagement action_type — relevante para campanhas de awareness/engajamento */
+    totalEngagements: number;
+    /** totalSpend / totalEngagements — custo por engajamento */
+    costPerEngagement: number;
     activeCampaigns: number;
     pausedCampaigns: number;
     currency: string;
@@ -147,9 +159,12 @@ export interface AdsKpiDelta {
     avgCtr: number | null;
     avgCpc: number | null;
     avgCpm: number | null;
+    avgFrequency: number | null;
     totalConversions: number | null;
     roas: number | null;
     cpa: number | null;
+    totalEngagements: number | null;
+    costPerEngagement: number | null;
 }
 
 /** Insights por dia para gráficos temporais */
@@ -264,6 +279,7 @@ export interface BenchmarkEntry {
 
 export interface BenchmarkComparison {
     entries: BenchmarkEntry[];
+    historicalEntries: BenchmarkEntry[];
     industry: string;
     mode: 'sector' | 'historical';
 }

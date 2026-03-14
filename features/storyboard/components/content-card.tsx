@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/design-system/utils/cn';
@@ -7,6 +8,7 @@ import type { Content } from '@/types/content';
 import { useCollectionStore } from '@/stores';
 import { format, parseISO } from 'date-fns';
 import { TYPE_HEX_COLORS, TYPE_ABBR } from '@/lib/constants';
+import { foggBehaviorScore } from '@/lib/utils/causal-behavioral';
 
 interface ContentCardProps {
     content: Content;
@@ -42,6 +44,24 @@ export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProp
     const typeKey = content.type?.toLowerCase() ?? '';
     const typeColor = TYPE_HEX_COLORS[typeKey] ?? '#8A8A8A';
     const typeLabel = TYPE_ABBR[typeKey] ?? content.type?.toUpperCase() ?? '???';
+
+    const fogg = useMemo(() => {
+        const caption = [content.title, content.description].filter(Boolean).join(' ');
+        const contentTypeMap: Record<string, 'post' | 'reel' | 'carousel' | 'story'> = {
+            post: 'post', reel: 'reel', carousel: 'carousel', story: 'story',
+        };
+        const contentType = contentTypeMap[content.type ?? ''] ?? 'post';
+        const publishedHour = content.scheduledAt
+            ? new Date(content.scheduledAt).getHours()
+            : undefined;
+        return foggBehaviorScore({ caption, contentType, publishedHour });
+    }, [content.title, content.description, content.type, content.scheduledAt]);
+
+    const foggColor = fogg.classification === 'alto_impacto'
+        ? '#A3E635'
+        : fogg.classification === 'moderado'
+        ? '#FBBF24'
+        : '#4A4A4A';
 
     return (
         <div
@@ -101,11 +121,20 @@ export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProp
                     )}
                 </div>
 
-                {content.hashtags.length > 0 && (
-                    <div className="font-mono text-[9px] text-[#A3E635] opacity-60">
-                        #{content.hashtags.length.toString().padStart(2, '0')}
-                    </div>
-                )}
+                <div className="flex items-center gap-2">
+                    {content.hashtags.length > 0 && (
+                        <span className="font-mono text-[9px] text-[#A3E635] opacity-60">
+                            #{content.hashtags.length.toString().padStart(2, '0')}
+                        </span>
+                    )}
+                    <span
+                        className="font-mono text-[8px] tracking-wider"
+                        style={{ color: foggColor }}
+                        title={`Fogg Score: ${fogg.totalScore} — ${fogg.classification}`}
+                    >
+                        [{fogg.totalScore}]
+                    </span>
+                </div>
             </div>
         </div>
     );
