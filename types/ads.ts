@@ -228,10 +228,10 @@ export interface DemographicBreakdown {
     roas: number;
 }
 
-/** Linha de breakdown publisher_platform × platform_placement */
+/** Linha de breakdown publisher_platform × platform_position (campo correto da Meta API v25) */
 export interface PlacementBreakdown {
-    publisher_platform: string;  // "facebook" | "instagram" | "audience_network" | "messenger"
-    platform_placement: string;  // "feed" | "stories" | "reels" | "right_hand_column" | ...
+    publisher_platform: string;  // "facebook" | "instagram" | "audience_network" | "messenger" | "threads"
+    platform_position: string;   // "feed" | "stream" | "reels" | "story" | "explore" | "right_hand_column" | ...
     impressions: number;
     clicks: number;
     spend: number;

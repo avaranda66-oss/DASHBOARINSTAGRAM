@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         // Busca age/gender e placement em paralelo
         const [ageGenderRaw, placementRaw] = await Promise.all([
             getInsightsWithBreakdown(token, accountId, ['age', 'gender'], opts),
-            getInsightsWithBreakdown(token, accountId, ['publisher_platform', 'platform_placement'], opts),
+            getInsightsWithBreakdown(token, accountId, ['publisher_platform', 'platform_position'], opts),
         ]);
 
         // Transformar age/gender
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
             const spend = parseFloat(r.spend) || 0;
             return {
                 publisher_platform: (r as any).publisher_platform || 'unknown',
-                platform_placement: (r as any).platform_placement || 'unknown',
+                platform_position: (r as any).platform_position || 'unknown',
                 impressions,
                 clicks,
                 spend,

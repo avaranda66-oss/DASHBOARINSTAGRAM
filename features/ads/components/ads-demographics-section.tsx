@@ -30,24 +30,35 @@ const PLATFORM_LABELS: Record<string, string> = {
     messenger: 'Messenger',
     unknown: 'Outros',
 };
+// Valores corretos de platform_position retornados pela Meta API v25
 const PLACEMENT_LABELS: Record<string, string> = {
+    // Facebook
     feed: 'Feed',
     right_hand_column: 'Coluna Direita',
-    instant_article: 'Instant Article',
-    marketplace: 'Marketplace',
-    stories: 'Stories',
-    instagram_stories: 'Stories',
     video_feeds: 'Video Feeds',
-    reels: 'Reels',
-    instagram_reels: 'Reels',
-    groups_feed: 'Groups Feed',
+    marketplace: 'Marketplace',
+    story: 'Stories',
     search: 'Search',
-    instagram_explore: 'Explore',
-    instagram_explore_grid_home: 'Explore Grid',
-    profile_feed: 'Profile Feed',
-    an_classic: 'Audience Network',
-    rewarded_video: 'Rewarded Video',
     instream_video: 'In-Stream Video',
+    facebook_reels: 'Reels',
+    facebook_reels_overlay: 'Reels Overlay',
+    profile_feed: 'Profile Feed',
+    groups_feed: 'Groups Feed',
+    notification: 'Notification',
+    // Instagram (field = platform_position, values differ from Facebook)
+    stream: 'Feed',          // Instagram Feed usa "stream"
+    reels: 'Reels',
+    explore: 'Explore',
+    explore_home: 'Explore Home',
+    ig_search: 'Search',
+    profile_reels: 'Profile Reels',
+    // Audience Network
+    classic: 'Classic',
+    rewarded_video: 'Rewarded Video',
+    // Messenger
+    sponsored_messages: 'Sponsored Messages',
+    // Threads
+    threads_stream: 'Threads Feed',
     unknown: 'Outros',
 };
 
@@ -236,14 +247,14 @@ function PlacementTable({ data }: { data: PlacementBreakdown[] }) {
     return (
         <div className="space-y-2">
             {sorted.map((p, i) => {
-                const placementLabel = PLACEMENT_LABELS[p.platform_placement] ?? p.platform_placement;
+                const placementLabel = PLACEMENT_LABELS[p.platform_position] ?? p.platform_position;
                 const platformLabel = PLATFORM_LABELS[p.publisher_platform] ?? p.publisher_platform;
                 const color = platformColor(p.publisher_platform);
                 const isLowRoas = p.roas > 0 && p.roas < 1;
 
                 return (
                     <div
-                        key={`${p.publisher_platform}-${p.platform_placement}-${i}`}
+                        key={`${p.publisher_platform}-${p.platform_position}-${i}`}
                         className={cn(
                             'p-3 rounded-lg border font-mono',
                             isLowRoas
