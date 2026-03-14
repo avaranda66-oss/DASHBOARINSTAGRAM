@@ -184,8 +184,10 @@ export default function AdsDashboardPage() {
             totalImpressions += impressions;
             totalClicks += clicks;
             totalReach += reach;
-            // Usar outbound_clicks_ctr (link clicks) em vez de ctr genérico
-            const ctrVal = parseFloat((i as any).outbound_clicks_ctr || i.ctr || '0') || 0;
+            // outbound_clicks_ctr é AdActionStat[] — extrair o value do primeiro elemento
+            // (igual ao que computeKpiSummary faz no service)
+            const outboundCtr = parseFloat(i.outbound_clicks_ctr?.[0]?.value || '0') || 0;
+            const ctrVal = outboundCtr > 0 ? outboundCtr : (parseFloat(i.ctr || '0') || 0);
             weightedCtr += ctrVal * impressions;
             weightedCpm += (parseFloat(i.cpm || '0') || 0) * impressions;
             weightedCpc += (parseFloat(i.cpc || '0') || 0) * clicks;
@@ -222,11 +224,11 @@ export default function AdsDashboardPage() {
     // Dados incompletos: today/yesterday têm latência de 15-72h na Meta (conversões especialmente)
     const isIncompleteData = !filters.customRange && (filters.datePreset === 'today' || filters.datePreset === 'yesterday');
 
-    // Threshold mínimo: suprimir delta se impressões insuficientes para comparação confiável
-    const MIN_IMPRESSIONS_FOR_DELTA = 200;
+    // Threshold mínimo: apenas bloquear divisão por zero (período literalmente sem atividade)
+    const MIN_IMPRESSIONS_FOR_DELTA = 1;
     const hasEnoughSample = (filteredKpiSummary?.totalImpressions ?? 0) >= MIN_IMPRESSIONS_FOR_DELTA;
 
-    // Delta só exibido quando: não filtrado + amostra mínima + dados não incompletos (para conversões)
+    // Delta exibido quando: não filtrado + pelo menos 1 impressão no período
     const showDelta = !isFiltered && hasEnoughSample;
     // Para métricas de entrega (impressões, cliques, CTR, CPM, CPC) toleramos today/yesterday
     // Para conversões/ROAS/CPA (dependem de attribution), suprimimos em today/yesterday
@@ -417,13 +419,11 @@ export default function AdsDashboardPage() {
                 </motion.div>
             )}
 
-            {/* Badge: amostra insuficiente para variações confiáveis */}
-            {!hasEnoughSample && filteredKpiSummary && !isLoading && (filteredKpiSummary.totalImpressions ?? 0) > 0 && (
+            {/* Badge: sem atividade no período selecionado */}
+            {!hasEnoughSample && filteredKpiSummary && !isLoading && (
                 <motion.div variants={item} className="flex items-center gap-2 px-3 py-2 rounded-[4px] bg-zinc-500/10 border border-zinc-500/20 font-mono text-[10px] text-zinc-400 tracking-widest">
                     <span>⊘</span>
-                    <span>
-                        Amostra insuficiente ({(filteredKpiSummary.totalImpressions ?? 0).toLocaleString('pt-BR')} impressões). Variações ocultas — mínimo {MIN_IMPRESSIONS_FOR_DELTA.toLocaleString('pt-BR')} para comparação confiável.
-                    </span>
+                    <span>Nenhuma impressão no período selecionado. Variações indisponíveis.</span>
                 </motion.div>
             )}
 
