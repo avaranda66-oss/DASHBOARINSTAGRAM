@@ -131,6 +131,16 @@ export interface Ad {
     insights?: AdInsight;
 }
 
+/** Conta de anúncio Meta (retornada por /me/adaccounts) — US-61 Multi-Account Switcher */
+export interface MetaAdAccount {
+    id: string;           // formato "act_XXXXXXXXX"
+    account_id: string;   // só o número, sem prefixo
+    name: string;
+    currency: string;
+    account_status: number; // 1=ACTIVE, 101=CLOSED
+    timezone_name?: string;
+}
+
 /** Conta de anúncios */
 export interface AdAccount {
     id: string;

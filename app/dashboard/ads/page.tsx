@@ -22,6 +22,8 @@ import { cn } from '@/design-system/utils/cn';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { downloadCsv, csvFilename, campaignsToCSV, dailyInsightsToCSV } from '@/lib/utils/export-csv';
 import { AdsDemographicsSection } from '@/features/ads/components/ads-demographics-section';
+import { AdsAccountSwitcher } from '@/features/ads/components/ads-account-switcher';
+import { AdsMultiAccountOverview } from '@/features/ads/components/ads-multi-account-overview';
 
 type ViewTab = 'overview' | 'charts' | 'intelligence' | 'creatives';
 
@@ -347,6 +349,16 @@ export default function AdsDashboardPage() {
                     <div className="flex items-center gap-3 mb-1">
                         <span className="font-mono text-[#A3E635] text-[10px] tracking-widest">[ADS_ENGINE_V2]</span>
                         <h1 className="text-[2rem] font-bold tracking-tight text-[#F5F5F5]">{accountName}</h1>
+                        {adsToken && adsAccountId && (
+                            <AdsAccountSwitcher
+                                token={adsToken}
+                                currentAccountId={adsAccountId}
+                                onSwitch={(newId) => {
+                                    setAdsAccountId(newId);
+                                    fetchAll(adsToken, newId, true);
+                                }}
+                            />
+                        )}
                     </div>
                     <div className="flex items-center gap-4 text-[12px] font-mono text-[#4A4A4A] tracking-tight">
                         <span>ID: {adsAccountId}</span>
@@ -728,6 +740,14 @@ export default function AdsDashboardPage() {
                             )}
                             {campaigns.length >= 2 && (
                                 <AdsBudgetAllocation campaigns={campaigns} currency={currency} />
+                            )}
+                            {/* US-62: Multi-Account Overview */}
+                            {adsToken && (
+                                <AdsMultiAccountOverview
+                                    token={adsToken}
+                                    datePreset={filters.customRange ? undefined : filters.datePreset}
+                                    timeRange={filters.customRange}
+                                />
                             )}
                             {/* US-69 + US-70: Demographics + Placement */}
                             <AdsDemographicsSection

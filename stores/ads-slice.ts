@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import type {
     AdCampaign, AdSet, Ad, AdAccount, AdInsight,
     AdsKpiSummary, AdsKpiDelta, DailyAdInsight, AdsDatePreset, AdsFilters,
-    IntelligenceMetrics,
+    IntelligenceMetrics, MetaAdAccount,
 } from '@/types/ads';
 import { cachedFetch, invalidateCache } from '@/lib/utils/request-cache';
 
@@ -42,6 +42,11 @@ interface AdsSlice {
     // Cache metadata
     campFromCache: boolean;
     insightFromCache: boolean;
+
+    // Multi-Account — US-61
+    availableAccounts: MetaAdAccount[];
+    isLoadingAccounts: boolean;
+    fetchAdAccounts: (token: string) => Promise<void>;
 
     // Actions
     fetchAll: (token: string, accountId: string, forceRefresh?: boolean) => Promise<void>;
@@ -83,6 +88,25 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
     filters: {
         datePreset: 'last_30d',
         statusFilter: 'all',
+    },
+
+    // Multi-Account — US-61
+    availableAccounts: [],
+    isLoadingAccounts: false,
+
+    fetchAdAccounts: async (token) => {
+        set({ isLoadingAccounts: true });
+        try {
+            const res = await fetch(`/api/meta/adaccounts?token=${encodeURIComponent(token)}`);
+            const data = await res.json();
+            if (data.success) {
+                set({ availableAccounts: data.accounts, isLoadingAccounts: false });
+            } else {
+                set({ isLoadingAccounts: false });
+            }
+        } catch {
+            set({ isLoadingAccounts: false });
+        }
     },
 
     fetchAll: async (token, accountId, forceRefresh = false) => {
