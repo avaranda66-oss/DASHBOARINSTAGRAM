@@ -31,6 +31,8 @@ export interface AdInsight {
     ad_name?: string;
     impressions: string;
     clicks: string;
+    inline_link_clicks?: string;
+    inline_link_click_ctr?: string;
     spend: string;
     cpc?: string;
     cpm?: string;
@@ -42,6 +44,17 @@ export interface AdInsight {
     actions?: AdActionStat[];
     cost_per_action_type?: AdActionStat[];
     purchase_roas?: AdActionStat[];
+    // Video metrics (campanhas VIDEO_VIEWS, OUTCOME_AWARENESS)
+    video_avg_time_watched_actions?: AdActionStat[];
+    video_p25_watched_actions?: AdActionStat[];
+    video_p50_watched_actions?: AdActionStat[];
+    video_p75_watched_actions?: AdActionStat[];
+    video_p95_watched_actions?: AdActionStat[];
+    video_thruplay_watched_actions?: AdActionStat[];
+    // Ad quality rankings: UNKNOWN | BELOW_AVERAGE_10 | BELOW_AVERAGE_20 | BELOW_AVERAGE_35 | AVERAGE | ABOVE_AVERAGE
+    quality_ranking?: string;
+    engagement_rate_ranking?: string;
+    conversion_rate_ranking?: string;
     date_start: string;
     date_stop: string;
     objective?: string;
@@ -79,6 +92,10 @@ export interface AdSet {
     billing_event?: string;
     optimization_goal?: string;
     bid_amount?: string;
+    // Campos obrigatórios v25 — Advantage+ e budget sharing
+    bid_strategy?: string;
+    targeting_automation?: Record<string, unknown>;
+    is_adset_budget_sharing_enabled?: boolean;
     targeting?: Record<string, unknown>;
     created_time: string;
     start_time?: string;
@@ -225,6 +242,7 @@ export interface AudienceSaturationIndex {
     saturationIndex: number; // frequency / optimalFrequency
     level: SaturationLevel;
     reachPercent: number;
+    estimatedAudienceSize?: number;
     recommendation: string;
 }
 

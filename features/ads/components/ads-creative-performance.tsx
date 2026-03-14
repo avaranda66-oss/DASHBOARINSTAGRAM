@@ -43,7 +43,7 @@ function buildStats(ad: Ad): CreativeStats | null {
 
     // CTR: preferir outbound CTR, fallback para CTR geral
     const ctrRaw = parseFloat(i.outbound_clicks_ctr?.[0]?.value || i.ctr || '0') || 0;
-    const ctr = ctrRaw > 1 ? ctrRaw / 100 : ctrRaw; // normalizar % → ratio
+    const ctr = ctrRaw / 100; // Meta API retorna CTR como % (ex: 17.49 = 17.49%, 0.16 = 0.16%)
 
     const saves = getAction(i, 'post_save');
     const comments = getAction(i, 'post_comment');

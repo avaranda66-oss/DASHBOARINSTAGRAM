@@ -65,6 +65,7 @@ const cache = new Map<string, { data: unknown; ts: number; ttl: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 min para insights (mudam frequentemente)
 const ADSETS_CACHE_TTL = 30 * 60 * 1000; // 30 min para adsets (estrutura muda raramente)
 const INTELLIGENCE_CACHE_TTL = 15 * 60 * 1000; // 15 min for intelligence data
+const REACH_ESTIMATE_CACHE_TTL = 60 * 60 * 1000; // 1h — audience size rarely changes
 
 function getCached<T>(key: string): T | null {
     const entry = cache.get(key);
@@ -221,7 +222,8 @@ export async function getAdSets(
     if (cached) return cached;
 
     const data = await graphGetAll<AdSet>(path, token, {
-        fields: 'id,name,campaign_id,status,effective_status,daily_budget,lifetime_budget,budget_remaining,billing_event,optimization_goal,bid_amount,created_time,start_time,end_time',
+        // bid_strategy, targeting_automation, is_adset_budget_sharing_enabled: obrigatórios v25
+        fields: 'id,name,campaign_id,status,effective_status,daily_budget,lifetime_budget,budget_remaining,billing_event,optimization_goal,bid_amount,bid_strategy,targeting_automation,is_adset_budget_sharing_enabled,created_time,start_time,end_time',
         limit: '100',
     });
     setCache(cacheKey, data, ADSETS_CACHE_TTL); // 30min — estrutura de adsets muda raramente
@@ -252,9 +254,16 @@ export async function getAds(
 
 const INSIGHTS_FIELDS = [
     'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name',
-    'impressions', 'clicks', 'spend', 'cpc', 'cpm', 'ctr', 'reach', 'frequency',
+    'impressions', 'clicks', 'inline_link_clicks', 'inline_link_click_ctr', 'spend', 'cpc', 'cpm', 'ctr', 'reach', 'frequency',
     'outbound_clicks', 'outbound_clicks_ctr',
     'actions', 'cost_per_action_type', 'purchase_roas',
+    // Video metrics — disponíveis para campanhas VIDEO_VIEWS, OUTCOME_AWARENESS
+    'video_avg_time_watched_actions',
+    'video_p25_watched_actions', 'video_p50_watched_actions',
+    'video_p75_watched_actions', 'video_p95_watched_actions',
+    'video_thruplay_watched_actions',
+    // Ad Quality Rankings — UNKNOWN | BELOW_AVERAGE_10/20/35 | AVERAGE | ABOVE_AVERAGE
+    'quality_ranking', 'engagement_rate_ranking', 'conversion_rate_ranking',
     'date_start', 'date_stop', 'objective', 'account_currency',
 ].join(',');
 
@@ -319,7 +328,7 @@ export async function getDailyInsights(
             'lead',
         ]),
         conversionValue: sumActionValues(r.purchase_roas),
-        roas: parseFloat(r.purchase_roas?.[0]?.value || '0') || 0,
+        roas: extractRoas(r.purchase_roas),
     }));
 }
 
@@ -351,12 +360,12 @@ export function computeKpiSummary(
             'lead',
         ]);
         totalEngagements += sumActions(r.actions, ['post_engagement']);
-        const roasValue = parseFloat(r.purchase_roas?.[0]?.value || '0') || 0;
+        const roasValue = extractRoas(r.purchase_roas);
         totalConversionValue += roasValue * spend; // ROAS * spend = revenue
 
         // Prefer outbound_clicks_ctr (link clicks only) over generic ctr (all clicks)
         // to match what Facebook Ads Manager displays as "CTR"
-        const outboundCtr = parseFloat(r.outbound_clicks_ctr?.[0]?.value || '0') || 0;
+        const outboundCtr = extractOutboundCtr(r.outbound_clicks_ctr);
         const effectiveCtr = outboundCtr > 0 ? outboundCtr : (parseFloat(r.ctr || '0') || 0);
 
         weightedCpc += (parseFloat(r.cpc || '0') || 0) * clicks;
@@ -556,8 +565,73 @@ export function computeCreativeFatigueScores(
     return scores.sort((a, b) => a.score - b.score); // Worst first
 }
 
+// ─── Audience Size via Reach Estimate ────────────────────────────────────────
+
+async function getAdsetTargeting(token: string, adsetId: string): Promise<Record<string, unknown> | null> {
+    const cacheKey = `adset_targeting:${adsetId}`;
+    const cached = getCached<Record<string, unknown>>(cacheKey);
+    if (cached) return cached;
+
+    try {
+        const data = await graphGet<{ targeting?: Record<string, unknown> }>(adsetId, token, { fields: 'targeting' });
+        const targeting = data.targeting ?? null;
+        if (targeting) setCache(cacheKey, targeting, REACH_ESTIMATE_CACHE_TTL);
+        return targeting;
+    } catch {
+        return null;
+    }
+}
+
+async function getReachEstimate(token: string, accountId: string, targeting: Record<string, unknown>): Promise<number> {
+    const targetingJson = JSON.stringify(targeting);
+    const cacheKey = `reach_estimate:${accountId}:${Buffer.from(targetingJson).toString('base64').slice(0, 32)}`;
+    const cached = getCached<number>(cacheKey);
+    if (cached !== null) return cached;
+
+    try {
+        const data = await graphGet<{
+            audience_size_lower_bound?: string | number;
+            audience_size_upper_bound?: string | number;
+            users?: string | number;
+        // accountId já tem o formato act_XXXXXXXXX — não adicionar prefixo duplo
+        }>(`${accountId}/reachestimate`, token, {
+            targeting_spec: targetingJson,
+            optimize_for: 'IMPRESSIONS',
+        });
+
+        const lower = parseFloat(String(data.audience_size_lower_bound ?? data.users ?? '0')) || 0;
+        const upper = parseFloat(String(data.audience_size_upper_bound ?? data.users ?? '0')) || 0;
+        const estimate = upper > 0 ? Math.round((lower + upper) / 2) : lower;
+
+        if (estimate > 0) setCache(cacheKey, estimate, REACH_ESTIMATE_CACHE_TTL);
+        return estimate;
+    } catch {
+        return 0;
+    }
+}
+
+export async function fetchAdsetAudienceEstimates(
+    token: string,
+    accountId: string,
+    adsetIds: string[],
+): Promise<Map<string, number>> {
+    if (adsetIds.length === 0) return new Map();
+
+    const results = await Promise.all(
+        adsetIds.map(async (adsetId) => {
+            const targeting = await getAdsetTargeting(token, adsetId);
+            if (!targeting) return [adsetId, 0] as [string, number];
+            const estimate = await getReachEstimate(token, accountId, targeting);
+            return [adsetId, estimate] as [string, number];
+        })
+    );
+
+    return new Map(results.filter(([, size]) => size > 0));
+}
+
 export function computeAudienceSaturationIndexes(
     adsetInsights: AdInsight[],
+    audienceEstimates?: Map<string, number>,
 ): AudienceSaturationIndex[] {
     const F_OPT = 3.0; // Food & Beverage optimal frequency
 
@@ -578,6 +652,11 @@ export function computeAudienceSaturationIndexes(
                 saturated: 'Reduzir frequência ou expandir público',
             };
 
+            const estimatedAudienceSize = audienceEstimates?.get(r.adset_id!) ?? 0;
+            const reachPercent = estimatedAudienceSize > 0
+                ? (reach / estimatedAudienceSize) * 100
+                : impressions > 0 ? (reach / impressions) * 100 : 0;
+
             return {
                 adsetId: r.adset_id!,
                 adsetName: r.adset_name || r.adset_id!,
@@ -585,7 +664,8 @@ export function computeAudienceSaturationIndexes(
                 optimalFrequency: F_OPT,
                 saturationIndex,
                 level,
-                reachPercent: impressions > 0 ? (reach / impressions) * 100 : 0,
+                reachPercent: Math.min(reachPercent, 100), // cap at 100% (estimate may be stale)
+                estimatedAudienceSize: estimatedAudienceSize > 0 ? estimatedAudienceSize : undefined,
                 recommendation: recommendations[level],
             };
         });
@@ -605,7 +685,7 @@ export function detectABTests(
         const group = byAdset.get(r.adset_id)!;
         const existing = group.ads.get(r.ad_id) || { impressions: 0, clicks: 0, spend: 0, conversions: 0, adName: r.ad_name || r.ad_id };
         existing.impressions += parseInt(r.impressions) || 0;
-        existing.clicks += parseInt(r.clicks) || 0;
+        existing.clicks += parseInt(r.inline_link_clicks || r.clicks) || 0;
         existing.spend += parseFloat(r.spend) || 0;
         existing.conversions += sumActions(r.actions, ['offsite_conversion.fb_pixel_purchase', 'offsite_conversion.fb_pixel_lead', 'lead']);
         group.ads.set(r.ad_id, existing);
@@ -790,7 +870,11 @@ export async function computeIntelligenceMetrics(
     const historicalKpi = prevInsights.length > 0 ? computeKpiSummary(prevInsights, []) : undefined;
 
     const fatigueScores = computeCreativeFatigueScores(adDailyInsights, ads);
-    const saturationIndexes = computeAudienceSaturationIndexes(adsetInsights);
+
+    // Fetch audience estimates for true reach penetration (best-effort, non-blocking)
+    const adsetIds = [...new Set(adsetInsights.map(r => r.adset_id).filter(Boolean) as string[])];
+    const audienceEstimates = await fetchAdsetAudienceEstimates(token, accountId, adsetIds).catch(() => new Map<string, number>());
+    const saturationIndexes = computeAudienceSaturationIndexes(adsetInsights, audienceEstimates);
     const abTests = detectABTests(adInsights);
     const benchmarkComparison = computeBenchmarkComparison(kpi, historicalKpi);
     const healthScore = computeAccountHealthScore(fatigueScores, saturationIndexes, kpi);
@@ -812,6 +896,9 @@ function sumActions(actions: AdActionStat[] | undefined, types: string[]): numbe
     // Use exact match to prevent double-counting: Meta API returns both
     // generic ("purchase") and specific ("offsite_conversion.fb_pixel_purchase")
     // for the same event — includes() would count it twice.
+    // NOTE: 'lead' (native Lead Ads) e 'offsite_conversion.fb_pixel_lead' (pixel) são
+    // tecnicamente distintos, mas podem se sobrepor em contas com dual-tracking.
+    // Para contas com apenas um método de tracking, não há duplicação.
     return actions
         .filter(a => types.includes(a.action_type))
         .reduce((sum, a) => sum + (parseInt(a.value) || 0), 0);
@@ -820,4 +907,28 @@ function sumActions(actions: AdActionStat[] | undefined, types: string[]): numbe
 function sumActionValues(roas: AdActionStat[] | undefined): number {
     if (!roas) return 0;
     return roas.reduce((sum, a) => sum + (parseFloat(a.value) || 0), 0);
+}
+
+/**
+ * Extrai o valor primário de ROAS de purchase_roas action stats.
+ * Prioridade: omni_purchase (todas as plataformas) > website > app > primeiro entry.
+ * Evita somar múltiplos entries (omni + website) que resultaria em ROAS inflado.
+ */
+function extractRoas(roasStats: AdActionStat[] | undefined): number {
+    if (!roasStats?.length) return 0;
+    const entry = roasStats.find(a => a.action_type === 'omni_purchase')
+        ?? roasStats.find(a => a.action_type === 'website')
+        ?? roasStats.find(a => a.action_type === 'app')
+        ?? roasStats[0];
+    return parseFloat(entry?.value || '0') || 0;
+}
+
+/**
+ * Extrai CTR de outbound_clicks_ctr action stats.
+ * Prioriza action_type 'outbound_click' sobre outros entries (ex: app_custom_event).
+ */
+function extractOutboundCtr(ctrStats: AdActionStat[] | undefined): number {
+    if (!ctrStats?.length) return 0;
+    const entry = ctrStats.find(a => a.action_type === 'outbound_click') ?? ctrStats[0];
+    return parseFloat(entry?.value || '0') || 0;
 }

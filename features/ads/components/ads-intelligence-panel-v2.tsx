@@ -17,6 +17,8 @@ import { cn } from '@/design-system/utils/cn';
 import { AdsInsightsFeed } from './ads-insights-feed';
 import { AdsAnomalyMultivariate } from './ads-anomaly-multivariate';
 import { AdsAttributionSection } from './ads-attribution-section';
+import { AdsVideoMetricsSection } from './ads-video-metrics-section';
+import { AdsQualityRankingsSection } from './ads-quality-rankings-section';
 import type { DailyAdInsight, AdCampaign } from '@/types/ads';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -182,7 +184,7 @@ function CircularGauge({ score, level }: { score: number; level: string }) {
 }
 
 function SubScoreBar({ label, value }: { label: string; value: number }) {
-    const pct = Math.min(Math.max(value * 100, 0), 100);
+    const pct = Math.min(Math.max(value, 0), 100);
     let barColor = '#A3E635';
     if (pct < 40) barColor = '#EF4444';
     else if (pct < 60) barColor = '#FBBF24';
@@ -191,7 +193,7 @@ function SubScoreBar({ label, value }: { label: string; value: number }) {
         <div className="space-y-1.5 font-mono">
             <div className="flex justify-between items-end">
                 <span className="text-[9px] text-[#4A4A4A] uppercase tracking-[0.2em] font-bold">{label}</span>
-                <span className="text-[10px] text-[#F5F5F5] font-black tracking-tighter">{(value * 100).toFixed(0)}%</span>
+                <span className="text-[10px] text-[#F5F5F5] font-black tracking-tighter">{value.toFixed(0)}%</span>
             </div>
             <div className="flex gap-[2px] h-[6px]">
                 {[...Array(10)].map((_, i) => (
@@ -396,13 +398,13 @@ function AudienceSaturationSection({ indexes }: { indexes: AudienceSaturationInd
 
                             <div className="space-y-2">
                                 <div className="flex justify-between text-[9px] font-bold uppercase tracking-[0.2em]">
-                                    <span className="text-[#4A4A4A]">REACH_PENETRATION</span>
-                                    <span className="text-[#F5F5F5]">{(item.reachPercent * 100).toFixed(1)}%</span>
+                                    <span className="text-[#4A4A4A]">{item.estimatedAudienceSize ? 'AUDIENCE_REACH' : 'FREQ_RATE'}</span>
+                                    <span className="text-[#F5F5F5]">{item.reachPercent.toFixed(1)}%</span>
                                 </div>
                                 <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-blue-500 rounded-full transition-all duration-1000"
-                                        style={{ width: `${Math.min(item.reachPercent * 100, 100)}%` }}
+                                        style={{ width: `${Math.min(item.reachPercent, 100)}%` }}
                                     />
                                 </div>
                             </div>
@@ -544,7 +546,7 @@ function ABTestSection({ tests }: { tests: ABTestResult[] }) {
                                                     <span className={cn("truncate uppercase font-bold", isWinner ? "text-[#A3E635]" : "text-[#8A8A8A]")}>{v.adName}</span>
                                                 </td>
                                                 <td className="text-right py-2 text-[#4A4A4A]">{formatNumber(v.impressions)}</td>
-                                                <td className="text-right py-2 text-[#F5F5F5] font-bold">{(v.ctr * 100).toFixed(2)}%</td>
+                                                <td className="text-right py-2 text-[#F5F5F5] font-bold">{v.ctr.toFixed(2)}%</td>
                                                 <td className="text-right py-2 text-[#F5F5F5]">{v.conversions}</td>
                                             </tr>
                                         );
@@ -664,6 +666,8 @@ export function AdsIntelligencePanelV2({ token, accountId, daily, campaigns }: P
             {intelligenceMetrics.saturationIndexes && <AudienceSaturationSection indexes={intelligenceMetrics.saturationIndexes} />}
             {intelligenceMetrics.benchmarkComparison && <BenchmarkSection benchmark={intelligenceMetrics.benchmarkComparison} />}
             <ABTestSection tests={intelligenceMetrics.abTests} />
+            {campaigns && campaigns.length > 0 && <AdsVideoMetricsSection campaigns={campaigns} />}
+            {campaigns && campaigns.length > 0 && <AdsQualityRankingsSection campaigns={campaigns} />}
             
             {/* Footer markers */}
             <div className="flex items-center justify-center gap-8 opacity-10 font-mono text-[8px] uppercase tracking-[0.6em] py-12">

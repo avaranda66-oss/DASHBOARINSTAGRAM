@@ -44,9 +44,9 @@ export function AdsABTestCard({ adSets, currency = 'BRL' }: Props) {
         const setB = valid[1];
 
         const aImpr  = parseInt(setA.insights!.impressions);
-        const aClicks = parseInt(setA.insights!.clicks);
+        const aClicks = parseInt(setA.insights!.inline_link_clicks ?? setA.insights!.clicks ?? '0') || 0;
         const bImpr  = parseInt(setB.insights!.impressions);
-        const bClicks = parseInt(setB.insights!.clicks);
+        const bClicks = parseInt(setB.insights!.inline_link_clicks ?? setB.insights!.clicks ?? '0') || 0;
 
         const chiSqResult  = chiSquaredProportions(aClicks, aImpr, bClicks, bImpr);
         const bayesResult  = bayesianAB(aClicks, aImpr, bClicks, bImpr);
