@@ -11,11 +11,12 @@
 </p>
 
 <h1 align="center">Instagram Dashboard OSS</h1>
-<h3 align="center">Content Manager &middot; Analytics Engine &middot; Ads Manager &middot; AI Intelligence &middot; Automation</h3>
+<h3 align="center">Content Manager &middot; Analytics Engine &middot; Ads Manager &middot; AI Intelligence &middot; Statistical Engine &middot; Automation</h3>
 
 <p align="center">
   Dashboard profissional completo para gerenciamento de contas Instagram.<br/>
   Gestao de conteudo, analytics com IA multimodal, gerenciamento de campanhas Meta Ads,<br/>
+  motor estatistico avancado (Bayesian A/B, Holt-Winters, Isolation Forest, Shapley, MMM)<br/>
   automacao de publicacao e inteligencia competitiva.
 </p>
 
@@ -23,6 +24,15 @@
   <strong>Construido por Humano + IA (Claude Code / Anthropic)</strong><br/>
   <em>Todo o codigo, arquitetura, design de UI e logica de negocios foram desenvolvidos<br/>em parceria entre um humano e Claude Code (Anthropic), demonstrando o potencial<br/>da colaboracao humano-IA no desenvolvimento de software profissional.</em>
 </p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Branch_Ativa-v2--dashboard-A3E635?style=for-the-badge" alt="Branch v2-dashboard" />
+  <img src="https://img.shields.io/badge/Motor_Estatístico-v3.0-8B5CF6?style=for-the-badge" alt="Statistical Engine v3" />
+  <img src="https://img.shields.io/badge/TypeScript-0_erros-00C853?style=for-the-badge&logo=typescript" alt="TypeScript 0 errors" />
+  <img src="https://img.shields.io/badge/ESLint-0_warnings-00C853?style=for-the-badge" alt="ESLint 0 warnings" />
+</p>
+
+> **Branch `v2-dashboard`** — Esta e a versao ativa do projeto. O design system foi completamente reescrito (V2 Industrial HUD), o Meta Ads Manager recebeu um motor estatistico avancado com 12 modulos puros em TypeScript e 9 componentes de UI conectados. Branch `main` = V1 (versao estavel anterior).
 
 ---
 
@@ -204,6 +214,60 @@ O **Instagram Dashboard OSS** e uma plataforma completa para gerenciamento profi
 </p>
 
 > **Configuracoes** — 6 secoes organizadas: **Aparencia** (toggle Claro/Escuro), **Preferencias** (visualizacao padrao do calendario: Mensal/Semanal/Diario), **Automacao do Instagram** (status de sessao Playwright por conta, botoes Verificar/Reconectar com badges CONECTADO), **Meta API Oficial** (token long-lived com validade, conexao OAuth, checklist de metricas exclusivas vs Apify), **Integracoes Locais** (API Keys: Gemini, Apify, Firecrawl + seletor de provedor IA Google Gemini/OpenRouter com dropdown de modelos: Gemini 2.0 Flash ate 3.1 Pro Preview), **Gerenciamento de Dados** (Exportar/Importar backup JSON + Zona de Perigo com botao Resetar Tudo). Rodape com versao e link para repositorio.
+
+---
+
+## Screenshots V2 — Branch `v2-dashboard`
+
+> As screenshots abaixo sao da branch ativa `v2-dashboard` com o novo **Industrial HUD Design System** e o **Motor Estatistico v3.0** completo.
+
+### 14. V2 Dashboard HUD — Visao Geral
+
+<p align="center">
+  <img src="docs/screenshots/v2-01-overview.png" alt="V2 Dashboard Overview" width="800" />
+</p>
+
+> **V2 Central de Comando** — Nova interface com design Industrial HUD. KPI cards com bordas neon, badges de status em tempo real (19 conteudos, 7 agendados), grid de status por cor com contadores visuais, proximos agendamentos com hora e tipo. Tipografia monospace, paleta escura com acentos em verde lima e azul eletrico. Header com indicadores de API e timestamp de frescor dos dados.
+
+---
+
+### 15. V2 Storyboard Kanban
+
+<p align="center">
+  <img src="docs/screenshots/v2-02-storyboard.png" alt="V2 Storyboard" width="800" />
+</p>
+
+> **V2 Storyboard** — Kanban com novo design HUD. Cards com borda colorida por tipo, badges neon, metricas compactas. Drag-and-drop entre colunas preservado. Filtros avancados com dropdown estilizado no topo.
+
+---
+
+### 16. V2 Ads Manager — KPI HUD com Dados Reais
+
+<p align="center">
+  <img src="docs/screenshots/v2-07-ads-kpis.png" alt="V2 Ads KPIs" width="800" />
+</p>
+
+> **V2 Ads Manager — KPI HUD** — Painel de anuncios com dados reais da Meta Ads API. KPI cards estilo HUD industrial: Gasto Total (BRL 57), Impressoes, CTR (0.16%), CPC, Alcance, ROAS. Cada card exibe delta contextual vs periodo anterior (seta verde/vermelha). Badge de frescor dos dados (ex: "15min atras"). Filtros de periodo com destaque neon na selecao ativa. Signal Alerts integrados no header quando anomalias sao detectadas.
+
+---
+
+### 17. V2 Ads — Motor Estatistico: Creative Ranking
+
+<p align="center">
+  <img src="docs/screenshots/v2-10-ads-criativos-ranking.png" alt="V2 Creative Ranking" width="800" />
+</p>
+
+> **V2 Creative Performance Ranking** — Ranking de criativos por score composto (Creative Scorer: CTR 35% + CPM 25% + Eng. Rate 20% + Tendencia 20%). Top criativo: "Ad - Sabor do Mar" com score 77/100 (badge verde "Good"). Grid com score visual, metricas por ad, badge de Lifecycle Stage (Fresh / Aging / Fatigued) e indicador de tendencia (subindo/caindo). Algoritmo de Isolation Forest detecta criativos anomalos (outliers de performance).
+
+---
+
+### 18. V2 Ads — Inteligencia (Signal Alerts + A/B + Benchmark)
+
+<p align="center">
+  <img src="docs/screenshots/v2-09-ads-insights-intelligence.png" alt="V2 Ads Intelligence" width="800" />
+</p>
+
+> **V2 Ads Intelligence Panel** — Central de inteligencia estatistica em tempo real. **Signal_Alerts_Feed**: alertas Z-score (WARN/CRIT) com metricas especificas e valores absolutos. **Binary_Verification_Kernels**: detector automatico de A/B tests (Bayesian + Z-test), declaracao de vencedor com significancia estatistica e lift percentual. **Ecosystem_Calibration**: benchmark Food & Beverage com toggle SECTOR_HUB (benchmark do setor) / HIST_CORE (comparacao vs periodo anterior) — cada modo mostra baseline diferente. **Multivariate_Coherence_Probe**: score SYSTEM_NOMINAL indica quando multiplas metricas se movem coerentemente.
 
 ---
 
@@ -469,64 +533,148 @@ Dados **privados e precisos** (alcance real, saves, shares). Cache automatico co
 
 ## Motor Estatistico Avancado
 
-O dashboard possui um motor de analytics proprio, implementado em TypeScript puro (zero dependencias externas), com funcoes de nivel academico para analise de dados de marketing digital.
+O dashboard possui um motor de analytics proprio — **Statistical Engine v3.0** — implementado em TypeScript puro (zero dependencias externas), com 12 modulos de nivel academico para analise de dados de marketing digital.
 
-### Modulos
-
-#### `statistics.ts` — 34 funcoes exportadas
-
-Motor principal com estatisticas descritivas, correlacao, tendencia, deteccao de outliers, analise temporal e mais:
-
-| Funcao | Descricao |
-|--------|-----------|
-| `descriptiveStats` | Media, mediana, desvio padrao amostral (Bessel), quartis, IQR, CV |
-| `linearTrend` | Regressao linear com slope, R-squared e predicao |
-| `pearsonCorrelation` | Correlacao entre duas variaveis |
-| `engagementScore` | Score ponderado de engajamento |
-| `detectOutliers` | Deteccao de outliers via IQR |
-| `bestTimeToPost` | Melhor dia/hora baseado em historico |
-| `movingAverage` | Media movel com janela configuravel |
-| `zScores` | Z-scores para identificar performance anomala |
-| `paretoAnalysis` | Analise 80/20 de conteudo |
-| `shannonEntropy` | **Entropia de Shannon** para diversidade de mix de conteudo (0 = homogeneo, 1 = maximo diverso) |
-| `contentVelocityScore` | Velocidade de engajamento pos-publicacao |
-| `variableRewardScore` | Imprevisibilidade de conteudo (reward variavel) |
-| + 22 outras | Consistencia de postagem, identidade de conteudo, comparacao temporal, etc. |
+### Modulos Core (`lib/utils/`)
 
 #### `math-core.ts` — Primitivas matematicas reutilizaveis
 
 | Funcao | Descricao |
 |--------|-----------|
 | `normalCDF(z)` | CDF da normal padrao (Abramowitz & Stegun, erro < 7.5e-8) |
+| `normalQuantile(p)` | Quantil da distribuicao normal (inversa da CDF) |
 | `bootstrapCI(values, options)` | Intervalo de confianca via bootstrap (percentile method, B=1000) |
 | `olsSimple(x, y)` | Regressao linear OLS com alpha, beta, R-squared e residuos |
 
-#### `forecasting.ts` — Previsao de series temporais
+#### `bayesian-ab.ts` — A/B Testing Bayesiano (US-24)
+
+Teste A/B com inferencia Bayesiana + Z-test frequentista:
 
 | Funcao | Descricao |
 |--------|-----------|
-| `holtWinters(data, options)` | Triple Exponential Smoothing (aditivo) com tendencia + sazonalidade semanal. Ideal para prever metricas de engajamento nos proximos 7 dias. |
-| `cusumDetect(data, options)` | Deteccao de change-points via CUSUM. Identifica quando uma metrica mudou de regime (ex: alcance caiu significativamente apos mudanca de algoritmo). |
+| `bayesianABTest(control, treatment)` | Beta-Binomial conjugada, calcula P(B>A), lift esperado e IC 95% |
+| `zTestProportions(pA, pB, nA, nB)` | Z-test de proporcoes com two-sided p-value |
+| `detectABTests(campaigns)` | Auto-deteccao de testes por padroes de nomenclatura de campanha |
+| Declaracao de vencedor | Bayesian: P(B>A) >= 95% — Frequentista: p < 0.05 |
 
-#### `advanced-indicators.ts` — Indicadores avancados de marketing
+#### `anomaly-detection.ts` — Deteccao de Anomalias STL + MAD (US-25)
 
-| Funcao | O que responde | Metodo |
-|--------|----------------|--------|
-| `advertisingElasticity(spend, revenue)` | "Cada R$1 a mais em ads gera quanto a mais de resultado?" | Regressao log-log (elasticidade economica) |
-| `creativeHalfLife(dailyCTRs)` | "Em quantos dias meu criativo perde metade da eficacia?" | Decaimento exponencial (meia-vida) |
-| `diminishingReturns(spend, result)` | "Estou na zona de saturacao ou ainda posso escalar?" | Curva de Michaelis-Menten (retornos decrescentes) |
+Detecta anomalias em series temporais de metricas de ads:
 
-### Inteligencia de Ads (Intelligence Panel v2)
+| Funcao | Descricao |
+|--------|-----------|
+| `stlDecompose(series)` | Decomposicao STL simplificada (tendencia + sazonalidade + residuo) |
+| `madAnomalyDetect(series, options)` | Z-score robusto via MAD (Median Absolute Deviation) — resistente a outliers |
+| `detectSignalAlerts(kpiHistory)` | Gera Signal_Alerts_Feed com severity WARN/CRIT e Z-scores |
+| `multivariateCoherence(alerts)` | Multivariate_Coherence_Probe — detecta se multiplas metricas se movem juntas (SYSTEM_NOMINAL vs anomalia genuina) |
 
-O painel de inteligencia de ads calcula automaticamente:
+#### `hw-optimizer.ts` — Holt-Winters Autotuning (US-26)
 
-| Metrica | Descricao | Como interpreta |
-|---------|-----------|-----------------|
-| **Creative Fatigue Score** | Detecta esgotamento de criativos por CTR declinante | Verde (Fresh) / Amarelo (Aging) / Vermelho (Fatigued) |
-| **Audience Saturation Index** | Frequencia vs frequencia otima por vertical | Baixo / Medio / Alto / Critico |
-| **Account Health Score** | Score 0-100 combinando CTR, CPC, frequencia, diversidade | Excelente / Bom / Precisa Atencao / Critico |
-| **A/B Test Detection** | Identifica testes automaticamente por nome de campanha | Significancia estatistica via Z-test |
-| **Benchmark Comparison** | Compara metricas vs benchmark da industria | Acima / Na media / Abaixo |
+Previsao de series temporais com autotuning de hiperparametros:
+
+| Funcao | Descricao |
+|--------|-----------|
+| `holtWinters(data, params)` | Triple Exponential Smoothing com tendencia + sazonalidade |
+| `autotuneHW(series)` | Grid search em alpha/beta/gamma — minimiza RMSE via leave-one-out |
+| `forecastNext7Days(metric)` | Previsao dos proximos 7 dias com intervalo de confianca |
+| `cusumDetect(data, options)` | Deteccao de change-points (mudanca de regime) via CUSUM |
+
+#### `causal-behavioral.ts` — Analise Causal + Comportamental (US-27)
+
+Modelos de causalidade e comportamento de usuario:
+
+| Funcao | Descricao |
+|--------|-----------|
+| `grangerCausality(x, y, lag)` | Teste de causalidade de Granger entre duas series (ex: spend -> conversoes) |
+| `foggBehaviorModel(motivation, ability, trigger)` | Modelo de Fogg — score de probabilidade de acao (0-1) |
+| `hookRateAnalysis(impressions, clicks, conversions)` | Taxa de engajamento por etapa do funil (Hook Rate, Hold Rate, Convert Rate) |
+| `attentionDecayModel(ctr_series)` | Modelo de decaimento exponencial de atencao ao criativo |
+
+#### `isolation-forest.ts` — Deteccao de Anomalias Multivariada (US-28)
+
+Isolation Forest para detectar campanhas e criativos anomalos:
+
+| Funcao | Descricao |
+|--------|-----------|
+| `isolationForest(data, options)` | Algoritmo Isolation Forest — anomaly score por ponto (0-1) |
+| `detectAnomalousCampaigns(campaigns)` | Score de anormalidade para cada campanha (CTR, CPC, CPM, ROAS multivariado) |
+| `detectAnomalousCreatives(ads)` | Identifica criativos outliers de performance |
+
+#### `attribution.ts` — Modelos de Atribuicao (US-29 / Shapley)
+
+Atribuicao de valor por canal e etapa do funil:
+
+| Funcao | Descricao |
+|--------|-----------|
+| `shapleyAttribution(channels, conversions)` | Valor de Shapley — distribui credito justo entre canais/campanhas |
+| `markovChainAttribution(paths)` | Cadeias de Markov para atribuicao multicanal |
+| `firstLastLinearAttribution(touchpoints)` | Modelos classicos: first-touch, last-touch, linear, time-decay |
+
+#### `mmm.ts` — Media Mix Modeling (MMM)
+
+Modela contribuicao de cada canal de midia no resultado:
+
+| Funcao | Descricao |
+|--------|-----------|
+| `mediaMixModel(channels, revenue)` | Regressao OLS com adstock (efeito residual de midia) |
+| `adstockTransform(spends, decay)` | Transformacao adstock — modela "memoria" da publicidade |
+| `roasDecomposition(mmm_result)` | Decompoe ROAS por canal com contribuicao relativa |
+
+#### `budget-optimizer.ts` — Otimizador de Budget
+
+Alocacao otima de orcamento entre campanhas/canais:
+
+| Funcao | Descricao |
+|--------|-----------|
+| `optimizeBudget(campaigns, totalBudget)` | Alocacao proporcional ao ROAS ajustado por potencial de escala |
+| `diminishingReturnsModel(spend, result)` | Curva de Michaelis-Menten — retornos decrescentes |
+| `marginalROAS(spend_series, result_series)` | ROAS marginal em cada ponto da curva de spend |
+
+#### `creative-scorer.ts` — Score de Qualidade de Criativos
+
+Ranking de criativos por performance composta:
+
+| Funcao | Descricao |
+|--------|-----------|
+| `scoreCreative(ad_metrics)` | Score 0-100: CTR (35%) + CPM eficiencia (25%) + Eng. Rate (20%) + Tendencia (20%) |
+| `lifecycleStage(ctr_series)` | Classifica ciclo de vida: Fresh / Aging / Fatigued / Dead |
+| `rankCreatives(ads)` | Ranking ordenado com scores, badges e recomendacoes |
+
+#### `insight-engine.ts` — Motor de Insights Automaticos
+
+Gera insights narrativos automaticamente a partir dos dados:
+
+| Funcao | Descricao |
+|--------|-----------|
+| `generateInsights(kpi, benchmark, alerts)` | Narrativas automaticas: "Seu CTR esta 2.3x abaixo do benchmark de mercado" |
+| `prioritizeInsights(insights)` | Ordena insights por impacto potencial no negocio |
+| `insightToRecommendation(insight)` | Converte insight em acao especifica recomendada |
+
+#### `incrementality.ts` — Testes de Incrementalidade
+
+Mede o impacto real (incremental) dos anuncios:
+
+| Funcao | Descricao |
+|--------|-----------|
+| `incrementalityTest(test_group, control_group)` | Differenece-in-differences para medir lift real |
+| `syntheticControl(treated, donors)` | Controle sintetico via combinacao de series temporais |
+| `measureTrueROAS(spend, conversions, baseline)` | ROAS incremental (descontando conversoes organicas) |
+
+### Intelligence Panel v2 — UI Integrada
+
+9 componentes de UI conectados ao motor estatistico:
+
+| Componente | Modulo | Descricao |
+|------------|--------|-----------|
+| `Signal_Alerts_Feed` | anomaly-detection | Feed de alertas Z-score em tempo real (WARN/CRIT) |
+| `Binary_Verification_Kernels` | bayesian-ab | Painel A/B com Bayesian + Z-test, declaracao de vencedor |
+| `Ecosystem_Calibration` | attribution | Benchmark SECTOR_HUB vs HIST_CORE (periodo anterior) |
+| `Multivariate_Coherence_Probe` | anomaly-detection | Score SYSTEM_NOMINAL para coherencia de metricas |
+| `Creative Performance Ranking` | creative-scorer | Ranking com score 0-100 e lifecycle stage por criativo |
+| `Ads Forecast Chart` | hw-optimizer | Previsao 7 dias com IC de confianca (Holt-Winters) |
+| `Budget Optimizer` | budget-optimizer | Sugestao de realocacao de orcamento por ROAS |
+| `Ads Intelligence Panel` | insight-engine | Feed de insights narrativos priorizados |
+| `Anomaly Multivariate` | isolation-forest | Mapa de anomalias multivariado por campanha |
 
 ---
 
