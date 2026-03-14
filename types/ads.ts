@@ -213,6 +213,35 @@ export interface AdsFilters {
     attributionWindow?: AttributionWindow;
 }
 
+// ─── Demographics Breakdown Types (US-69 + US-70) ───────────────────────────
+
+/** Linha de breakdown age × gender retornada pela Meta API */
+export interface DemographicBreakdown {
+    age: string;        // "18-24" | "25-34" | "35-44" | "45-54" | "55-64" | "65+"
+    gender: string;     // "male" | "female" | "unknown"
+    impressions: number;
+    clicks: number;
+    spend: number;
+    ctr: number;        // %
+    cpc: number;        // R$
+    conversions: number;
+    roas: number;
+}
+
+/** Linha de breakdown publisher_platform × platform_placement */
+export interface PlacementBreakdown {
+    publisher_platform: string;  // "facebook" | "instagram" | "audience_network" | "messenger"
+    platform_placement: string;  // "feed" | "stories" | "reels" | "right_hand_column" | ...
+    impressions: number;
+    clicks: number;
+    spend: number;
+    ctr: number;        // %
+    cpc: number;        // R$
+    cpm: number;        // R$
+    conversions: number;
+    roas: number;
+}
+
 // ─── Intelligence Metrics Types ─────────────────────────────────────────────
 
 export type FatigueLevel = 'healthy' | 'early' | 'moderate' | 'severe';

@@ -300,6 +300,45 @@ export async function getInsights(
     return data;
 }
 
+// Campos reduzidos para requests de breakdown (sem video/quality — desnecessários por segmento)
+const BREAKDOWN_FIELDS = [
+    'impressions', 'clicks', 'inline_link_clicks', 'spend',
+    'actions', 'purchase_roas',
+].join(',');
+
+/**
+ * US-69 / US-70 — Insights com breakdown demográfico ou de placement.
+ * breakdowns: ['age', 'gender'] | ['publisher_platform', 'platform_placement']
+ * A Meta API agrega no nível account quando level='account' + breakdowns.
+ */
+export async function getInsightsWithBreakdown(
+    token: string,
+    accountId: string,
+    breakdowns: string[],
+    options: {
+        datePreset?: AdsDatePreset;
+        timeRange?: { since: string; until: string };
+    } = {},
+): Promise<Array<AdInsight & Record<string, string>>> {
+    const { datePreset, timeRange } = options;
+    const cacheKey = `breakdown:${accountId}:${breakdowns.join(',')}:${datePreset || ''}:${JSON.stringify(timeRange || {})}`;
+    const cached = getCached<Array<AdInsight & Record<string, string>>>(cacheKey);
+    if (cached) return cached;
+
+    const params: Record<string, string> = {
+        fields: BREAKDOWN_FIELDS,
+        level: 'account',
+        breakdowns: breakdowns.join(','),
+        limit: '500',
+    };
+    if (datePreset && datePreset !== 'lifetime') params.date_preset = datePreset;
+    if (timeRange) params.time_range = JSON.stringify(timeRange);
+
+    const data = await graphGetAll<AdInsight & Record<string, string>>(`${accountId}/insights`, token, params);
+    setCache(cacheKey, data, INTELLIGENCE_CACHE_TTL);
+    return data;
+}
+
 /** Insights diários para gráficos de linha */
 export async function getDailyInsights(
     token: string,
@@ -595,6 +634,10 @@ async function getReachEstimate(token: string, accountId: string, targeting: Rec
             audience_size_lower_bound?: string | number;
             audience_size_upper_bound?: string | number;
             users?: string | number;
+        // B-07: /reachestimate foi deprecated no Meta Ads API v17+ e pode ser removido
+        // em versões futuras (v26+). Endpoint alternativo: /delivery_estimate (requer
+        // ad_object_id de um anúncio ativo, não de targeting_spec genérico).
+        // Monitorar: https://developers.facebook.com/docs/marketing-api/changelog
         // accountId já tem o formato act_XXXXXXXXX — não adicionar prefixo duplo
         }>(`${accountId}/reachestimate`, token, {
             targeting_spec: targetingJson,
@@ -689,6 +732,12 @@ export function detectABTests(
         existing.impressions += parseInt(r.impressions) || 0;
         existing.clicks += parseInt(r.inline_link_clicks || r.clicks) || 0;
         existing.spend += parseFloat(r.spend) || 0;
+        // B-06: Lead dual-tracking risk — contas híbridas (pixel + lead form) podem gerar
+        // double-count se ambos 'offsite_conversion.fb_pixel_lead' e 'lead' forem disparados
+        // para a mesma conversão. Em contas exclusivamente de lead form (sem pixel), usar
+        // apenas 'lead'. Em contas exclusivamente de pixel, usar apenas 'offsite_conversion.fb_pixel_lead'.
+        // Aqui somamos os dois para maximizar cobertura, mas em contas híbridas isso pode
+        // inflar conversões. Monitorar com Event Match Quality no Events Manager.
         existing.conversions += sumActions(r.actions, ['offsite_conversion.fb_pixel_purchase', 'offsite_conversion.fb_pixel_lead', 'lead']);
         group.ads.set(r.ad_id, existing);
     }

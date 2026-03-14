@@ -21,6 +21,7 @@ import type { AdsDatePreset, AttributionWindow } from '@/types/ads';
 import { cn } from '@/design-system/utils/cn';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { downloadCsv, csvFilename, campaignsToCSV, dailyInsightsToCSV } from '@/lib/utils/export-csv';
+import { AdsDemographicsSection } from '@/features/ads/components/ads-demographics-section';
 
 type ViewTab = 'overview' | 'charts' | 'intelligence' | 'creatives';
 
@@ -728,6 +729,13 @@ export default function AdsDashboardPage() {
                             {campaigns.length >= 2 && (
                                 <AdsBudgetAllocation campaigns={campaigns} currency={currency} />
                             )}
+                            {/* US-69 + US-70: Demographics + Placement */}
+                            <AdsDemographicsSection
+                                token={adsToken}
+                                accountId={adsAccountId}
+                                datePreset={filters.customRange ? undefined : filters.datePreset}
+                                timeRange={filters.customRange}
+                            />
                         </div>
                     )}
                 </div>
