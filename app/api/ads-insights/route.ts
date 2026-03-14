@@ -9,7 +9,7 @@ const sub = (d: Date, days: number) => { const r = new Date(d); r.setDate(r.getD
  * FASE 3 — Delta contextual por preset.
  * Cada preset tem uma comparação semanticamente correta:
  *   today      → vs ontem (não anteontem)
- *   yesterday  → vs anteontem
+ *   yesterday  → vs mesmo dia semana passada (posição sazonal idêntica)
  *   last_7d    → vs 7d anteriores (correto)
  *   last_14d   → vs 14d anteriores (correto)
  *   this_month → vs mês passado calendário (não 30d antes)
@@ -35,7 +35,8 @@ function getPreviousPeriodRange(
         return { since: fmt(yesterday), until: fmt(yesterday) };
     }
     if (datePreset === 'yesterday') {
-        const d = sub(today, 2);
+        // Compara com mesmo dia da semana passada (mesma posição sazonal)
+        const d = sub(today, 8); // ontem foi today-1, semana antes = today-8
         return { since: fmt(d), until: fmt(d) };
     }
     if (datePreset === 'this_month') {

@@ -219,6 +219,19 @@ export default function AdsDashboardPage() {
     // kpiDelta vem do full account — suprimir quando filtros ativos para evitar comparação inconsistente
     const isFiltered = filters.statusFilter !== 'all' || selectedCampaignFilter !== 'all';
 
+    // Dados incompletos: today/yesterday têm latência de 15-72h na Meta (conversões especialmente)
+    const isIncompleteData = !filters.customRange && (filters.datePreset === 'today' || filters.datePreset === 'yesterday');
+
+    // Threshold mínimo: suprimir delta se impressões insuficientes para comparação confiável
+    const MIN_IMPRESSIONS_FOR_DELTA = 200;
+    const hasEnoughSample = (filteredKpiSummary?.totalImpressions ?? 0) >= MIN_IMPRESSIONS_FOR_DELTA;
+
+    // Delta só exibido quando: não filtrado + amostra mínima + dados não incompletos (para conversões)
+    const showDelta = !isFiltered && hasEnoughSample;
+    // Para métricas de entrega (impressões, cliques, CTR, CPM, CPC) toleramos today/yesterday
+    // Para conversões/ROAS/CPA (dependem de attribution), suprimimos em today/yesterday
+    const showConversionDelta = showDelta && !isIncompleteData;
+
     const currency = account?.currency || kpiSummary?.currency || 'BRL';
 
     // Sparklines reais dos últimos dias disponíveis
@@ -349,45 +362,68 @@ export default function AdsDashboardPage() {
             {/* ─── Hero KPI Band ─── */}
             {filteredKpiSummary && (
                 <motion.div variants={item} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                    {/* Gasto/CTR/CPM: métricas de entrega — ok em today/yesterday */}
                     <KpiCard
                         label="Gasto Total"
                         value={formatCompact(filteredKpiSummary.totalSpend, true)}
-                        delta={!isFiltered ? (kpiDelta?.totalSpend ?? undefined) : undefined}
+                        delta={showDelta ? (kpiDelta?.totalSpend ?? undefined) : undefined}
                         deltaLabel={deltaLabel}
                         sparkline={spendSparkline.length > 1 ? spendSparkline : undefined}
                     />
+                    {/* Resultados/CPA/ROAS: dependem de atribuição — suprimidos em today/yesterday */}
                     <KpiCard
                         label="Resultados"
                         value={filteredKpiSummary.totalConversions.toString()}
-                        delta={!isFiltered ? (kpiDelta?.totalConversions ?? undefined) : undefined}
+                        delta={showConversionDelta ? (kpiDelta?.totalConversions ?? undefined) : undefined}
                         deltaLabel={deltaLabel}
                         sparkline={conversionsSparkline.length > 1 ? conversionsSparkline : undefined}
                     />
                     <KpiCard
                         label="Custo/Resu"
                         value={formatCurrency(filteredKpiSummary.cpa)}
-                        delta={!isFiltered && kpiDelta?.cpa != null ? -kpiDelta.cpa : undefined}
+                        delta={showConversionDelta && kpiDelta?.cpa != null ? -kpiDelta.cpa : undefined}
                         deltaLabel={deltaLabel}
                     />
                     <KpiCard
                         label="ROAS"
                         value={`${filteredKpiSummary.roas.toFixed(2)}x`}
-                        delta={!isFiltered ? (kpiDelta?.roas ?? undefined) : undefined}
+                        delta={showConversionDelta ? (kpiDelta?.roas ?? undefined) : undefined}
                         deltaLabel={deltaLabel}
                         sparkline={roasSparkline.length > 1 ? roasSparkline : undefined}
                     />
                     <KpiCard
                         label="CTR"
                         value={`${filteredKpiSummary.avgCtr.toFixed(2)}%`}
-                        delta={!isFiltered ? (kpiDelta?.avgCtr ?? undefined) : undefined}
+                        delta={showDelta ? (kpiDelta?.avgCtr ?? undefined) : undefined}
                         deltaLabel={deltaLabel}
                     />
                     <KpiCard
                         label="CPM"
                         value={formatCurrency(filteredKpiSummary.avgCpm)}
-                        delta={!isFiltered && kpiDelta?.avgCpm != null ? -kpiDelta.avgCpm : undefined}
+                        delta={showDelta && kpiDelta?.avgCpm != null ? -kpiDelta.avgCpm : undefined}
                         deltaLabel={deltaLabel}
                     />
+                </motion.div>
+            )}
+
+            {/* Badge: dados de conversão incompletos em today/yesterday (attribution window) */}
+            {isIncompleteData && filteredKpiSummary && (
+                <motion.div variants={item} className="flex items-center gap-2 px-3 py-2 rounded-[4px] bg-blue-500/10 border border-blue-500/20 font-mono text-[10px] text-blue-400 tracking-widest">
+                    <span>ℹ</span>
+                    <span>
+                        <strong>Resultados, ROAS e CPA</strong> podem estar incompletos — conversões têm latência de até 24h na Meta.
+                        Variações suprimidas para estes KPIs.
+                    </span>
+                </motion.div>
+            )}
+
+            {/* Badge: amostra insuficiente para variações confiáveis */}
+            {!hasEnoughSample && filteredKpiSummary && !isLoading && (filteredKpiSummary.totalImpressions ?? 0) > 0 && (
+                <motion.div variants={item} className="flex items-center gap-2 px-3 py-2 rounded-[4px] bg-zinc-500/10 border border-zinc-500/20 font-mono text-[10px] text-zinc-400 tracking-widest">
+                    <span>⊘</span>
+                    <span>
+                        Amostra insuficiente ({(filteredKpiSummary.totalImpressions ?? 0).toLocaleString('pt-BR')} impressões). Variações ocultas — mínimo {MIN_IMPRESSIONS_FOR_DELTA.toLocaleString('pt-BR')} para comparação confiável.
+                    </span>
                 </motion.div>
             )}
 
