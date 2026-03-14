@@ -42,10 +42,19 @@ export async function POST(req: NextRequest) {
         let ads = null;
 
         if (includeSets) {
-            adSets = await getAdSets(token, accountId);
-            const adsetInsights = await getInsights(token, accountId, { level: 'adset', datePreset, timeRange });
-            const adsetInsightMap = new Map(adsetInsights.map(i => [i.adset_id, i]));
-            adSets = adSets.map(s => ({ ...s, insights: adsetInsightMap.get(s.id) || null }));
+            // AdSets são dados secundários — falha graciosamente para não derrubar KPIs/campanhas
+            try {
+                const [rawAdSets, adsetInsights] = await Promise.all([
+                    getAdSets(token, accountId),
+                    getInsights(token, accountId, { level: 'adset', datePreset, timeRange }),
+                ]);
+                const adsetInsightMap = new Map(adsetInsights.map(i => [i.adset_id, i]));
+                adSets = rawAdSets.map(s => ({ ...s, insights: adsetInsightMap.get(s.id) || null }));
+            } catch (adsetErr: any) {
+                // Rate limit ou erro secundário — retorna adsets vazios, não falha a rota inteira
+                console.warn('[ads-campaigns] adsets indisponíveis (rate limit?):', adsetErr.message);
+                adSets = [];
+            }
         }
 
         if (includeAds) {

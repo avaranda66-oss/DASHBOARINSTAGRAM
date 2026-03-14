@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDailyInsights, getInsights, computeKpiSummary, getCampaigns } from '@/lib/services/facebook-ads.service';
+import { getDailyInsights, getInsights, computeKpiSummary } from '@/lib/services/facebook-ads.service';
 import type { AdsDatePreset, AdsKpiDelta } from '@/types/ads';
 
 const fmt = (d: Date) => d.toISOString().split('T')[0];
@@ -121,15 +121,14 @@ export async function POST(req: NextRequest) {
 
         const prevRange = getPreviousPeriodRange(datePreset, timeRange);
 
-        // Buscar tudo em paralelo (daily com fallback + restante)
-        const [{ daily: dailyData, usedPreset }, insights, campaigns, currAccountInsights, prevInsights] = await Promise.all([
+        // Buscar tudo em paralelo — getCampaigns removido (já vem via ads-campaigns, economiza 1 request)
+        const [{ daily: dailyData, usedPreset }, insights, currAccountInsights, prevInsights] = await Promise.all([
             getDailyWithFallback(token, accountId, datePreset, timeRange),
             getInsights(token, accountId, {
                 level: level as any,
                 datePreset,
                 timeRange,
             }),
-            getCampaigns(token, accountId),
             getInsights(token, accountId, {
                 level: 'account',
                 datePreset,
@@ -144,9 +143,10 @@ export async function POST(req: NextRequest) {
 
         console.log(`[ads-insights] preset=${datePreset}, usedPreset=${usedPreset ?? 'same'}, daily=${dailyData.length}, insights=${insights.length}`);
 
-        const kpiSummary = computeKpiSummary(insights, campaigns);
-        const currKpiForDelta = computeKpiSummary(currAccountInsights, campaigns);
-        const prevKpi = computeKpiSummary(prevInsights, campaigns);
+        // Passa [] para campanhas nas funções de delta — contagem ativo/pausado não é necessária lá
+        const kpiSummary = computeKpiSummary(insights, []);
+        const currKpiForDelta = computeKpiSummary(currAccountInsights, []);
+        const prevKpi = computeKpiSummary(prevInsights, []);
 
         const kpiDelta: AdsKpiDelta = {
             totalSpend:       delta(currKpiForDelta.totalSpend, prevKpi.totalSpend),

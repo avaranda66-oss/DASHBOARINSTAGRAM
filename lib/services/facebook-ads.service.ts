@@ -62,7 +62,8 @@ function recordSuccess(breaker: CircuitBreakerState = coreCircuitBreaker): void 
 // ─── Cache Layer ─────────────────────────────────────────────────────────────
 
 const cache = new Map<string, { data: unknown; ts: number; ttl: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 min
+const CACHE_TTL = 5 * 60 * 1000; // 5 min para insights (mudam frequentemente)
+const ADSETS_CACHE_TTL = 30 * 60 * 1000; // 30 min para adsets (estrutura muda raramente)
 const INTELLIGENCE_CACHE_TTL = 15 * 60 * 1000; // 15 min for intelligence data
 
 function getCached<T>(key: string): T | null {
@@ -223,7 +224,7 @@ export async function getAdSets(
         fields: 'id,name,campaign_id,status,effective_status,daily_budget,lifetime_budget,budget_remaining,billing_event,optimization_goal,bid_amount,created_time,start_time,end_time',
         limit: '100',
     });
-    setCache(cacheKey, data);
+    setCache(cacheKey, data, ADSETS_CACHE_TTL); // 30min — estrutura de adsets muda raramente
     return data;
 }
 
