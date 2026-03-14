@@ -2,7 +2,7 @@
 
 import { useState, useRef, type KeyboardEvent } from 'react';
 // [ZERO_LUCIDE_PURGE]
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/design-system/atoms/Badge';
 import { cn } from '@/design-system/utils/cn';
 
 interface TagInputProps {
@@ -59,7 +59,8 @@ export function TagInput({
                 {tags.map((tag, index) => (
                     <Badge
                         key={`${tag}-${index}`}
-                        variant="secondary"
+                        variant="subtle"
+                        intent="default"
                         className="gap-2 text-[9px] uppercase tracking-widest bg-white/5 text-[#F5F5F5] border-white/10 hover:bg-white/10 transition-colors py-1 px-2 rounded"
                     >
                         <span className="text-[#A3E635] opacity-60">{wrap(GLYPHS.TAG)}</span>

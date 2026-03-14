@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card } from '@/components/ui/card';
+
 import { Button } from '@/design-system/atoms/Button';
 import type { AdsKpiSummary, AdCampaign, DailyAdInsight } from '@/types/ads';
 // [ZERO_LUCIDE_PURGE]
@@ -154,7 +154,7 @@ export function AdsAiPanel({ kpi, campaigns, daily, currency }: Props) {
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="p-5 bg-[#050505] border-white/10 rounded-lg group">
+                <div className="p-5 bg-[#050505] border border-white/10 rounded-lg group">
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-[9px] text-[#4A4A4A] uppercase tracking-widest font-bold">Cost_Per_Unit</span>
                         <span className="text-[#A3E635] opacity-40 group-hover:opacity-100">{wrap(GLYPHS.MONEY)}</span>
@@ -165,9 +165,9 @@ export function AdsAiPanel({ kpi, campaigns, daily, currency }: Props) {
                     <p className="text-[9px] text-[#4A4A4A] mt-2 uppercase tracking-tighter">
                         VAL_TOTAL: {kpi.totalConversions} CONV_NODES
                     </p>
-                </Card>
+                </div>
 
-                <Card className="p-5 bg-[#050505] border-white/10 rounded-lg group">
+                <div className="p-5 bg-[#050505] border border-white/10 rounded-lg group">
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-[9px] text-[#4A4A4A] uppercase tracking-widest font-bold">Node_Status</span>
                         <span className="text-blue-500 opacity-40 group-hover:opacity-100">{wrap(GLYPHS.TREND_UP)}</span>
@@ -178,9 +178,9 @@ export function AdsAiPanel({ kpi, campaigns, daily, currency }: Props) {
                     <p className="text-[9px] text-[#4A4A4A] mt-2 uppercase tracking-tighter">
                         SYSTEM_LOAD: STABLE
                     </p>
-                </Card>
+                </div>
 
-                <Card className="p-5 bg-[#050505] border-white/10 rounded-lg group">
+                <div className="p-5 bg-[#050505] border border-white/10 rounded-lg group">
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-[9px] text-[#4A4A4A] uppercase tracking-widest font-bold">CPM_Baseline</span>
                         <span className="text-purple-500 opacity-40 group-hover:opacity-100">{wrap(GLYPHS.BRAIN)}</span>
@@ -189,13 +189,13 @@ export function AdsAiPanel({ kpi, campaigns, daily, currency }: Props) {
                     <p className="text-[9px] text-[#4A4A4A] mt-2 uppercase tracking-tighter">
                         PER_1K_IMPRESSIONS
                     </p>
-                </Card>
+                </div>
             </div>
 
             {/* Insights Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {insights.map((insight, i) => (
-                    <Card key={i} className={cn("p-5 border rounded-lg", typeColors[insight.type])}>
+                    <div key={i} className={cn("p-5 border border-white/10 rounded-lg", typeColors[insight.type])}>
                         <div className="flex items-start gap-4">
                             <span className="text-sm mt-0.5">{wrap(glyphMap[insight.type])}</span>
                             <div className="space-y-1">
@@ -203,13 +203,13 @@ export function AdsAiPanel({ kpi, campaigns, daily, currency }: Props) {
                                 <p className="text-[10px] leading-relaxed opacity-80">{insight.description}</p>
                             </div>
                         </div>
-                    </Card>
+                    </div>
                 ))}
             </div>
 
             {/* AI Deep Analysis */}
             {aiAnalysis && (
-                <Card className="p-8 border-[#A3E635]/20 bg-[#A3E635]/5 rounded-lg">
+                <div className="p-8 border border-[#A3E635]/20 bg-[#A3E635]/5 rounded-lg">
                     <div className="flex items-center gap-3 mb-6 border-b border-[#A3E635]/10 pb-4">
                         <span className="text-[#A3E635]">{wrap(GLYPHS.BRAIN)}</span>
                         <h3 className="text-[10px] font-bold uppercase tracking-[0.4em] text-[#A3E635]">System_Deep_Analysis_v.2.1</h3>
@@ -217,7 +217,7 @@ export function AdsAiPanel({ kpi, campaigns, daily, currency }: Props) {
                     <div className="text-[11px] leading-relaxed text-[#F5F5F5] uppercase tracking-tight whitespace-pre-wrap">
                         {aiAnalysis}
                     </div>
-                </Card>
+                </div>
             )}
         </div>
     );

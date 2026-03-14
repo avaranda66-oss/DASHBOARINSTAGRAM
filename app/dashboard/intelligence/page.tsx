@@ -439,7 +439,7 @@ export default function IntelligencePage() {
                                                 <tr className="border-b border-white/5">
                                                     <th className="py-4 text-[10px] text-[#4A4A4A] tracking-widest uppercase">Indicator</th>
                                                     {vsBusinesses.map(b => (
-                                                        <th key={b.id} className="py-4 text-[10px] text-[#A3E635] tracking-widest uppercase text-center">{b.name.slice(0, 15)}</th>
+                                                        <th key={b.id} className="py-4 text-[10px] text-[#A3E635] tracking-widest uppercase text-center">{(b.name ?? '').slice(0, 15)}</th>
                                                     ))}
                                                 </tr>
                                             </thead>

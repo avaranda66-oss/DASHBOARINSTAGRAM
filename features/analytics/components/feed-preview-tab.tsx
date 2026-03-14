@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, Reorder } from 'framer-motion';
 // Lucide icons removed in favor of ASCII HUD glyphs
-import { Button } from '@/components/ui/button';
+import { Button } from '@/design-system/atoms/Button';
 import { FeedPreviewPhone } from './feed-preview-phone';
 import { FeedAnalysisPanel, type FeedAnalysisResult } from './feed-analysis-panel';
 import type { InstagramPostMetrics } from '@/types/analytics';

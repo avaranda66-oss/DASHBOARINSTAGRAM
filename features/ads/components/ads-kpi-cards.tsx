@@ -1,12 +1,11 @@
 'use client';
 
-import { Card } from '@/components/ui/card';
-import type { AdsKpiSummary } from '@/types/ads';
-// [ZERO_LUCIDE_PURGE]
+import type { AdsKpiSummary, AdsKpiDelta } from '@/types/ads';
 import { cn } from '@/design-system/utils/cn';
 
 interface Props {
     kpi: AdsKpiSummary;
+    delta?: AdsKpiDelta | null;
 }
 
 const GLYPHS = {
@@ -17,7 +16,7 @@ const GLYPHS = {
     TREND: '↗',
     USERS: '○',
     CHART: '▤',
-    AUTO: '⚡'
+    AUTO: '⚡',
 };
 
 const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
@@ -36,7 +35,27 @@ function formatPercent(value: number): string {
     return `${value.toFixed(2)}%`;
 }
 
-export function AdsKpiCards({ kpi }: Props) {
+/** Badge de variação vs período anterior */
+function DeltaBadge({ value, invert = false }: { value: number | null | undefined; invert?: boolean }) {
+    if (value == null || !isFinite(value)) return null;
+    // invert=true: queda é boa (ex: CPC — menor é melhor)
+    const isPositive = invert ? value < 0 : value > 0;
+    const color = isPositive ? '#A3E635' : '#EF4444';
+    const arrow = value > 0 ? '↑' : '↓';
+    const abs = Math.abs(value);
+    const label = abs >= 1000 ? `${(abs / 1000).toFixed(1)}K%` : `${abs.toFixed(1)}%`;
+
+    return (
+        <span
+            className="font-mono text-[9px] font-semibold mt-1 flex items-center gap-0.5"
+            style={{ color }}
+        >
+            {arrow} {label}
+        </span>
+    );
+}
+
+export function AdsKpiCards({ kpi, delta }: Props) {
     const cards = [
         {
             label: 'Total_Spend',
@@ -44,6 +63,8 @@ export function AdsKpiCards({ kpi }: Props) {
             glyph: GLYPHS.MONEY,
             color: 'text-[#F5F5F5]',
             accent: 'text-[#EF4444]',
+            deltaKey: delta?.totalSpend,
+            invert: false, // mais gasto = neutro, sem inversão
         },
         {
             label: 'Impressions',
@@ -51,6 +72,8 @@ export function AdsKpiCards({ kpi }: Props) {
             glyph: GLYPHS.EYE,
             color: 'text-[#F5F5F5]',
             accent: 'text-blue-500',
+            deltaKey: delta?.totalImpressions,
+            invert: false,
         },
         {
             label: 'Clicks',
@@ -58,6 +81,8 @@ export function AdsKpiCards({ kpi }: Props) {
             glyph: GLYPHS.CLICK,
             color: 'text-[#F5F5F5]',
             accent: 'text-green-500',
+            deltaKey: delta?.totalClicks,
+            invert: false,
         },
         {
             label: 'Yield_CTR',
@@ -65,6 +90,8 @@ export function AdsKpiCards({ kpi }: Props) {
             glyph: GLYPHS.TARGET,
             color: 'text-[#A3E635]',
             accent: 'text-[#A3E635]',
+            deltaKey: delta?.avgCtr,
+            invert: false,
         },
         {
             label: 'Avg_CPC',
@@ -72,6 +99,8 @@ export function AdsKpiCards({ kpi }: Props) {
             glyph: GLYPHS.CHART,
             color: 'text-[#FBBF24]',
             accent: 'text-[#FBBF24]',
+            deltaKey: delta?.avgCpc,
+            invert: true, // CPC menor = melhor
         },
         {
             label: 'Total_Reach',
@@ -79,6 +108,8 @@ export function AdsKpiCards({ kpi }: Props) {
             glyph: GLYPHS.USERS,
             color: 'text-[#F5F5F5]',
             accent: 'text-cyan-500',
+            deltaKey: delta?.totalReach,
+            invert: false,
         },
         {
             label: 'Conversions',
@@ -86,6 +117,8 @@ export function AdsKpiCards({ kpi }: Props) {
             glyph: GLYPHS.AUTO,
             color: 'text-[#A3E635]',
             accent: 'text-[#A3E635]',
+            deltaKey: delta?.totalConversions,
+            invert: false,
         },
         {
             label: 'ROAS_Factor',
@@ -93,22 +126,28 @@ export function AdsKpiCards({ kpi }: Props) {
             glyph: GLYPHS.TREND,
             color: kpi.roas >= 2 ? 'text-[#A3E635]' : kpi.roas >= 1 ? 'text-[#FBBF24]' : 'text-[#EF4444]',
             accent: kpi.roas >= 2 ? 'text-[#A3E635]' : kpi.roas >= 1 ? 'text-[#FBBF24]' : 'text-[#EF4444]',
+            deltaKey: delta?.roas,
+            invert: false,
         },
     ];
 
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 font-mono">
             {cards.map((card) => (
-                <Card key={card.label} className="p-5 bg-[#0A0A0A] border-white/10 rounded-lg flex flex-col justify-between group hover:border-white/20 transition-all">
+                <div
+                    key={card.label}
+                    className="p-5 bg-[#0A0A0A] border border-white/10 rounded-lg flex flex-col justify-between group hover:border-white/20 transition-all"
+                >
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-[9px] text-[#4A4A4A] font-bold uppercase tracking-[0.2em]">{card.label}</span>
-                        <span className={cn("text-xs opacity-40 group-hover:opacity-100 transition-opacity", card.accent)}>{wrap(card.glyph)}</span>
+                        <span className={cn('text-xs opacity-40 group-hover:opacity-100 transition-opacity', card.accent)}>{wrap(card.glyph)}</span>
                     </div>
                     <div className="min-w-0">
-                        <p className={cn("text-[1.5rem] font-bold tracking-tighter leading-none mb-1", card.color)}>{card.value}</p>
-                        <div className="h-0.5 w-8 bg-white/5 group-hover:bg-[#A3E635]/20 transition-colors" />
+                        <p className={cn('text-[1.5rem] font-bold tracking-tighter leading-none mb-1', card.color)}>{card.value}</p>
+                        <div className="h-0.5 w-8 bg-white/5 group-hover:bg-[#A3E635]/20 transition-colors mb-1" />
+                        <DeltaBadge value={card.deltaKey} invert={card.invert} />
                     </div>
-                </Card>
+                </div>
             ))}
         </div>
     );

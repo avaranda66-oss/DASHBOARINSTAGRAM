@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import type {
     AdCampaign, AdSet, Ad, AdAccount, AdInsight,
-    AdsKpiSummary, DailyAdInsight, AdsDatePreset, AdsFilters,
+    AdsKpiSummary, AdsKpiDelta, DailyAdInsight, AdsDatePreset, AdsFilters,
     IntelligenceMetrics,
 } from '@/types/ads';
 
@@ -16,6 +16,8 @@ interface AdsSlice {
     insights: AdInsight[];
     dailyInsights: DailyAdInsight[];
     kpiSummary: AdsKpiSummary | null;
+    kpiDelta: AdsKpiDelta | null;
+    dailyFallbackPreset: string | null; // preset usado quando fallback ativado
 
     // Creatives
     creativeAds: Ad[];
@@ -57,6 +59,8 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
     insights: [],
     dailyInsights: [],
     kpiSummary: null,
+    kpiDelta: null,
+    dailyFallbackPreset: null,
     creativeAds: [],
     isLoadingCreatives: false,
     creativesError: null,
@@ -124,6 +128,8 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                 insights: insightRes.insights || [],
                 dailyInsights: insightRes.daily || [],
                 kpiSummary: insightRes.kpiSummary || null,
+                kpiDelta: insightRes.kpiDelta || null,
+                dailyFallbackPreset: insightRes.usedPreset || null,
                 lastFetchedAt: new Date().toISOString(),
                 isLoading: false,
             });
@@ -136,13 +142,16 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
     fetchInsights: async (token, accountId) => {
         try {
             const { filters } = get();
+            const dateParams = filters.customRange
+                ? { timeRange: filters.customRange }
+                : { datePreset: filters.datePreset };
             const res = await fetch('/api/ads-insights', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     token,
                     accountId,
-                    datePreset: filters.datePreset,
+                    ...dateParams,
                 }),
             }).then(r => {
                 if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -155,6 +164,7 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                 dailyInsights: res.daily || [],
                 insights: res.insights || [],
                 kpiSummary: res.kpiSummary || null,
+                kpiDelta: res.kpiDelta || null,
             });
         } catch (e: any) {
             console.error('[AdsStore] fetchInsights erro:', e);
@@ -295,6 +305,7 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
         insights: [],
         dailyInsights: [],
         kpiSummary: null,
+        kpiDelta: null,
         creativeAds: [],
         isLoadingCreatives: false,
         creativesError: null,

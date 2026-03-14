@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useContentStore } from '@/stores';
+import { TYPE_HEX_COLORS } from '@/lib/constants';
 import { useCalendarStore } from '@/stores/calendar-slice';
 import {
     useCalendar,
@@ -132,7 +133,7 @@ export function MonthView() {
                                                 onClick={(e) => handleContentClick(content, e)}
                                                 className="flex items-center gap-1.5 px-1.5 py-1 rounded bg-white/5 border border-white/5 hover:border-[#A3E635]/30 transition-all group/chip"
                                             >
-                                                <span className="font-mono text-[10px] text-[#A3E635]">{TYPE_GLYPHS[content.type] || '◆'}</span>
+                                                <span className="font-mono text-[10px]" style={{ color: TYPE_HEX_COLORS[content.type] ?? '#8A8A8A' }}>{TYPE_GLYPHS[content.type] || '◆'}</span>
                                                 <span className="truncate text-[9px] text-[#F5F5F5] uppercase tracking-tight opacity-70 group-hover/chip:opacity-100">{content.title}</span>
                                             </div>
                                         );

@@ -8,7 +8,7 @@ import {
     KeyboardSensor,
     useSensor,
     useSensors,
-    closestCorners,
+    closestCenter,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useContentStore } from '@/stores';
@@ -30,7 +30,7 @@ interface BoardProps {
 export function Board({ onAddContent, onEditContent }: BoardProps) {
     const { isLoaded, loadContents, refreshContents } = useContentStore();
     const filteredContents = useFilteredContents();
-    const { activeCard, onDragStart, onDragEnd } = useBoardDnd();
+    const { activeCard, onDragStart, onDragOver, onDragEnd } = useBoardDnd();
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -54,8 +54,9 @@ export function Board({ onAddContent, onEditContent }: BoardProps) {
             <div className="flex-1 min-h-0 overflow-hidden">
                 <DndContext
                     sensors={sensors}
-                    collisionDetection={closestCorners}
+                    collisionDetection={closestCenter}
                     onDragStart={onDragStart}
+                    onDragOver={onDragOver}
                     onDragEnd={onDragEnd}
                 >
                     <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3 pb-4 h-full">

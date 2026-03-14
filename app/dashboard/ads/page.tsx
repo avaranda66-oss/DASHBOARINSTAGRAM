@@ -52,7 +52,7 @@ export default function AdsDashboardPage() {
     const adsStore = useAdsStore();
 
     const {
-        campaigns, adSets, kpiSummary, dailyInsights, account,
+        campaigns, adSets, kpiSummary, kpiDelta, dailyInsights, dailyFallbackPreset, account,
         isLoading, error, lastFetchedAt, filters, expandedCampaignId,
         creativeAds, isLoadingCreatives, creativesError,
         fetchAll, fetchCreatives, setFilters, setExpandedCampaign, updateCampaignStatus,
@@ -100,8 +100,10 @@ export default function AdsDashboardPage() {
         setIsCustomRangeActive(false);
         setShowCustomRange(false);
         setFilters({ datePreset: preset, customRange: undefined });
+        // Zustand set é síncrono — get().filters já tem o novo preset imediatamente.
+        // fetchAll lê get().filters internamente, então chamada direta é correta.
         if (adsToken && adsAccountId) {
-            setTimeout(() => fetchAll(adsToken, adsAccountId), 50);
+            fetchAll(adsToken, adsAccountId);
         }
     }, [adsToken, adsAccountId, setFilters, fetchAll]);
 
@@ -111,7 +113,7 @@ export default function AdsDashboardPage() {
         setShowCustomRange(false);
         setFilters({ customRange: { since: customSince, until: customUntil } });
         if (adsToken && adsAccountId) {
-            setTimeout(() => fetchAll(adsToken, adsAccountId), 50);
+            fetchAll(adsToken, adsAccountId);
         }
     }, [customSince, customUntil, adsToken, adsAccountId, setFilters, fetchAll]);
 
@@ -130,7 +132,7 @@ export default function AdsDashboardPage() {
         if (activeTab === 'creatives' && creativeAds.length === 0 && !isLoadingCreatives && adsToken && adsAccountId) {
             fetchCreatives(adsToken, adsAccountId);
         }
-    }, [activeTab, adsToken, adsAccountId]);
+    }, [activeTab, adsToken, adsAccountId, creativeAds.length, isLoadingCreatives]);
 
     const handleToggleCampaignStatus = useCallback(async (campaignId: string, newStatus: 'ACTIVE' | 'PAUSED') => {
         if (!adsToken) return false;
@@ -157,11 +159,19 @@ export default function AdsDashboardPage() {
     const filteredKpiSummary = useMemo(() => {
         if (!kpiSummary) return kpiSummary;
         if (selectedCampaignFilter === 'all' && filters.statusFilter === 'all') return kpiSummary;
-        
+
         const filtered = filteredCampaigns;
         let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalReach = 0;
         let totalConversions = 0, totalConversionValue = 0;
-        let weightedCtr = 0;
+        let weightedCtr = 0, weightedCpm = 0, weightedCpc = 0;
+
+        // Exact action_type matching — evita double-count de eventos pai/filho
+        const exactConvTypes = new Set([
+            'offsite_conversion.fb_pixel_purchase',
+            'offsite_conversion.fb_pixel_lead',
+            'offsite_conversion.fb_pixel_complete_registration',
+            'lead',
+        ]);
 
         for (const c of filtered) {
             const i = c.insights;
@@ -174,12 +184,15 @@ export default function AdsDashboardPage() {
             totalImpressions += impressions;
             totalClicks += clicks;
             totalReach += reach;
-            weightedCtr += (parseFloat(i.ctr || '0') || 0) * impressions;
+            // Usar outbound_clicks_ctr (link clicks) em vez de ctr genérico
+            const ctrVal = parseFloat((i as any).outbound_clicks_ctr || i.ctr || '0') || 0;
+            weightedCtr += ctrVal * impressions;
+            weightedCpm += (parseFloat(i.cpm || '0') || 0) * impressions;
+            weightedCpc += (parseFloat(i.cpc || '0') || 0) * clicks;
 
             if (i.actions) {
-                const convTypes = ['offsite_conversion', 'lead', 'purchase'];
                 for (const a of i.actions) {
-                    if (convTypes.some(t => a.action_type.includes(t))) {
+                    if (exactConvTypes.has(a.action_type)) {
                         totalConversions += parseInt(a.value) || 0;
                     }
                 }
@@ -195,13 +208,28 @@ export default function AdsDashboardPage() {
             totalClicks,
             totalReach,
             avgCtr: totalImpressions > 0 ? weightedCtr / totalImpressions : 0,
+            avgCpm: totalImpressions > 0 ? weightedCpm / totalImpressions : 0,
+            avgCpc: totalClicks > 0 ? weightedCpc / totalClicks : 0,
             totalConversions,
             roas: totalSpend > 0 ? totalConversionValue / totalSpend : 0,
             cpa: totalConversions > 0 ? totalSpend / totalConversions : 0,
         };
     }, [filteredCampaigns, kpiSummary, selectedCampaignFilter, filters.statusFilter]);
 
+    // kpiDelta vem do full account — suprimir quando filtros ativos para evitar comparação inconsistente
+    const isFiltered = filters.statusFilter !== 'all' || selectedCampaignFilter !== 'all';
+
     const currency = account?.currency || kpiSummary?.currency || 'BRL';
+
+    // Sparklines reais dos últimos dias disponíveis
+    const spendSparkline = dailyInsights.slice(-14).map(d => d.spend);
+    const conversionsSparkline = dailyInsights.slice(-14).map(d => d.conversions);
+    const roasSparkline = dailyInsights.slice(-14).map(d => d.roas);
+
+    // Label do período comparado
+    const deltaLabel = filters.customRange
+        ? 'vs. período anterior'
+        : `vs. ${DATE_PRESETS.find(p => p.value === filters.datePreset)?.label.toLowerCase()} ant.`;
 
     const formatCurrency = (val: number) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(val);
@@ -321,12 +349,45 @@ export default function AdsDashboardPage() {
             {/* ─── Hero KPI Band ─── */}
             {filteredKpiSummary && (
                 <motion.div variants={item} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-                    <KpiCard label="Gasto Total" value={formatCompact(filteredKpiSummary.totalSpend, true)} delta={12} deltaLabel="vs. 7 dias" sparkline={[100, 120, 110, 150, 140, 180, 200]} />
-                    <KpiCard label="Resultados" value={filteredKpiSummary.totalConversions.toString()} delta={-5} deltaLabel="vs. 7 dias" sparkline={[50, 45, 48, 42, 40, 38, 35]} />
-                    <KpiCard label="Custo/Resu" value={formatCurrency(filteredKpiSummary.cpa)} delta={8} deltaLabel="vs. 7 dias" />
-                    <KpiCard label="ROAS" value={`${filteredKpiSummary.roas.toFixed(2)}x`} delta={15} deltaLabel="vs. 7 dias" sparkline={[2.5, 3.1, 2.8, 3.5, 3.2, 3.8, 4.1]} />
-                    <KpiCard label="CTR" value={`${filteredKpiSummary.avgCtr.toFixed(2)}%`} delta={2} deltaLabel="vs. 7 dias" />
-                    <KpiCard label="CPM" value={formatCurrency(filteredKpiSummary.totalSpend / (filteredKpiSummary.totalImpressions / 1000))} />
+                    <KpiCard
+                        label="Gasto Total"
+                        value={formatCompact(filteredKpiSummary.totalSpend, true)}
+                        delta={!isFiltered ? (kpiDelta?.totalSpend ?? undefined) : undefined}
+                        deltaLabel={deltaLabel}
+                        sparkline={spendSparkline.length > 1 ? spendSparkline : undefined}
+                    />
+                    <KpiCard
+                        label="Resultados"
+                        value={filteredKpiSummary.totalConversions.toString()}
+                        delta={!isFiltered ? (kpiDelta?.totalConversions ?? undefined) : undefined}
+                        deltaLabel={deltaLabel}
+                        sparkline={conversionsSparkline.length > 1 ? conversionsSparkline : undefined}
+                    />
+                    <KpiCard
+                        label="Custo/Resu"
+                        value={formatCurrency(filteredKpiSummary.cpa)}
+                        delta={!isFiltered && kpiDelta?.cpa != null ? -kpiDelta.cpa : undefined}
+                        deltaLabel={deltaLabel}
+                    />
+                    <KpiCard
+                        label="ROAS"
+                        value={`${filteredKpiSummary.roas.toFixed(2)}x`}
+                        delta={!isFiltered ? (kpiDelta?.roas ?? undefined) : undefined}
+                        deltaLabel={deltaLabel}
+                        sparkline={roasSparkline.length > 1 ? roasSparkline : undefined}
+                    />
+                    <KpiCard
+                        label="CTR"
+                        value={`${filteredKpiSummary.avgCtr.toFixed(2)}%`}
+                        delta={!isFiltered ? (kpiDelta?.avgCtr ?? undefined) : undefined}
+                        deltaLabel={deltaLabel}
+                    />
+                    <KpiCard
+                        label="CPM"
+                        value={formatCurrency(filteredKpiSummary.avgCpm)}
+                        delta={!isFiltered && kpiDelta?.avgCpm != null ? -kpiDelta.avgCpm : undefined}
+                        deltaLabel={deltaLabel}
+                    />
                 </motion.div>
             )}
 
@@ -380,11 +441,26 @@ export default function AdsDashboardPage() {
                     )}
 
                     {activeTab === 'charts' && (
-                        <AdsCharts
-                            daily={dailyInsights}
-                            campaigns={filteredCampaigns}
-                            currency={currency}
-                        />
+                        <div className="space-y-3">
+                            {dailyFallbackPreset && (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-[4px] bg-[#FBBF24]/10 border border-[#FBBF24]/20 font-mono text-[10px] text-[#FBBF24] tracking-widest">
+                                    <span>⚠</span>
+                                    <span>
+                                        Sem dados para "{DATE_PRESETS.find(p => p.value === filters.datePreset)?.label}".
+                                        Exibindo período mais amplo: <strong>{DATE_PRESETS.find(p => p.value === dailyFallbackPreset)?.label ?? dailyFallbackPreset}</strong>.
+                                    </span>
+                                </div>
+                            )}
+                            <AdsCharts
+                                daily={dailyInsights}
+                                campaigns={filteredCampaigns}
+                                currency={currency}
+                                isLoading={isLoading}
+                                dateLabel={filters.customRange
+                                    ? `${filters.customRange.since} → ${filters.customRange.until}`
+                                    : DATE_PRESETS.find(p => p.value === filters.datePreset)?.label}
+                            />
+                        </div>
                     )}
 
                     {activeTab === 'intelligence' && (

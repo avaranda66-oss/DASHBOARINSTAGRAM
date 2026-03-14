@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip,
-    ResponsiveContainer, CartesianGrid, Legend, ComposedChart, Line, Dot
+    ResponsiveContainer, CartesianGrid, ComposedChart, Line
 } from 'recharts';
 // Dual Y-axis: left=Alcance, right=Saves+Shares (escalas muito diferentes)
 import { format, parseISO } from 'date-fns';
@@ -35,17 +35,18 @@ const renderDot = (props: any) => {
     if (cx == null || cy == null) return null;
     const isReel = payload.type === 'REELS';
     return (
-        <circle 
+        <circle
             key={`dot-${cx}-${cy}`}
-            cx={cx} cy={cy} r={3} 
-            stroke="var(--v2-bg-surface)" 
-            strokeWidth={1} 
-            fill={isReel ? '#ec4899' : '#3b82f6'} 
+            cx={cx} cy={cy}
+            r={isReel ? 4 : 3}
+            stroke="#0A0A0A"
+            strokeWidth={1}
+            fill={isReel ? '#A3E635' : 'rgba(163,230,53,0.5)'}
         />
     );
 };
 
-export function MetaTimelineChart({ posts }: Props) {
+export const MetaTimelineChart = memo(function MetaTimelineChart({ posts }: Props) {
     const [view, setView] = useState<'reach' | 'engagement'>('reach');
 
     const sorted = [...posts]
@@ -74,59 +75,73 @@ export function MetaTimelineChart({ posts }: Props) {
 
     if (data.length === 0) {
         return (
-            <div className="flex items-center justify-center h-[260px] text-sm text-muted-foreground">
-                Sem dados suficientes para o gráfico
+            <div
+                className="flex flex-col items-center justify-center h-[260px] rounded-[8px] border"
+                style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#141414' }}
+            >
+                <span className="font-mono text-[10px] uppercase tracking-widest text-[#3A3A3A]">
+                    No_Data
+                </span>
             </div>
         );
     }
 
     return (
-        <div className="space-y-4">
-            <div className="flex gap-2 mb-2 flex-wrap">
+        <div className="space-y-3">
+            {/* Header HUD */}
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] tracking-widest text-[#4A4A4A] uppercase">
+                        Evolução do Engajamento
+                    </span>
+                    <span className="font-mono text-[10px] text-[#A3E635] opacity-80">
+                        [{sorted.length.toString().padStart(2, '0')} posts]
+                    </span>
+                </div>
+            </div>
+
+            {/* Toggle buttons */}
+            <div className="flex gap-2 mb-4">
                 <button
                     onClick={() => setView('reach')}
-                    className={`text-[10px] sm:text-xs px-3 py-1.5 font-medium rounded-full transition-colors border ${
-                        view === 'reach'
-                            ? 'bg-[#FF7350]/20 text-[#FF7350] border-[#FF7350]/50'
-                            : 'bg-transparent text-[var(--v2-text-tertiary)] hover:text-[var(--v2-text-primary)] border-[var(--v2-border)]'
-                    }`}
+                    className="font-mono text-[10px] uppercase tracking-[0.12em] px-3 py-1 border transition-colors rounded-[3px]"
+                    style={view === 'reach'
+                        ? { color: '#A3E635', borderColor: 'rgba(163,230,53,0.3)', backgroundColor: 'rgba(163,230,53,0.06)' }
+                        : { color: '#4A4A4A', borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'transparent' }
+                    }
                 >
-                    Alcance & Saves
+                    Alcance + Saves
                 </button>
                 <button
                     onClick={() => setView('engagement')}
-                    className={`text-[10px] sm:text-xs px-3 py-1.5 font-medium rounded-full transition-colors border ${
-                        view === 'engagement'
-                            ? 'bg-pink-500/20 text-pink-400 border-pink-500/50'
-                            : 'bg-transparent text-[var(--v2-text-tertiary)] hover:text-[var(--v2-text-primary)] border-[var(--v2-border)]'
-                    }`}
+                    className="font-mono text-[10px] uppercase tracking-[0.12em] px-3 py-1 border transition-colors rounded-[3px]"
+                    style={view === 'engagement'
+                        ? { color: '#A3E635', borderColor: 'rgba(163,230,53,0.3)', backgroundColor: 'rgba(163,230,53,0.06)' }
+                        : { color: '#4A4A4A', borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'transparent' }
+                    }
                 >
-                    Likes & Comentários
+                    Likes + Comentários
                 </button>
             </div>
 
             <ResponsiveContainer width="100%" height={260}>
-                <ComposedChart data={data} margin={{ top: 10, right: 35, left: -20, bottom: 0 }}>
+                <ComposedChart data={data} margin={{ top: 8, right: 28, left: -20, bottom: 0 }}>
                     <defs>
-                        <linearGradient id="colorReach" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#FF7350" stopOpacity={0.35} />
-                            <stop offset="95%" stopColor="#FF7350" stopOpacity={0.02} />
-                        </linearGradient>
-                        <linearGradient id="colorLikes" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ec4899" stopOpacity={0.35} />
-                            <stop offset="95%" stopColor="#ec4899" stopOpacity={0.02} />
+                        <linearGradient id="hudAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#A3E635" stopOpacity={0.20} />
+                            <stop offset="95%" stopColor="#A3E635" stopOpacity={0.01} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                    <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.03)" vertical={false} />
                     <XAxis
                         dataKey="date"
-                        tick={{ fontSize: 10, fill: 'var(--v2-text-tertiary)' }}
+                        tick={{ fontSize: 9, fill: '#3A3A3A', fontFamily: 'ui-monospace, monospace' }}
                         tickLine={false}
                         axisLine={false}
                     />
                     <YAxis
                         yAxisId="left"
-                        tick={{ fontSize: 10, fill: 'var(--v2-text-tertiary)' }}
+                        tick={{ fontSize: 9, fill: '#3A3A3A', fontFamily: 'ui-monospace, monospace' }}
                         tickLine={false}
                         axisLine={false}
                         tickFormatter={fmt}
@@ -134,26 +149,27 @@ export function MetaTimelineChart({ posts }: Props) {
                     <YAxis
                         yAxisId="right"
                         orientation="right"
-                        tick={{ fontSize: 9, fill: 'var(--v2-text-tertiary)' }}
+                        tick={{ fontSize: 9, fill: '#3A3A3A', fontFamily: 'ui-monospace, monospace' }}
                         tickLine={false}
                         axisLine={false}
                         tickFormatter={fmt}
-                        width={30}
+                        width={28}
                     />
-                    <Tooltip 
+                    <Tooltip
                         contentStyle={{
-                            backgroundColor: 'var(--v2-bg-surface-hover)',
-                            borderColor: 'var(--v2-border)',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            color: 'var(--v2-text-primary)'
+                            backgroundColor: '#141414',
+                            borderColor: 'rgba(255,255,255,0.08)',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontFamily: 'ui-monospace, monospace',
+                            color: '#F5F5F5',
+                            padding: '8px 12px',
                         }}
+                        itemStyle={{ color: '#8A8A8A', fontSize: '10px' }}
+                        labelStyle={{ color: '#A3E635', fontSize: '10px', marginBottom: '4px', fontFamily: 'ui-monospace, monospace' }}
+                        cursor={{ stroke: 'rgba(163,230,53,0.2)', strokeWidth: 1 }}
                     />
-                    <Legend
-                        wrapperStyle={{ fontSize: '11px', paddingTop: '10px', color: 'var(--v2-text-tertiary)' }}
-                        iconType="circle"
-                    />
-                    
+
                     {view === 'reach' ? (
                         <>
                             <Area
@@ -161,24 +177,26 @@ export function MetaTimelineChart({ posts }: Props) {
                                 type="monotone"
                                 name="Alcance"
                                 dataKey="Alcance"
-                                stroke="#FF7350"
+                                stroke="#A3E635"
                                 strokeWidth={2}
-                                fill="url(#colorReach)"
+                                fill="url(#hudAreaGradient)"
                                 dot={renderDot}
                                 activeDot={{ r: 5 }}
+                                isAnimationActive={false}
                             />
                             <Line
                                 yAxisId="left"
                                 type="monotone"
                                 name="Tendência (Alcance)"
                                 dataKey="Alcance_Trend"
-                                stroke="#FF7350"
-                                strokeDasharray="5 5"
+                                stroke="rgba(163,230,53,0.45)"
+                                strokeDasharray="4 4"
                                 strokeWidth={2}
                                 dot={false}
+                                isAnimationActive={false}
                             />
-                            <Line yAxisId="right" type="monotone" name="Saves" dataKey="Saves" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                            <Line yAxisId="right" type="monotone" name="Shares" dataKey="Shares" stroke="#10b981" strokeWidth={2} dot={false} />
+                            <Line yAxisId="right" type="monotone" name="Saves" dataKey="Saves" stroke="#FBBF24" strokeWidth={2} dot={false} isAnimationActive={false} />
+                            <Line yAxisId="right" type="monotone" name="Shares" dataKey="Shares" stroke="#8A8A8A" strokeWidth={2} dot={false} isAnimationActive={false} />
                         </>
                     ) : (
                         <>
@@ -187,32 +205,41 @@ export function MetaTimelineChart({ posts }: Props) {
                                 type="monotone"
                                 name="Likes"
                                 dataKey="Likes"
-                                stroke="#ec4899"
+                                stroke="#A3E635"
                                 strokeWidth={2}
-                                fill="url(#colorLikes)"
+                                fill="url(#hudAreaGradient)"
                                 dot={renderDot}
                                 activeDot={{ r: 5 }}
+                                isAnimationActive={false}
                             />
                             <Line
                                 yAxisId="left"
                                 type="monotone"
                                 name="Tendência (Likes)"
                                 dataKey="Likes_Trend"
-                                stroke="#ec4899"
-                                strokeDasharray="5 5"
+                                stroke="rgba(163,230,53,0.45)"
+                                strokeDasharray="4 4"
                                 strokeWidth={2}
                                 dot={false}
+                                isAnimationActive={false}
                             />
-                            <Line yAxisId="right" type="monotone" name="Comentários" dataKey="Comments" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                            <Line yAxisId="right" type="monotone" name="Comentários" dataKey="Comments" stroke="#FBBF24" strokeWidth={2} dot={false} isAnimationActive={false} />
                         </>
                     )}
                 </ComposedChart>
             </ResponsiveContainer>
-            
-            <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground px-2 pt-2">
-                <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#ec4899]"></div> Reels</span>
-                <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#3b82f6]"></div> Feed / Sidecar</span>
+
+            {/* Legend HUD */}
+            <div className="flex items-center gap-4 pt-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                <span className="flex items-center gap-1.5 font-mono text-[9px] text-[#3A3A3A]">
+                    <div className="w-2 h-2 rounded-[2px]" style={{ backgroundColor: '#A3E635' }} />
+                    Reels
+                </span>
+                <span className="flex items-center gap-1.5 font-mono text-[9px] text-[#3A3A3A]">
+                    <div className="w-2 h-2 rounded-[2px]" style={{ backgroundColor: 'rgba(163,230,53,0.4)' }} />
+                    Feed / Carrossel
+                </span>
             </div>
         </div>
     );
-}
+});

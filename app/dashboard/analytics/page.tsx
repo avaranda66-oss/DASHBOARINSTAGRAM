@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { nanoid } from 'nanoid';
 import { useAnalytics } from '@/features/analytics/hooks/use-analytics';
@@ -62,7 +62,7 @@ export default function AnalyticsPage() {
         posts, filteredPosts, summary, isLoading, error, hasData, isEmpty,
         lastFetchedAt, profileUrl, fetchMetrics, fetchAndMerge, clearMetrics, loadFromCache,
         filterPeriod, setFilterPeriod, avatarUrl: currentAvatarUrl,
-        customDateRange, setCustomDateRange
+        customDateRange, setCustomDateRange, selectedAccountHandle,
     } = useAnalytics();
 
     const { accounts, isLoaded: accountsLoaded, loadAccounts } = useAccountStore();
@@ -81,6 +81,7 @@ export default function AnalyticsPage() {
     const analyticsStore = useAnalyticsStore();
 
     // VS Mode state
+    const [, startTransition] = useTransition();
     const [viewMode, setViewMode] = useState<ViewMode>('individual');
     const [vsClient, setVsClient] = useState<string | null>(null);
     const [vsCompetitors, setVsCompetitors] = useState<string[]>([]);
@@ -97,9 +98,15 @@ export default function AnalyticsPage() {
     const currentHandleForAvatar = profileUrl.trim().replace(/\/+$/, '').split('/').filter(Boolean).pop()?.replace(/^@/, '').toLowerCase();
     const currentComp = competitors.find(c => c.handle.toLowerCase() === currentHandleForAvatar);
 
-    useEffect(() => { if (!accountsLoaded) loadAccounts(); }, [accountsLoaded, loadAccounts]);
-    useEffect(() => { settingsStore.loadSettings(); }, []);
-    useEffect(() => { getCompetitorsAction().then(setCompetitors); }, []);
+    // Batch initial loads in parallel — accounts already pre-loaded by DashboardShell
+    useEffect(() => {
+        Promise.all([
+            !accountsLoaded ? loadAccounts() : Promise.resolve(),
+            settingsStore.loadSettings(),
+            getCompetitorsAction().then(setCompetitors),
+        ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     useEffect(() => { setFixedInsights(null); }, [posts]);
 
     // Token Meta
@@ -121,21 +128,29 @@ export default function AnalyticsPage() {
 
     useEffect(() => {
         if (!metaUsername) return;
-        import('@/app/actions/account.actions').then(({ getAccountByUsernameAction }) => {
-            getAccountByUsernameAction(metaUsername).then((acc) => {
-                if (acc?.followersCount) {
-                    setMetaProfile(prev => prev ?? { followersCount: acc.followersCount, name: acc.name });
+        // Run profile lookup and cache load in parallel
+        Promise.all([
+            import('@/app/actions/account.actions').then(({ getAccountByUsernameAction }) =>
+                getAccountByUsernameAction(metaUsername).then((acc) => {
+                    if (acc?.followersCount) {
+                        setMetaProfile(prev => prev ?? { followersCount: acc.followersCount, name: acc.name });
+                    }
+                })
+            ),
+            getMetaAnalyticsAction(metaUsername).then((cached) => {
+                if (cached && cached.posts.length > 0) {
+                    analyticsStore.setPostsFromMeta(cached.posts as any[], metaUsername);
                 }
-            }).catch(() => {});
-        });
-        getMetaAnalyticsAction(metaUsername).then((cached) => {
-            if (cached && cached.posts.length > 0) {
-                analyticsStore.setPostsFromMeta(cached.posts as any[], metaUsername);
-            }
-        }).catch(() => {});
-        import('@/app/actions/analytics.actions').then(({ cleanupMetaContaminationAction }) => {
-            cleanupMetaContaminationAction(metaUsername).catch(() => {});
-        });
+            }),
+        ]).catch((err) => { console.error('[analytics] Erro ao inicializar perfil Meta:', err); });
+
+        // Cleanup runs deferred (non-blocking, low priority)
+        const t = setTimeout(() => {
+            import('@/app/actions/analytics.actions').then(({ cleanupMetaContaminationAction }) => {
+                cleanupMetaContaminationAction(metaUsername).catch(() => {});
+            });
+        }, 5000);
+        return () => clearTimeout(t);
     }, [metaUsername]);
 
     const handleFetchMeta = async () => {
@@ -192,7 +207,7 @@ export default function AnalyticsPage() {
                         saveMetaAnalyticsAction(metaUser, enrichedPosts).catch(console.error);
                     }
                 }
-            }).catch(() => {});
+            }).catch((err) => { console.error('[analytics] Erro ao buscar comentários Meta:', err); });
 
             if (json.followersCount != null || json.name || json.biography) {
                 setMetaProfile({ followersCount: json.followersCount, name: json.name });
@@ -244,10 +259,12 @@ export default function AnalyticsPage() {
         setCompetitors((prev) => prev.filter((c) => c.id !== id));
     }, []);
 
-    const handleProfileSelect = async (handle: string) => {
-        const loaded = await loadFromCache(handle);
-        if (!loaded) fetchMetrics(`https://www.instagram.com/${handle}/`, 40);
-    };
+    const handleProfileSelect = useCallback((handle: string) => {
+        startTransition(async () => {
+            const loaded = await loadFromCache(handle);
+            if (!loaded) fetchMetrics(`https://www.instagram.com/${handle}/`, 40);
+        });
+    }, [loadFromCache, fetchMetrics, startTransition]);
 
     const handleRefresh = async () => {
         if (!profileUrl) return;
@@ -406,30 +423,42 @@ export default function AnalyticsPage() {
                                 <div className="p-8" style={CARD_STYLE}>
                                     <h4 className={SECTION_HEADER_STYLE}>
                                         <span className="text-[#A3E635]">◆</span> Perfil & Ativos
+                                        {selectedAccountHandle && (
+                                            <span className="ml-auto font-mono text-[#A3E635] tracking-widest">
+                                                ▶ @{selectedAccountHandle}
+                                            </span>
+                                        )}
                                     </h4>
                                     <div className="flex flex-wrap gap-2 mb-8">
-                                        {accounts.map(acc => (
-                                            <button key={acc.id} onClick={() => handleProfileSelect(acc.handle.replace(/^@/, ''))}
-                                                className="px-4 py-2 border rounded-full text-[12px] font-medium transition-colors"
-                                                style={{ 
-                                                    borderColor: 'rgba(255,255,255,0.08)',
-                                                    backgroundColor: 'rgba(255,255,255,0.02)',
-                                                    color: '#8A8A8A'
-                                                }}>
-                                                @{acc.handle.replace(/^@/, '')}
-                                            </button>
-                                        ))}
-                                        {competitors.map(comp => (
-                                            <button key={comp.id} onClick={() => handleProfileSelect(comp.handle)}
-                                                className="px-4 py-2 border rounded-full text-[12px] font-medium transition-colors"
-                                                style={{ 
-                                                    borderColor: 'rgba(163,230,53,0.15)',
-                                                    backgroundColor: 'rgba(163,230,53,0.02)',
-                                                    color: '#A3E635'
-                                                }}>
-                                                @{comp.handle}
-                                            </button>
-                                        ))}
+                                        {accounts.map(acc => {
+                                            const handle = acc.handle.replace(/^@/, '');
+                                            const isActive = selectedAccountHandle === handle;
+                                            return (
+                                                <button key={acc.id} onClick={() => handleProfileSelect(handle)}
+                                                    className="px-4 py-2 border rounded-full text-[12px] font-medium transition-all"
+                                                    style={{
+                                                        borderColor: isActive ? '#A3E635' : 'rgba(255,255,255,0.08)',
+                                                        backgroundColor: isActive ? 'rgba(163,230,53,0.08)' : 'rgba(255,255,255,0.02)',
+                                                        color: isActive ? '#A3E635' : '#8A8A8A',
+                                                    }}>
+                                                    {isActive && <span className="mr-1">▶</span>}@{handle}
+                                                </button>
+                                            );
+                                        })}
+                                        {competitors.map(comp => {
+                                            const isActive = selectedAccountHandle === comp.handle;
+                                            return (
+                                                <button key={comp.id} onClick={() => handleProfileSelect(comp.handle)}
+                                                    className="px-4 py-2 border rounded-full text-[12px] font-medium transition-all"
+                                                    style={{
+                                                        borderColor: isActive ? '#A3E635' : 'rgba(163,230,53,0.15)',
+                                                        backgroundColor: isActive ? 'rgba(163,230,53,0.08)' : 'rgba(163,230,53,0.02)',
+                                                        color: isActive ? '#A3E635' : '#8A8A8A',
+                                                    }}>
+                                                    {isActive && <span className="mr-1">▶</span>}@{comp.handle}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                     <AnalyticsSearch
                                         onSearch={(url, limit, period) => fetchMetrics(url, limit, false, period)}
@@ -475,12 +504,13 @@ export default function AnalyticsPage() {
                                 
                                 {/* Hero KPI Band (4-5 Cards) */}
                                 <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    <KpiCard 
+                                    <KpiCard
                                         label="Alcance Total"
                                         value={formatValue((summary as any)?.totalReach || 0)}
                                         delta={12.5}
                                         deltaLabel="est."
                                         sparkline={[10, 15, 8, 22, 19, 25, 32]}
+                                        footnote={!metaConnected && !((summary as any)?.totalReach) ? '⚠ Meta API não conectada — use ENRIQUECER_DATA para obter alcance real' : undefined}
                                     />
                                     <KpiCard 
                                         label="Impressões"
@@ -546,7 +576,7 @@ export default function AnalyticsPage() {
                                             <h4 className={SECTION_HEADER_STYLE}>
                                                 <span className="text-[#A3E635]">◎</span> Insights HUD
                                             </h4>
-                                            <InsightsPanel posts={filteredPosts} summary={summary} fixedInsights={fixedInsights} isLoadingFixed={isLoadingFixed} onLoadFixed={loadFixedInsights} />
+                                            {summary && <InsightsPanel posts={filteredPosts} summary={summary} fixedInsights={fixedInsights} isLoadingFixed={isLoadingFixed} onLoadFixed={loadFixedInsights} />}
                                         </div>
                                         <div className="p-8" style={CARD_STYLE}>
                                             <h4 className={SECTION_HEADER_STYLE}>

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, Fragment } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/design-system/atoms/Button';
 import type { AdCampaign, AdSet } from '@/types/ads';
 // [ZERO_LUCIDE_PURGE]
 import { toast } from 'sonner';
@@ -29,15 +28,33 @@ function formatNumber(value: number): string {
 }
 
 function statusBadge(status: string) {
-    const map: Record<string, { label: string; classes: string }> = {
-        ACTIVE: { label: 'Ativa', classes: 'bg-green-500/10 text-green-500 border-green-500/20' },
-        PAUSED: { label: 'Pausada', classes: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
-        ARCHIVED: { label: 'Arquivada', classes: 'bg-gray-500/10 text-gray-500 border-gray-500/20' },
-        DELETED: { label: 'Excluída', classes: 'bg-red-500/10 text-red-500 border-red-500/20' },
+    const map: Record<string, { label: string; classes: string; style?: React.CSSProperties }> = {
+        ACTIVE: { 
+            label: 'Ativa', 
+            classes: 'bg-[#A3E635]/10 text-[#A3E635] border-[#A3E635]/20',
+            style: { color: '#A3E635', borderColor: 'rgba(163,230,53,0.3)', backgroundColor: 'rgba(163,230,53,0.06)' }
+        },
+        PAUSED: { 
+            label: 'Pausada', 
+            classes: 'bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/20',
+            style: { color: '#FBBF24', borderColor: 'rgba(251,191,36,0.3)', backgroundColor: 'rgba(251,191,36,0.06)' }
+        },
+        ARCHIVED: { 
+            label: 'Arquivada', 
+            classes: 'bg-[#4A4A4A]/10 text-[#4A4A4A] border-[#4A4A4A]/20',
+            style: { color: '#4A4A4A', borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'transparent' }
+        },
+        DELETED: { 
+            label: 'Excluída', 
+            classes: 'bg-red-500/10 text-red-500 border-red-500/20' 
+        },
     };
-    const info = map[status] || { label: status, classes: 'bg-gray-500/10 text-gray-400 border-gray-500/20' };
+    const info = map[status] || { label: status, classes: 'bg-[#4A4A4A]/10 text-[#4A4A4A] border-[#4A4A4A]/20' };
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${info.classes}`}>
+        <span 
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-widest border font-bold ${info.classes}`}
+            style={info.style}
+        >
             {info.label}
         </span>
     );
@@ -60,14 +77,14 @@ export function CampaignsTable({ campaigns, adSets, currency, onToggleStatus, on
 
     if (campaigns.length === 0) {
         return (
-            <Card className="p-8 text-center text-muted-foreground bg-[#0A0A0A] border-white/10 rounded-lg">
+            <div className="rounded-xl border border-white/10 bg-[#0A0A0A] p-8 text-center text-[#8A8A8A]">
                 Nenhuma campanha encontrada para este período/filtro.
-            </Card>
+            </div>
         );
     }
 
     return (
-        <Card className="overflow-hidden bg-[#0A0A0A] border-white/10 rounded-lg">
+        <div className="overflow-hidden bg-[#0A0A0A] border border-white/10 rounded-lg">
             <div className="overflow-x-auto">
                 <table className="w-full text-sm font-mono">
                     <thead>
@@ -118,15 +135,15 @@ export function CampaignsTable({ campaigns, adSets, currency, onToggleStatus, on
                                             {(c.effective_status === 'ACTIVE' || c.effective_status === 'PAUSED') && (
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
+                                                    size="sm"
                                                     className="h-8 w-8 hover:bg-[#A3E635]/10"
                                                     disabled={loadingId === c.id}
                                                     onClick={() => handleToggle(c)}
                                                     title={c.effective_status === 'ACTIVE' ? 'Pausar' : 'Ativar'}
                                                 >
                                                     {c.effective_status === 'ACTIVE'
-                                                        ? <span className="text-[#FBBF24] font-bold text-xs">{wrap('❚❚')}</span>
-                                                        : <span className="text-[#A3E635] font-bold text-xs">{wrap('▶')}</span>
+                                                        ? <span className="text-[#FBBF24] font-bold text-xs" style={{ color: '#FBBF24' }}>{wrap('❚❚')}</span>
+                                                        : <span className="text-[#A3E635] font-bold text-xs" style={{ color: '#A3E635' }}>{wrap('▶')}</span>
                                                     }
                                                 </Button>
                                             )}
@@ -165,7 +182,7 @@ export function CampaignsTable({ campaigns, adSets, currency, onToggleStatus, on
                     </tbody>
                 </table>
             </div>
-        </Card>
+        </div>
     );
 }
 

@@ -50,7 +50,7 @@ function HorizontalBarChart({ data, color }: { data: DemographicEntry[], color: 
             }}
             cursor={{ fill: 'var(--v2-bg-surface)', opacity: 0.2 }}
           />
-          <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]} barSize={14} animationDuration={500} />
+          <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]} barSize={14} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

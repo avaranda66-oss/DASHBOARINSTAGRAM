@@ -49,12 +49,10 @@ function PostCard({
     rank,
     metricKey,
     metricColor,
-    metricIcon: MetricIcon,
+    metricGlyph,
 }: {
     post: MetaPost;
     rank: number;
-    metricKey: MetricKey;
-    metricColor: string;
     metricKey: MetricKey;
     metricColor: string;
     metricGlyph: string;

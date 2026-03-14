@@ -2,10 +2,11 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Badge } from '@/design-system/atoms/Badge';
+import { cn } from '@/design-system/utils/cn';
 import type { Content } from '@/types/content';
 import { useCollectionStore } from '@/stores';
 import { format, parseISO } from 'date-fns';
+import { TYPE_HEX_COLORS, TYPE_ABBR } from '@/lib/constants';
 
 interface ContentCardProps {
     content: Content;
@@ -13,19 +14,10 @@ interface ContentCardProps {
     isDragOverlay?: boolean;
 }
 
-const STATUS_MAP = {
-    idea: { intent: 'info', variant: 'subtle' },
-    draft: { intent: 'default', variant: 'subtle' },
-    approved: { intent: 'success', variant: 'subtle' },
-    scheduled: { intent: 'warning', variant: 'subtle' },
-    published: { intent: 'success', variant: 'solid' },
-    failed: { intent: 'error', variant: 'subtle' },
-} as const;
-
 export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProps) {
     const { collections } = useCollectionStore();
     const primaryCollection = collections.find(c => content.collectionIds?.includes(c.id));
-    
+
     const {
         attributes,
         listeners,
@@ -47,16 +39,20 @@ export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProp
         borderRadius: '8px',
     };
 
-    const statusConfig = STATUS_MAP[content.status as keyof typeof STATUS_MAP] || STATUS_MAP.draft;
+    const typeKey = content.type?.toLowerCase() ?? '';
+    const typeColor = TYPE_HEX_COLORS[typeKey] ?? '#8A8A8A';
+    const typeLabel = TYPE_ABBR[typeKey] ?? content.type?.toUpperCase() ?? '???';
 
     return (
         <div
             ref={setNodeRef}
             style={style}
+            {...attributes}
+            {...listeners}
             onClick={isDragging ? undefined : onClick}
             className={cn(
-                "group cursor-pointer border p-3 transition-colors duration-100",
-                isDragOverlay ? 'shadow-2xl border-[#A3E635]/40 rotate-1 scale-[1.02] z-50' : ''
+                "group cursor-grab active:cursor-grabbing border p-3 transition-colors duration-100 select-none",
+                isDragOverlay ? 'shadow-2xl border-[#A3E635]/40 rotate-1 scale-[1.02] z-50 cursor-grabbing' : ''
             )}
             onMouseEnter={(e) => {
                 if (!isDragging) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)';
@@ -67,13 +63,13 @@ export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProp
         >
             {/* Header row */}
             <div className="mb-3 flex items-center justify-between">
-                <span 
-                    className="font-mono text-[10px] tracking-wider" 
-                    style={{ color: content.type?.toUpperCase() === 'CAMPAIGN' ? '#A3E635' : '#8A8A8A' }}
+                <span
+                    className="font-mono text-[10px] tracking-wider"
+                    style={{ color: typeColor }}
                 >
-                    [{content.type?.toUpperCase().slice(0, 4)}]
+                    [{typeLabel}]
                 </span>
-                
+
                 <div className="flex items-center gap-2">
                     {primaryCollection && (
                         <div
@@ -81,13 +77,10 @@ export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProp
                             style={{ backgroundColor: primaryCollection.color }}
                         />
                     )}
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        className="cursor-grab active:cursor-grabbing opacity-20 group-hover:opacity-100 transition-opacity"
-                    >
-                        <span className="font-mono text-[10px] text-[#4A4A4A]">::</span>
-                    </div>
+                    {/* Visual drag hint */}
+                    <span className="font-mono text-[10px] text-[#3A3A3A] group-hover:text-[#4A4A4A] transition-colors select-none">
+                        ⠿
+                    </span>
                 </div>
             </div>
 
@@ -107,7 +100,7 @@ export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProp
                         'UNSCHEDULED'
                     )}
                 </div>
-                
+
                 {content.hashtags.length > 0 && (
                     <div className="font-mono text-[9px] text-[#A3E635] opacity-60">
                         #{content.hashtags.length.toString().padStart(2, '0')}
@@ -117,5 +110,3 @@ export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProp
         </div>
     );
 }
-
-import { cn } from '@/design-system/utils/cn';

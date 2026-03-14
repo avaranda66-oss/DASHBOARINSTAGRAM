@@ -40,6 +40,10 @@ export interface AnalyticsSummary {
     totalLikes: number;
     totalComments: number;
     totalViews: number;
+    /** Sum of Meta `reach` field. Only populated after Meta API enrichment. Falls back to 0 for Apify-only posts. */
+    totalReach: number;
+    /** Sum of Meta `impressions` field. Only populated after Meta API enrichment. Falls back to totalViews for Apify posts. */
+    totalImpressions: number;
     avgLikesPerPost: number;
     avgCommentsPerPost: number;
     avgEngagementRate: number;

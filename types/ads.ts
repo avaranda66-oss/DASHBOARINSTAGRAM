@@ -35,6 +35,8 @@ export interface AdInsight {
     cpc?: string;
     cpm?: string;
     ctr?: string;
+    outbound_clicks?: AdActionStat[];
+    outbound_clicks_ctr?: AdActionStat[];
     reach?: string;
     frequency?: string;
     actions?: AdActionStat[];
@@ -134,6 +136,20 @@ export interface AdsKpiSummary {
     activeCampaigns: number;
     pausedCampaigns: number;
     currency: string;
+}
+
+/** Delta % vs período anterior para cada KPI (null = sem dados anteriores) */
+export interface AdsKpiDelta {
+    totalSpend: number | null;
+    totalImpressions: number | null;
+    totalClicks: number | null;
+    totalReach: number | null;
+    avgCtr: number | null;
+    avgCpc: number | null;
+    avgCpm: number | null;
+    totalConversions: number | null;
+    roas: number | null;
+    cpa: number | null;
 }
 
 /** Insights por dia para gráficos temporais */

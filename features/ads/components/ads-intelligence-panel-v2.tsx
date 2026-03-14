@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 /* [ZERO_LUCIDE_PURGE] */
-import { Card, CardContent } from '@/components/ui/card';
+
 import { Button } from '@/design-system/atoms/Button';
 import { useAdsStore } from '@/stores';
 import type {
@@ -48,7 +48,7 @@ const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
 
 const healthColors: Record<string, string> = {
     excellent: '#A3E635',
-    good: '#3b82f6',
+    good: '#A3E635', // No blue allowed
     attention: '#FBBF24',
     critical: '#EF4444',
 };
@@ -105,39 +105,69 @@ function MiniSparkline({ data, color = '#3b82f6' }: { data: number[]; color?: st
 
 function CircularGauge({ score, level }: { score: number; level: string }) {
     const color = healthColors[level] || '#4A4A4A';
-    const radius = 52;
+    const radius = 50;
     const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (score / 100) * circumference;
+    const progress = (score / 100) * circumference;
+
+    // Segmented segments (10 segments)
+    const segments = 10;
+    const segmentGap = 4;
+    const segmentLength = (circumference / segments) - segmentGap;
 
     return (
         <div className="relative inline-flex items-center justify-center font-mono">
-            <svg width={130} height={130} className="-rotate-90">
+            <svg width={140} height={140} className="-rotate-90">
+                {/* Outer Ruler / Markings */}
+                {[...Array(12)].map((_, i) => (
+                    <line
+                        key={i}
+                        x1={70} y1={5} x2={70} y2={12}
+                        stroke="rgba(255,255,255,0.1)"
+                        strokeWidth={1}
+                        transform={`rotate(${i * 30}, 70, 70)`}
+                    />
+                ))}
+                
+                {/* Background Ring - Segmented */}
                 <circle
-                    cx={65}
-                    cy={65}
-                    r={radius}
+                    cx={70} cy={70} r={radius}
                     fill="none"
-                    stroke="rgba(255,255,255,0.04)"
-                    strokeWidth={8}
+                    stroke="rgba(255,255,255,0.03)"
+                    strokeWidth={10}
+                    strokeDasharray={`${segmentLength} ${segmentGap}`}
                 />
+                
+                {/* Active Ring - Segmented */}
                 <circle
-                    cx={65}
-                    cy={65}
-                    r={radius}
+                    cx={70} cy={70} r={radius}
                     fill="none"
                     stroke={color}
-                    strokeWidth={8}
-                    strokeLinecap="square"
+                    strokeWidth={10}
                     strokeDasharray={circumference}
-                    strokeDashoffset={offset}
-                    style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1)' }}
+                    strokeDashoffset={circumference - progress}
+                    strokeLinecap="butt"
+                    style={{ 
+                        transition: 'stroke-dashoffset 1.5s cubic-bezier(0.16, 1, 0.3, 1)',
+                        filter: `drop-shadow(0 0 6px ${color}40)` 
+                    }}
                 />
+                
+                {/* Inner Crosshair */}
+                <line x1={70} y1={60} x2={70} y2={80} stroke="rgba(255,255,255,0.05)" strokeWidth={0.5} />
+                <line x1={60} y1={70} x2={80} y2={70} stroke="rgba(255,255,255,0.05)" strokeWidth={0.5} />
             </svg>
+            
             <div className="absolute flex flex-col items-center">
+                <span className="text-[10px] text-[#4A4A4A] mb-[-4px] tracking-[0.2em] font-bold">SCORE_IDX</span>
                 <span className="text-4xl font-black tracking-tighter" style={{ color }}>
                     {score}
                 </span>
-                <span className="text-[9px] uppercase tracking-widest text-[#4A4A4A] mt-1">{level}</span>
+                <div 
+                    className="px-2 py-0.5 mt-1 border text-[8px] font-black uppercase tracking-[0.2em]"
+                    style={{ color, borderColor: `${color}40`, backgroundColor: `${color}10` }}
+                >
+                    {level}
+                </div>
             </div>
         </div>
     );
@@ -148,18 +178,25 @@ function SubScoreBar({ label, value }: { label: string; value: number }) {
     let barColor = '#A3E635';
     if (pct < 40) barColor = '#EF4444';
     else if (pct < 60) barColor = '#FBBF24';
-    else if (pct < 80) barColor = '#3b82f6';
 
     return (
-        <div className="flex items-center gap-4 font-mono">
-            <span className="text-[9px] text-[#4A4A4A] w-32 shrink-0 uppercase tracking-widest font-bold">{label}</span>
-            <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                <div
-                    className="h-full rounded-full transition-all duration-1000"
-                    style={{ width: `${pct}%`, backgroundColor: barColor }}
-                />
+        <div className="space-y-1.5 font-mono">
+            <div className="flex justify-between items-end">
+                <span className="text-[9px] text-[#4A4A4A] uppercase tracking-[0.2em] font-bold">{label}</span>
+                <span className="text-[10px] text-[#F5F5F5] font-black tracking-tighter">{(value * 100).toFixed(0)}%</span>
             </div>
-            <span className="text-[10px] text-[#F5F5F5] w-10 text-right font-bold">{(value * 100).toFixed(0)}%</span>
+            <div className="flex gap-[2px] h-[6px]">
+                {[...Array(10)].map((_, i) => (
+                    <div 
+                        key={i}
+                        className="flex-1 transition-all duration-700"
+                        style={{ 
+                            backgroundColor: (i + 1) * 10 <= pct ? barColor : 'rgba(255,255,255,0.03)',
+                            opacity: (i + 1) * 10 <= pct ? 1 : 0.3
+                        }}
+                    />
+                ))}
+            </div>
         </div>
     );
 }
@@ -199,22 +236,46 @@ function AccountHealthSection({ health }: { health: AccountHealthScore }) {
     return (
         <section className="space-y-4">
             <div className="flex items-center gap-3">
-                <span className="text-blue-400">{wrap(GLYPHS.HEART)}</span>
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#F5F5F5]">Operational_Heartbeat</h3>
+                <span className="text-[#A3E635] drop-shadow-[0_0_8px_rgba(163,230,53,0.4)]">{wrap(GLYPHS.SPARK)}</span>
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.4em] text-[#F5F5F5]">Operational_Heartbeat_Analysis</h3>
+                <span className="h-px flex-1 bg-white/5" />
             </div>
-            <Card className={cn("bg-[#0A0A0A] border rounded-lg", healthBg[health.level])}>
-                <CardContent className="p-8">
-                    <div className="flex flex-col md:flex-row items-center gap-12">
-                        <CircularGauge score={health.score} level={health.level} />
-                        <div className="flex-1 space-y-4 w-full">
+            
+            <div 
+                className="bg-[#0A0A0A] border rounded-lg relative overflow-hidden" 
+                style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+            >
+                {/* Blueprint Grid Background */}
+                <div 
+                    className="absolute inset-0 opacity-[0.03]" 
+                    style={{ 
+                        backgroundImage: `radial-gradient(circle, white 1px, transparent 1px)`,
+                        backgroundSize: '24px 24px'
+                    }} 
+                />
+
+                <div className="p-10 relative z-10">
+                    <div className="flex flex-col lg:flex-row items-center gap-16">
+                        <div className="pt-2">
+                            <CircularGauge score={health.score} level={health.level} />
+                        </div>
+                        
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8 w-full border-l border-white/5 pl-12">
                             <SubScoreBar label="FATIGUE_MEAN" value={health.subScores.fatigueMean} />
                             <SubScoreBar label="ROAS_EFFICIENCY" value={health.subScores.roasScore} />
                             <SubScoreBar label="SATURATION_IDX" value={health.subScores.saturationMean} />
                             <SubScoreBar label="BUDGET_LOAD" value={health.subScores.budgetUtilization} />
                         </div>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+                
+                {/* Technical Metadata Footer */}
+                <div className="px-10 py-3 bg-white/[0.02] border-t border-white/5 flex items-center justify-between font-mono text-[8px] text-[#4A4A4A] tracking-[0.3em]">
+                    <span>LINK_STATE: ESTABLISHED</span>
+                    <span>KERNEL_FREQ: 144HZ</span>
+                    <span>BUFFER_LOAD: STABLE [0.002MS]</span>
+                </div>
+            </div>
         </section>
     );
 }
@@ -230,8 +291,8 @@ function CreativeFatigueSection({ scores }: { scores: CreativeFatigueScore[] }) 
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {scores.map((item) => (
-                    <Card key={item.adId} className="bg-[#0A0A0A] border border-white/10 rounded-lg hover:border-white/20 transition-all group font-mono">
-                        <CardContent className="p-5 space-y-4">
+                    <div key={item.adId} className="bg-[#0A0A0A] border border-white/10 rounded-lg hover:border-white/20 transition-all group font-mono">
+                        <div className="p-5 space-y-4">
                             <div className="flex items-start gap-4">
                                 {item.thumbnailUrl ? (
                                     <div className="w-16 h-16 rounded overflow-hidden grayscale group-hover:grayscale-0 transition-all border border-white/5">
@@ -280,8 +341,8 @@ function CreativeFatigueSection({ scores }: { scores: CreativeFatigueScore[] }) 
                                 <DecayBar label="CPM" value={item.decayRatios.cpm} />
                                 <DecayBar label="CPA" value={item.decayRatios.cpa} />
                             </div>
-                        </CardContent>
-                    </Card>
+                    </div>
+                </div>
                 ))}
             </div>
         </section>
@@ -298,7 +359,7 @@ function AudienceSaturationSection({ indexes }: { indexes: AudienceSaturationInd
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 font-mono">
                 {indexes.map((item) => (
-                    <Card key={item.adsetId} className="bg-[#0A0A0A] border border-white/10 rounded-lg p-5 group hover:border-white/20 transition-all">
+                    <div key={item.adsetId} className="bg-[#0A0A0A] border border-white/10 rounded-lg p-5 group hover:border-white/20 transition-all">
                         <p className="text-[11px] font-bold text-[#F5F5F5] truncate uppercase tracking-tight mb-4">{item.adsetName}</p>
                         
                         <div className="space-y-4">
@@ -342,7 +403,7 @@ function AudienceSaturationSection({ indexes }: { indexes: AudienceSaturationInd
                                 PROTOCOL: {item.recommendation}
                             </p>
                         </div>
-                    </Card>
+                    </div>
                 ))}
             </div>
         </section>
@@ -374,7 +435,7 @@ function BenchmarkSection({ benchmark }: { benchmark: BenchmarkComparison }) {
                     ))}
                 </div>
             </div>
-            <Card className="bg-[#0A0A0A] border border-white/10 rounded-lg overflow-hidden font-mono">
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-lg overflow-hidden font-mono">
                 <table className="w-full text-left">
                     <thead>
                         <tr className="bg-white/5 text-[9px] uppercase tracking-widest text-[#4A4A4A]">
@@ -408,7 +469,7 @@ function BenchmarkSection({ benchmark }: { benchmark: BenchmarkComparison }) {
                         ))}
                     </tbody>
                 </table>
-            </Card>
+            </div>
         </section>
     );
 }
@@ -423,7 +484,7 @@ function ABTestSection({ tests }: { tests: ABTestResult[] }) {
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 font-mono">
                 {tests.map((test) => (
-                    <Card key={test.adsetId} className="bg-[#0A0A0A] border border-white/10 rounded-lg p-6 space-y-6">
+                    <div key={test.adsetId} className="bg-[#0A0A0A] border border-white/10 rounded-lg p-6 space-y-6">
                         <div className="flex items-center justify-between border-b border-white/5 pb-4">
                             <p className="text-[11px] font-bold text-[#F5F5F5] uppercase tracking-tight truncate max-w-[70%]">{test.adsetName}</p>
                             <span className={cn("text-[9px] px-2 py-0.5 rounded border uppercase font-black tracking-widest", 
@@ -489,7 +550,7 @@ function ABTestSection({ tests }: { tests: ABTestResult[] }) {
                                 <span>{wrap(GLYPHS.INFO)}</span> {test.disclaimer}
                             </p>
                         )}
-                    </Card>
+                    </div>
                 ))}
             </div>
         </section>
@@ -523,16 +584,16 @@ export function AdsIntelligencePanelV2({ token, accountId }: Props) {
 
     if (intelligenceError) {
         return (
-            <Card className="bg-[#0A0A0A] border border-[#EF4444]/20 rounded-lg p-12 flex flex-col items-center justify-center gap-6 text-center font-mono">
+            <div className="bg-[#0A0A0A] border border-[#EF4444]/20 rounded-lg p-12 flex flex-col items-center justify-center gap-6 text-center font-mono">
                 <span className="text-3xl text-[#EF4444] animate-bounce">{wrap(GLYPHS.ALERT)}</span>
                 <div className="space-y-2">
                     <p className="text-[12px] font-bold text-[#EF4444] uppercase tracking-[0.3em]">Kernel_Execution_Failure</p>
                     <p className="text-[10px] text-[#4A4A4A] uppercase max-w-sm mx-auto">{intelligenceError}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => fetchIntelligence(token!, accountId!)} className="h-9 px-6 uppercase tracking-widest text-[10px] border-white/10">
+                <Button variant="outline" size="sm" onClick={() => { if (token && accountId) fetchIntelligence(token, accountId); }} className="h-9 px-6 uppercase tracking-widest text-[10px] border-white/10">
                     <span className="mr-2">{wrap(GLYPHS.RELOAD)}</span> REBOOT_SEQUENCE
                 </Button>
-            </Card>
+            </div>
         );
     }
 
@@ -553,10 +614,10 @@ export function AdsIntelligencePanelV2({ token, accountId }: Props) {
 
     return (
         <div className="space-y-12 pb-20">
-            <AccountHealthSection health={intelligenceMetrics.healthScore} />
-            <CreativeFatigueSection scores={intelligenceMetrics.fatigueScores} />
-            <AudienceSaturationSection indexes={intelligenceMetrics.saturationIndexes} />
-            {intelligenceMetrics.benchmark && <BenchmarkSection benchmark={intelligenceMetrics.benchmark} />}
+            {intelligenceMetrics.healthScore && <AccountHealthSection health={intelligenceMetrics.healthScore} />}
+            {intelligenceMetrics.fatigueScores && <CreativeFatigueSection scores={intelligenceMetrics.fatigueScores} />}
+            {intelligenceMetrics.saturationIndexes && <AudienceSaturationSection indexes={intelligenceMetrics.saturationIndexes} />}
+            {intelligenceMetrics.benchmarkComparison && <BenchmarkSection benchmark={intelligenceMetrics.benchmarkComparison} />}
             <ABTestSection tests={intelligenceMetrics.abTests} />
             
             {/* Footer markers */}

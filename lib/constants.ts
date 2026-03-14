@@ -31,11 +31,29 @@ export const BOARD_COLUMNS = [
     { id: 'failed', label: 'Falhou', icon: 'AlertCircle', color: '#EF4444' },
 ] as const;
 
-// Badge colors by content type
+// Badge colors by content type (Tailwind classes)
 export const TYPE_BADGE_COLORS: Record<string, string> = {
     post: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     story: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
     reel: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
     carousel: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
     campaign: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+};
+
+// Hex colors per type — single source of truth for inline styles across the app
+export const TYPE_HEX_COLORS: Record<string, string> = {
+    post: '#60A5FA',      // blue-400
+    story: '#C084FC',     // purple-400
+    reel: '#F472B6',      // pink-400
+    carousel: '#FB923C',  // orange-400
+    campaign: '#A3E635',  // solar green (HUD accent)
+};
+
+// Abbreviations per type — avoids slice() surprises (e.g. "carousel" → "CARO")
+export const TYPE_ABBR: Record<string, string> = {
+    post: 'POST',
+    story: 'STOR',
+    reel: 'REEL',
+    carousel: 'CARR',
+    campaign: 'CAMP',
 };

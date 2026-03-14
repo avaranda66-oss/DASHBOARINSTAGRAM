@@ -126,6 +126,11 @@ export default function DashboardPage() {
     ...s,
     count: contents.filter((c) => c.status === s.value).length,
     glyph: STATUS_GLYPHS[s.value] ?? '○',
+    // Normalize status colors to HUD
+    color: s.value === 'published' ? '#10B981' : 
+           s.value === 'scheduled' ? '#F59E0B' : 
+           s.value === 'failed' ? '#EF4444' : 
+           s.value === 'approved' ? '#3E63DD' : '#8A8A8A'
   }))
 
   const upcomingContents = contents

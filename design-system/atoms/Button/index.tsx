@@ -4,7 +4,7 @@ import { cn } from '@/design-system/utils/cn'
 
 export type Intent = 'default' | 'success' | 'warning' | 'error' | 'info'
 export type Size = 'sm' | 'md' | 'lg'
-export type Variant = 'solid' | 'outline' | 'ghost'
+export type Variant = 'solid' | 'outline' | 'ghost' | 'subtle'
 
 export interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'> {
   variant?: Variant
@@ -66,6 +66,12 @@ export function Button({
           'text-[#8A8A8A] hover:text-[#F5F5F5] hover:bg-white/5',
           intent === 'error'   && 'text-[#F87171]/70 hover:text-[#F87171] hover:bg-[#EF4444]/8',
           intent === 'success' && 'text-[#34D399]/70 hover:text-[#34D399] hover:bg-[#10B981]/8',
+        ),
+
+        variant === 'subtle' && cn(
+          'bg-white/[0.04] text-[#8A8A8A] hover:bg-white/[0.08] hover:text-[#E8E8E8] border border-white/[0.06]',
+          intent === 'error'   && 'text-[#F87171]/80 bg-[#EF4444]/5 border-[#EF4444]/10 hover:bg-[#EF4444]/10',
+          intent === 'success' && 'text-[#34D399]/80 bg-[#10B981]/5 border-[#10B981]/10 hover:bg-[#10B981]/10',
         ),
 
         className

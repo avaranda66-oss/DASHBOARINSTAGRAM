@@ -14,6 +14,7 @@ export interface KpiCardProps {
   isLoading?: boolean
   accentTop?: boolean
   className?: string
+  footnote?: React.ReactNode
 }
 
 export function KpiCard({
@@ -26,6 +27,7 @@ export function KpiCard({
   isLoading = false,
   accentTop = true,
   className,
+  footnote,
 }: KpiCardProps) {
   const isPositive = delta !== undefined && delta > 0
   const isNegative = delta !== undefined && delta < 0
@@ -148,6 +150,15 @@ export function KpiCard({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Footnote / contextual warning */}
+      {footnote && (
+        <div className="border-t pt-3 mt-auto" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+          <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-[#4A4A4A] leading-relaxed">
+            {footnote}
+          </p>
+        </div>
+      )}
     </div>
   )
 }

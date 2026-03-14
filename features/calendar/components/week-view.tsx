@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useContentStore } from '@/stores';
+import { TYPE_HEX_COLORS } from '@/lib/constants';
 import { useCalendarStore } from '@/stores/calendar-slice';
 import {
     useCalendar,
@@ -118,7 +119,7 @@ export function WeekView() {
                                                 <span className="font-mono text-[9px] text-[#A3E635] opacity-80">
                                                     {format(d, 'HH:mm')}
                                                 </span>
-                                                <span className="font-mono text-[10px] text-[#4A4A4A] group-hover:text-[#A3E635] transition-colors">{TYPE_GLYPHS[content.type] || '◆'}</span>
+                                                <span className="font-mono text-[10px] transition-colors" style={{ color: TYPE_HEX_COLORS[content.type] ?? '#8A8A8A' }}>{TYPE_GLYPHS[content.type] || '◆'}</span>
                                             </div>
                                             <p className="text-[11px] font-bold text-[#F5F5F5] leading-tight line-clamp-2 uppercase tracking-wide">
                                                 {content.title}

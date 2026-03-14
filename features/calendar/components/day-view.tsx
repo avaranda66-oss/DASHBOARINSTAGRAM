@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useContentStore } from '@/stores';
+import { TYPE_HEX_COLORS } from '@/lib/constants';
 import { useCalendarStore } from '@/stores/calendar-slice';
 import {
     useCalendar,
@@ -97,10 +98,13 @@ export function DayView() {
 
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-3 mb-2">
-                                                <span className="font-mono text-[10px] text-[#A3E635] bg-[#A3E635]/5 px-2 py-0.5 rounded tracking-[0.2em] uppercase">
+                                                <span
+                                                    className="font-mono text-[10px] px-2 py-0.5 rounded tracking-[0.2em] uppercase"
+                                                    style={{ color: TYPE_HEX_COLORS[content.type] ?? '#8A8A8A', backgroundColor: `${TYPE_HEX_COLORS[content.type] ?? '#8A8A8A'}14` }}
+                                                >
                                                     {content.type}
                                                 </span>
-                                                <span className="font-mono text-[12px] text-[#4A4A4A]">{TYPE_GLYPHS[content.type] || '◆'}</span>
+                                                <span className="font-mono text-[12px]" style={{ color: TYPE_HEX_COLORS[content.type] ?? '#4A4A4A' }}>{TYPE_GLYPHS[content.type] || '◆'}</span>
                                             </div>
                                             
                                             <h4 className="text-[16px] font-bold text-[#F5F5F5] uppercase tracking-tight mb-2 group-hover:text-[#A3E635] transition-colors">

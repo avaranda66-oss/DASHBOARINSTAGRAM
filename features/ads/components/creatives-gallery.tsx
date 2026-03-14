@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useState, useMemo } from 'react';
-import { Card } from '@/components/ui/card';
+
 import { Button } from '@/design-system/atoms/Button';
 import type { Ad } from '@/types/ads';
 // [ZERO_LUCIDE_PURGE]
@@ -49,18 +49,47 @@ function formatNumber(value: number): string {
 }
 
 function statusBadge(status: string) {
-    const map: Record<string, { label: string; classes: string }> = {
-        ACTIVE: { label: 'Ativo', classes: 'bg-green-500/10 text-green-500 border-green-500/20' },
-        PAUSED: { label: 'Pausado', classes: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
-        CAMPAIGN_PAUSED: { label: 'Campanha Pausada', classes: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
-        ADSET_PAUSED: { label: 'Conjunto Pausado', classes: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
-        ARCHIVED: { label: 'Arquivado', classes: 'bg-gray-500/10 text-gray-500 border-gray-500/20' },
-        DISAPPROVED: { label: 'Reprovado', classes: 'bg-red-500/10 text-red-500 border-red-500/20' },
-        PENDING_REVIEW: { label: 'Em Análise', classes: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+    const map: Record<string, { label: string; classes: string; style?: React.CSSProperties }> = {
+        ACTIVE: { 
+            label: 'Ativo', 
+            classes: 'bg-[#A3E635]/10 text-[#A3E635] border-[#A3E635]/20',
+            style: { color: '#A3E635', borderColor: 'rgba(163,230,53,0.3)', backgroundColor: 'rgba(163,230,53,0.06)' }
+        },
+        PAUSED: { 
+            label: 'Pausado', 
+            classes: 'bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/20',
+            style: { color: '#FBBF24', borderColor: 'rgba(251,191,36,0.3)', backgroundColor: 'rgba(251,191,36,0.06)' }
+        },
+        CAMPAIGN_PAUSED: { 
+            label: 'Campanha Pausada', 
+            classes: 'bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/20',
+            style: { color: '#FBBF24', borderColor: 'rgba(251,191,36,0.3)', backgroundColor: 'rgba(251,191,36,0.06)' }
+        },
+        ADSET_PAUSED: { 
+            label: 'Conjunto Pausado', 
+            classes: 'bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/20',
+            style: { color: '#FBBF24', borderColor: 'rgba(251,191,36,0.3)', backgroundColor: 'rgba(251,191,36,0.06)' }
+        },
+        ARCHIVED: { 
+            label: 'Arquivado', 
+            classes: 'bg-[#4A4A4A]/10 text-[#4A4A4A] border-[#4A4A4A]/20',
+            style: { color: '#4A4A4A', borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'transparent' }
+        },
+        DISAPPROVED: { 
+            label: 'Reprovado', 
+            classes: 'bg-red-500/10 text-red-500 border-red-500/20' 
+        },
+        PENDING_REVIEW: { 
+            label: 'Em Análise', 
+            classes: 'bg-blue-500/10 text-blue-500 border-blue-500/20' 
+        },
     };
-    const info = map[status] || { label: status, classes: 'bg-gray-500/10 text-gray-400 border-gray-500/20' };
+    const info = map[status] || { label: status, classes: 'bg-[#4A4A4A]/10 text-[#4A4A4A] border-[#4A4A4A]/20' };
     return (
-        <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-widest border", info.classes)}>
+        <span 
+            className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-widest border", info.classes)}
+            style={info.style}
+        >
             {info.label}
         </span>
     );
@@ -89,12 +118,12 @@ function CreativeCard({ ad, currency, viewMode, score, isAnalyzing, onAnalyze, o
         return (
             <div className="flex items-center gap-4 p-4 bg-[#0A0A0A] border border-white/10 rounded-lg hover:bg-white/[0.03] transition-colors font-mono">
                 {/* Thumbnail */}
-                <div className="w-16 h-16 rounded overflow-hidden bg-white/5 shrink-0 flex items-center justify-center border border-white/5 grayscale">
+                <div className="w-16 h-16 rounded overflow-hidden bg-white/5 shrink-0 flex items-center justify-center border border-white/5">
                     {imageUrl ? (
                         <img
                             src={`/api/image-proxy?url=${encodeURIComponent(imageUrl)}`}
                             alt={ad.creative?.title || ad.name}
-                            className="w-full h-full object-cover opacity-80"
+                            className="w-full h-full object-cover opacity-90"
                         />
                     ) : (
                         <span className="text-xl text-[#4A4A4A]">{wrap(GLYPHS.MEDIA)}</span>
@@ -155,12 +184,12 @@ function CreativeCard({ ad, currency, viewMode, score, isAnalyzing, onAnalyze, o
     return (
         <div className="group bg-[#0A0A0A] border border-white/10 rounded-lg overflow-hidden hover:border-[#A3E635]/40 transition-all font-mono">
             {/* Image */}
-            <div className="aspect-square bg-white/5 relative overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-500">
+            <div className="aspect-square bg-white/5 relative overflow-hidden transition-all duration-500">
                 {imageUrl ? (
                     <img
                         src={`/api/image-proxy?url=${encodeURIComponent(imageUrl)}`}
                         alt={ad.creative?.title || ad.name}
-                        className="w-full h-full object-cover opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
+                        className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
                     />
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#4A4A4A]">

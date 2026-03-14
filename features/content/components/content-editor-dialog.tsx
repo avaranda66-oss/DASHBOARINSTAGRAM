@@ -275,7 +275,7 @@ export function ContentEditorDialog({
                 <div className="p-8 font-mono">
                     <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
                         <SheetTitle className="text-[11px] font-bold uppercase tracking-[0.4em] text-[#F5F5F5]">
-                            {isEditing ? 'CONTENT_KERNEL_0x' : 'INITIALIZE_CONTENT_VAL'}
+                            {isEditing ? 'EDITAR CONTEÚDO' : 'NOVO CONTEÚDO'}
                         </SheetTitle>
                         <button onClick={handleClose} className="h-8 w-8 flex items-center justify-center text-[#4A4A4A] hover:text-[#F5F5F5] transition-colors">
                             <span className="text-sm">{wrap(GLYPHS.CLOSE)}</span>
@@ -294,7 +294,7 @@ export function ContentEditorDialog({
                                 onClick={() => setActiveTab(tab)}
                             >
                                 <span className="flex items-center justify-center gap-2">
-                                    {tab === 'preview' ? wrap(GLYPHS.EYE) : wrap(GLYPHS.HUB)} {tab}_MODE
+                                    {tab === 'preview' ? wrap(GLYPHS.EYE) : wrap(GLYPHS.HUB)} {tab === 'edit' ? 'EDITAR' : 'PREVIEW'}
                                 </span>
                             </button>
                         ))}
@@ -304,18 +304,18 @@ export function ContentEditorDialog({
                         {activeTab === 'edit' ? (
                             <div className="space-y-8">
                                 <Input
-                                    label="CORE_TITLE_VAL"
+                                    label="TÍTULO"
                                     {...register('title')}
-                                    placeholder="ENTRY_NAME..."
+                                    placeholder="Nome do conteúdo..."
                                     error={errors.title?.message}
                                     isMono={true}
                                 />
 
                                 <div className="space-y-2">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">CAPTION_META_DATA</label>
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">LEGENDA</label>
                                     <textarea
                                         {...register('description')}
-                                        placeholder="LEGACY_DESCRIPTION..."
+                                        placeholder="Legenda / descrição..."
                                         rows={6}
                                         className="w-full bg-[#0A0A0A] border border-white/10 rounded-md p-4 text-[11px] text-[#F5F5F5] font-mono focus:border-white/20 outline-none uppercase placeholder:text-[#2A2A2A] transition-all resize-none"
                                     />
@@ -324,7 +324,7 @@ export function ContentEditorDialog({
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">CHANNEL_OBJECT_TYPE</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">TIPO</label>
                                         <select
                                             {...register('type')}
                                             className="w-full h-10 bg-[#0A0A0A] border border-white/10 rounded font-mono text-[11px] text-[#F5F5F5] px-4 focus:border-white/20 outline-none uppercase cursor-pointer"
@@ -335,7 +335,7 @@ export function ContentEditorDialog({
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">SYSTEM_STATUS</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">STATUS</label>
                                         <select
                                             {...register('status')}
                                             className="w-full h-10 bg-[#0A0A0A] border border-white/10 rounded font-mono text-[11px] text-[#F5F5F5] px-4 focus:border-white/20 outline-none uppercase cursor-pointer"
@@ -349,12 +349,12 @@ export function ContentEditorDialog({
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">TARGET_ACCOUNT_NODE</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">CONTA</label>
                                         <select
                                             {...register('accountId')}
                                             className="w-full h-10 bg-[#0A0A0A] border border-white/10 rounded font-mono text-[11px] text-[#F5F5F5] px-4 focus:border-white/20 outline-none uppercase cursor-pointer"
                                         >
-                                            <option value="">NULL_ACCOUNT</option>
+                                            <option value="">NENHUMA CONTA</option>
                                             {accounts.map((a) => (
                                                 <option key={a.id} value={a.id}>{a.name.toUpperCase()}</option>
                                             ))}
@@ -362,7 +362,7 @@ export function ContentEditorDialog({
                                     </div>
                                     <Input
                                         type="datetime-local"
-                                        label="EPOCH_SCHEDULE_VAL"
+                                        label="AGENDAMENTO"
                                         {...register('scheduledAt')}
                                         isMono={true}
                                     />
@@ -375,7 +375,7 @@ export function ContentEditorDialog({
 
                                 {collections.length > 0 && (
                                     <div className="space-y-3">
-                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">ID_COLLECTION_MAPPING</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">COLEÇÕES</label>
                                         <div className="flex flex-wrap gap-2">
                                             {collections.map((c) => {
                                                 const isSelected = collectionIds.includes(c.id);
@@ -399,7 +399,7 @@ export function ContentEditorDialog({
                                 )}
 
                                 <div className="space-y-4">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">MEDIA_BUFFER_NODES</label>
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">MÍDIAS</label>
                                     <div className="grid grid-cols-2 gap-4">
                                         {(mediaUrls || []).map((url, index) => (
                                             <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 group grayscale hover:grayscale-0 transition-all">
@@ -428,7 +428,7 @@ export function ContentEditorDialog({
                         ) : (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                                 <div className="flex items-center justify-between px-2">
-                                    <span className="text-[10px] font-black text-[#A3E635] uppercase tracking-[0.2em]">Live_Feed_Simulation</span>
+                                    <span className="text-[10px] font-black text-[#A3E635] uppercase tracking-[0.2em]">PRÉ-VISUALIZAÇÃO</span>
                                     <span className={cn("text-[9px] font-bold", charCount > 2200 ? 'text-[#EF4444]' : 'text-[#4A4A4A]')}>
                                         {charCount} / 2200 BITS
                                     </span>
@@ -477,7 +477,7 @@ export function ContentEditorDialog({
                                         </div>
                                         <div className="text-[11px] leading-relaxed text-[#F5F5F5]">
                                             <span className="font-bold mr-2">local_instance</span>
-                                            {compiledCaption ? compiledCaption : <span className="opacity-20 italic">AWAITING_INPUT_SIGNAL...</span>}
+                                            {compiledCaption ? compiledCaption : <span className="opacity-20 italic">sem conteúdo...</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -513,11 +513,11 @@ export function ContentEditorDialog({
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        className="w-full h-11 border-blue-500/30 text-blue-400 hover:bg-blue-500/5 text-[10px] font-black uppercase tracking-widest"
+                                        className="w-full h-11 border-[#A3E635]/30 text-[#A3E635] hover:bg-[#A3E635]/5 text-[10px] font-black uppercase tracking-widest"
                                         disabled={isSaving || isUploading || isProcessing}
                                         onClick={handlePublishMeta}
                                     >
-                                        <span className="mr-2">{wrap(GLYPHS.SEND)}</span> INJECT_VIA_META_API
+                                        <span className="mr-2">{wrap(GLYPHS.SEND)}</span> PUBLICAR VIA META API
                                     </Button>
                                     <Button
                                         type="button"
@@ -526,7 +526,7 @@ export function ContentEditorDialog({
                                         disabled={isInQueue}
                                         onClick={handlePublishNow}
                                     >
-                                        <span className="mr-2">{wrap(GLYPHS.SEND)}</span> {queueItem?.status === 'processing' ? 'EXECUTING_BOT...' : isInQueue ? 'IN_QUEUE_BUFFER' : 'LINK_VIA_BOT_ROTOR'}
+                                        <span className="mr-2">{wrap(GLYPHS.SEND)}</span> {queueItem?.status === 'processing' ? 'EXECUTANDO...' : isInQueue ? 'NA FILA' : 'PUBLICAR VIA BOT'}
                                     </Button>
                                 </div>
                             )}

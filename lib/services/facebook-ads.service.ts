@@ -252,6 +252,7 @@ export async function getAds(
 const INSIGHTS_FIELDS = [
     'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name',
     'impressions', 'clicks', 'spend', 'cpc', 'cpm', 'ctr', 'reach', 'frequency',
+    'outbound_clicks', 'outbound_clicks_ctr',
     'actions', 'cost_per_action_type', 'purchase_roas',
     'date_start', 'date_stop', 'objective', 'account_currency',
 ].join(',');
@@ -310,7 +311,12 @@ export async function getDailyInsights(
         cpc: parseFloat(r.cpc || '0') || 0,
         cpm: parseFloat(r.cpm || '0') || 0,
         ctr: parseFloat(r.ctr || '0') || 0,
-        conversions: sumActions(r.actions, ['offsite_conversion', 'lead', 'purchase', 'complete_registration']),
+        conversions: sumActions(r.actions, [
+            'offsite_conversion.fb_pixel_purchase',
+            'offsite_conversion.fb_pixel_lead',
+            'offsite_conversion.fb_pixel_complete_registration',
+            'lead',
+        ]),
         conversionValue: sumActionValues(r.purchase_roas),
         roas: parseFloat(r.purchase_roas?.[0]?.value || '0') || 0,
     }));
@@ -337,13 +343,23 @@ export function computeKpiSummary(
         totalImpressions += impressions;
         totalClicks += clicks;
         totalReach += reach;
-        totalConversions += sumActions(r.actions, ['offsite_conversion', 'lead', 'purchase', 'complete_registration']);
+        totalConversions += sumActions(r.actions, [
+            'offsite_conversion.fb_pixel_purchase',
+            'offsite_conversion.fb_pixel_lead',
+            'offsite_conversion.fb_pixel_complete_registration',
+            'lead',
+        ]);
         const roasValue = parseFloat(r.purchase_roas?.[0]?.value || '0') || 0;
         totalConversionValue += roasValue * spend; // ROAS * spend = revenue
 
+        // Prefer outbound_clicks_ctr (link clicks only) over generic ctr (all clicks)
+        // to match what Facebook Ads Manager displays as "CTR"
+        const outboundCtr = parseFloat(r.outbound_clicks_ctr?.[0]?.value || '0') || 0;
+        const effectiveCtr = outboundCtr > 0 ? outboundCtr : (parseFloat(r.ctr || '0') || 0);
+
         weightedCpc += (parseFloat(r.cpc || '0') || 0) * clicks;
         weightedCpm += (parseFloat(r.cpm || '0') || 0) * impressions;
-        weightedCtr += (parseFloat(r.ctr || '0') || 0) * impressions;
+        weightedCtr += effectiveCtr * impressions;
         weightedFreq += (parseFloat(r.frequency || '0') || 0) * reach;
     }
 
@@ -478,7 +494,7 @@ export function computeCreativeFatigueScores(
 
         const avgConvRate = (rows: AdInsight[]) => {
             const totalClicks = rows.reduce((s, r) => s + (parseInt(r.clicks) || 0), 0);
-            const totalConv = rows.reduce((s, r) => s + sumActions(r.actions, ['offsite_conversion', 'lead', 'purchase']), 0);
+            const totalConv = rows.reduce((s, r) => s + sumActions(r.actions, ['offsite_conversion.fb_pixel_purchase', 'offsite_conversion.fb_pixel_lead', 'lead']), 0);
             return totalClicks > 0 ? totalConv / totalClicks : 0;
         };
 
@@ -587,7 +603,7 @@ export function detectABTests(
         existing.impressions += parseInt(r.impressions) || 0;
         existing.clicks += parseInt(r.clicks) || 0;
         existing.spend += parseFloat(r.spend) || 0;
-        existing.conversions += sumActions(r.actions, ['offsite_conversion', 'lead', 'purchase']);
+        existing.conversions += sumActions(r.actions, ['offsite_conversion.fb_pixel_purchase', 'offsite_conversion.fb_pixel_lead', 'lead']);
         group.ads.set(r.ad_id, existing);
     }
 
@@ -776,8 +792,11 @@ export async function computeIntelligenceMetrics(
 
 function sumActions(actions: AdActionStat[] | undefined, types: string[]): number {
     if (!actions) return 0;
+    // Use exact match to prevent double-counting: Meta API returns both
+    // generic ("purchase") and specific ("offsite_conversion.fb_pixel_purchase")
+    // for the same event — includes() would count it twice.
     return actions
-        .filter(a => types.some(t => a.action_type.includes(t)))
+        .filter(a => types.includes(a.action_type))
         .reduce((sum, a) => sum + (parseInt(a.value) || 0), 0);
 }
 

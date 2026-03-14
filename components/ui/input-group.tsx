@@ -4,8 +4,8 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/design-system/atoms/Button"
+import { Input } from "@/design-system/atoms/Input"
 import { Textarea } from "@/components/ui/textarea"
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
@@ -118,6 +118,7 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
 
 function InputGroupInput({
   className,
+  size,
   ...props
 }: React.ComponentProps<"input">) {
   return (

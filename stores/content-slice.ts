@@ -28,13 +28,18 @@ export const useContentStore = create<ContentSlice>()((set, get) => ({
     isLoaded: false,
 
     loadContents: async () => {
-        let contents = await getContentsAction();
-        if (contents.length === 0) {
-            // Initialize with mock data on first load
-            await saveAllContentsAction(MOCK_CONTENTS);
-            contents = MOCK_CONTENTS;
+        try {
+            let contents = await getContentsAction();
+            if (contents.length === 0) {
+                // Initialize with mock data on first load
+                await saveAllContentsAction(MOCK_CONTENTS);
+                contents = MOCK_CONTENTS;
+            }
+            set({ contents, isLoaded: true });
+        } catch (err) {
+            console.error('[content-store] Erro ao carregar conteúdos:', err);
+            set({ contents: [], isLoaded: true });
         }
-        set({ contents, isLoaded: true });
     },
 
     addContent: (data) => {
@@ -86,13 +91,34 @@ export const useContentStore = create<ContentSlice>()((set, get) => ({
         saveContentAction(duplicate).catch(console.error);
     },
 
-    moveContent: (id, newStatus, newOrder) => {
+    moveContent: (id, newStatus, targetOrder) => {
         const now = new Date().toISOString();
-        set((state) => ({
-            contents: state.contents.map((c) =>
-                c.id === id ? { ...c, status: newStatus, order: newOrder, updatedAt: now } : c,
-            ),
-        }));
+        set((state) => {
+            const movingCard = state.contents.find((c) => c.id === id);
+            if (!movingCard) return state;
+
+            // All other cards (not the moving one)
+            const others = state.contents.filter((c) => c.id !== id);
+
+            // Cards in the target column, sorted by current order
+            const targetCol = others
+                .filter((c) => c.status === newStatus)
+                .sort((a, b) => a.order - b.order);
+
+            // Insert the moving card at the clamped position
+            const insertAt = Math.max(0, Math.min(targetOrder, targetCol.length));
+            targetCol.splice(insertAt, 0, { ...movingCard, status: newStatus, updatedAt: now });
+
+            // Reassign sequential orders 0, 1, 2… so there are never duplicates
+            const reordered = targetCol.map((c, i) => ({ ...c, order: i }));
+
+            // Cards in other columns remain untouched
+            const otherCols = others.filter((c) => c.status !== newStatus);
+
+            return { contents: [...otherCols, ...reordered] };
+        });
+
+        // Save only the moved card to DB (async, non-blocking)
         const updated = get().contents.find((c) => c.id === id);
         if (updated) saveContentAction(updated).catch(console.error);
     },

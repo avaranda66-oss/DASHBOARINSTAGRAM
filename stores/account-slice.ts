@@ -9,6 +9,7 @@ import {
     saveAccountAction,
     deleteAccountAction
 } from '@/app/actions/account.actions';
+import { getSettingAction, saveSettingAction } from '@/app/actions/settings.actions';
 
 interface AccountSlice {
     accounts: Account[];
@@ -30,7 +31,6 @@ export const useAccountStore = create<AccountSlice>()((set, get) => ({
 
     setSelectedAccountId: (id) => {
         set({ selectedAccountId: id });
-        const { saveSettingAction } = require('@/app/actions/settings.actions');
         saveSettingAction('selected_account_id', id).catch(console.error);
     },
 
@@ -59,7 +59,6 @@ export const useAccountStore = create<AccountSlice>()((set, get) => ({
         }
 
         const accounts = await getAccountsAction();
-        const { getSettingAction } = require('@/app/actions/settings.actions');
         const savedAccountId = await getSettingAction('selected_account_id');
 
         set({

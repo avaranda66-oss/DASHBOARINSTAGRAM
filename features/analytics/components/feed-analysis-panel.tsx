@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 // Lucide icons removed in favor of ASCII HUD glyphs
-import { Button } from '@/components/ui/button';
+import { Button } from '@/design-system/atoms/Button';
 
 export interface FeedAnalysisResult {
     scores: {

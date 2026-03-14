@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 // Lucide icons removed in favor of ASCII HUD glyphs
-import { Button } from '@/components/ui/button';
+import { Button } from '@/design-system/atoms/Button';
 
 interface MetaPost {
     caption?: string;

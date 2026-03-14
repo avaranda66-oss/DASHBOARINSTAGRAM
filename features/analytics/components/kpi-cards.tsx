@@ -173,14 +173,14 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             value: accountProfile?.followersCount != null ? formatNumber(accountProfile.followersCount) : 'N/D',
             sub: accountProfile?.name ?? 'Dados do perfil',
             icon: '◎',
-            accentColor: 'var(--v2-accent)',
+            accentColor: '#A3E635',
         },
         {
             label: 'Alcance Total',
             value: formatNumber(kpis.totalReach),
             sub: 'Soma de todos os posts',
             icon: '◎',
-            accentColor: '#3b82f6', // blue
+            accentColor: '#3E63DD', // HUD Info (Reach)
             sparkData: kpis.reachHistory,
             trend: linearTrend(kpis.reachHistory),
         },
@@ -189,7 +189,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             value: formatNumber(kpis.totalLikes),
             sub: 'Soma de todos os posts',
             icon: '▲',
-            accentColor: '#ec4899', // pink
+            accentColor: '#A3E635', // HUD Accent (Likes)
             sparkData: kpis.likesHistory,
             trend: linearTrend(kpis.likesHistory),
         },
@@ -198,7 +198,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             value: formatNumber(kpis.totalSaves),
             sub: 'Soma de todos os posts',
             icon: '◆',
-            accentColor: '#f59e0b', // amber
+            accentColor: '#F59E0B', // HUD Warning (Saves)
             sparkData: kpis.savesHistory,
             trend: linearTrend(kpis.savesHistory),
         },
@@ -207,7 +207,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             value: formatNumber(kpis.totalShares),
             sub: 'Soma de todos os posts',
             icon: '↗',
-            accentColor: '#10b981', // emerald
+            accentColor: '#10B981', // HUD Success (Shares)
             sparkData: kpis.sharesHistory,
             trend: linearTrend(kpis.sharesHistory),
         },
@@ -216,7 +216,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             value: formatNumber(kpis.totalComments),
             sub: 'Soma de todos os posts',
             icon: '◐',
-            accentColor: '#f97316', // orange
+            accentColor: '#D4D4D4', // HUD Text Primary (Comments)
             sparkData: kpis.commentsHistory,
             trend: linearTrend(kpis.commentsHistory),
         },
@@ -225,7 +225,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             value: kpis.avgEngRate > 0 ? `${kpis.avgEngRate.toFixed(2)}%` : '0%',
             sub: '(Interações / Alcance)',
             icon: '↗',
-            accentColor: '#a855f7', // purple
+            accentColor: '#A3E635', // HUD Accent (Eng. Rate)
             sparkData: kpis.engRateHistory,
             trend: linearTrend(kpis.engRateHistory),
         },
@@ -234,7 +234,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
             value: kpis.avgWatchTime != null ? `${kpis.avgWatchTime.toFixed(1)}s` : 'Sem Reels',
             sub: 'Tempo médio (Reels)',
             icon: '◷',
-            accentColor: '#ef4444', // red
+            accentColor: '#EF4444', // HUD Error (Watch Time)
         },
         // Meta-exclusive cards (only when reach data exists)
         ...(kpis.totalReach > 0 ? [
@@ -243,7 +243,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                 value: `${kpis.saveRate.toFixed(2)}%`,
                 sub: 'Saves / Alcance',
                 icon: '◆',
-                accentColor: '#14b8a6', // teal
+                accentColor: '#F59E0B', // HUD Warning (Save Rate)
                 sparkData: kpis.saveRateHistory,
                 trend: linearTrend(kpis.saveRateHistory),
             },
@@ -252,7 +252,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                 value: `${kpis.shareRate.toFixed(2)}%`,
                 sub: 'Shares / Alcance',
                 icon: '↗',
-                accentColor: '#06b6d4', // cyan
+                accentColor: '#3E63DD', // HUD Info (Share Rate)
                 sparkData: kpis.shareRateHistory,
                 trend: linearTrend(kpis.shareRateHistory),
             },
@@ -261,7 +261,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                 value: `${kpis.avgDepthScore.toFixed(0)}/100`,
                 sub: 'Score ponderado (saves>shares>comments>likes)',
                 icon: '◎',
-                accentColor: '#f43f5e', // rose
+                accentColor: '#A3E635', // HUD Accent (Depth Score)
                 sparkData: kpis.depthScores,
                 trend: linearTrend(kpis.depthScores),
             },
@@ -270,7 +270,7 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                 value: kpis.bestType.type,
                 sub: `${formatNumber(Math.round(kpis.bestType.avgReach))} alcance médio`,
                 icon: '◎',
-                accentColor: '#8b5cf6', // violet
+                accentColor: '#D4D4D4', // HUD Text Primary (Melhor Tipo)
             }] : []),
         ] : []),
     ];
@@ -293,21 +293,21 @@ export function MetaKpiCards({ posts, accountProfile }: MetaKpiCardsProps) {
                             <span className="v2-label">{card.label}</span>
                              <span className="font-mono text-sm leading-none" style={{ color: card.accentColor, opacity: 0.8 }}>{card.icon}</span>
                         </div>
-                        <p className="mt-2 text-2xl font-mono v2-number font-bold tracking-tight" style={{ color: 'var(--v2-text-primary)' }}>
+                        <p className="mt-2 text-2xl font-mono v2-number font-bold tracking-tight" style={{ color: '#F5F5F5' }}>
                             {card.value}
                         </p>
-                        <p className="mt-0.5 text-[10px] leading-tight" style={{ color: 'var(--v2-text-tertiary)' }}>{card.sub}</p>
+                        <p className="mt-0.5 text-[10px] leading-tight" style={{ color: '#8A8A8A' }}>{card.sub}</p>
                         
                         {card.trend && (
                             <div className="mt-2 flex items-center gap-1.5">
                                 {card.trend.direction === 'rising' ? (
-                                    <span className="font-mono text-xs" style={{ color: 'var(--v2-success)' }}>↗</span>
+                                    <span className="font-mono text-xs" style={{ color: '#10B981' }}>↗</span>
                                 ) : card.trend.direction === 'falling' ? (
-                                    <span className="font-mono text-xs" style={{ color: 'var(--v2-danger)' }}>↘</span>
+                                    <span className="font-mono text-xs" style={{ color: '#EF4444' }}>↘</span>
                                 ) : (
-                                    <span className="font-mono text-xs" style={{ color: 'var(--v2-text-tertiary)' }}>—</span>
+                                    <span className="font-mono text-xs" style={{ color: '#8A8A8A' }}>—</span>
                                 )}
-                                <span className="text-[9px] font-mono" style={{ color: card.trend.direction === 'rising' ? 'var(--v2-success)' : card.trend.direction === 'falling' ? 'var(--v2-danger)' : 'var(--v2-text-tertiary)' }}>
+                                <span className="text-[9px] font-mono" style={{ color: card.trend.direction === 'rising' ? '#10B981' : card.trend.direction === 'falling' ? '#EF4444' : '#8A8A8A' }}>
                                     {card.trend.direction === 'rising' ? 'Crescendo' : card.trend.direction === 'falling' ? 'Caindo' : 'Estável'}
                                 </span>
                             </div>

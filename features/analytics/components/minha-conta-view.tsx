@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/design-system/atoms/Button';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { InstagramPostMetrics } from '@/types/analytics';
@@ -832,41 +832,26 @@ export function MinhaContaView({ token: initialToken, username: initialUsername,
                     {/* ── TAB: Gráficos ── */}
                     {activeTab === 'charts' && (
                         <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-                            <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
-                                <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
-                                    Alcance + Saves + Shares ao longo do tempo
-                                </h4>
+                            <motion.div variants={item} className="rounded-[8px] border p-4" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#141414' }}>
                                 <MetaTimelineChart posts={posts} />
                             </motion.div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
-                                    <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
-                                        Desempenho por Tipo de Conteúdo
-                                    </h4>
+                                <motion.div variants={item} className="rounded-[8px] border p-4" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#141414' }}>
                                     <MetaContentTypeChart posts={posts} />
                                 </motion.div>
 
-                                <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
-                                    <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
-                                        Alcance Médio por Dia da Semana
-                                    </h4>
+                                <motion.div variants={item} className="rounded-[8px] border p-4" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#141414' }}>
                                     <MetaPostingDayChart posts={posts} />
                                 </motion.div>
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
-                                    <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
-                                        Melhor Horário para Postar
-                                    </h4>
+                                <motion.div variants={item} className="rounded-[8px] border p-4" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#141414' }}>
                                     <MetaBestHourChart posts={posts as any[]} />
                                 </motion.div>
 
-                                <motion.div variants={item} className="rounded-xl v2-glass v2-glass-hover p-4">
-                                    <h4 className="text-xs font-semibold text-[var(--v2-text-secondary)] uppercase tracking-wider mb-4">
-                                        Performance de Reels
-                                    </h4>
+                                <motion.div variants={item} className="rounded-[8px] border p-4" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#141414' }}>
                                     <MetaReelsChart posts={posts as any[]} />
                                 </motion.div>
                             </div>

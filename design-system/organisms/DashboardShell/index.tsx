@@ -3,8 +3,9 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { motion } from 'framer-motion'
 import { cn } from '@/design-system/utils/cn'
+import { AccountFilter } from '@/features/accounts/components/account-filter'
+import { useAccountStore } from '@/stores'
 
 interface NavItem {
   index: string
@@ -55,6 +56,12 @@ export interface DashboardShellProps {
 
 export function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname()
+  const { isLoaded, loadAccounts } = useAccountStore()
+
+  // Pre-load accounts at shell level so AccountFilter and all pages have data ready
+  React.useEffect(() => {
+    if (!isLoaded) loadAccounts()
+  }, [isLoaded, loadAccounts])
 
   // Derive title from NAVIGATION
   const activeItem = React.useMemo(() => {
@@ -156,9 +163,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </div>
 
           <div className="flex items-center gap-4">
-             <div className="font-mono text-[10px] text-[#2A2A2A] select-none uppercase tracking-widest">━━━━</div>
-             <div className="w-8 h-8 rounded-full bg-[#141414] border"
-                  style={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+             <AccountFilter />
           </div>
         </header>
 

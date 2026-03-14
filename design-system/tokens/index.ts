@@ -11,7 +11,7 @@ export { spacing, radius, shadow, zIndex } from './spacing'
 export { duration, easing, motionPreset } from './motion'
 
 // Re-export types
-export type { ColorToken, GradientToken, GlowToken } from './colors'
+export type { ColorToken, Primitive, Semantic } from './colors'
 export type { FontFamily, FontSize, TextPreset } from './typography'
 export type { Spacing, Radius, Shadow } from './spacing'
 export type { Duration, Easing, MotionPreset } from './motion'

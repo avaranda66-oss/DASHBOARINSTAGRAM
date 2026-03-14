@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip,
-    ResponsiveContainer, CartesianGrid, Cell, Legend
+    ResponsiveContainer, CartesianGrid, Cell
 } from 'recharts';
 
 interface MetaPost {
@@ -27,7 +27,7 @@ function fmt(n: number) {
 
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-export function MetaPostingDayChart({ posts }: Props) {
+export const MetaPostingDayChart = memo(function MetaPostingDayChart({ posts }: Props) {
     const [metric, setMetric] = useState<'reach' | 'likesCount' | 'saved' | 'shares'>('reach');
 
     const dayMap: Record<string, { count: number; totalMetric: number; totalEng: number }> = {};
@@ -58,18 +58,33 @@ export function MetaPostingDayChart({ posts }: Props) {
         { value: 'shares', label: 'Shares' }
     ];
 
+    if (posts.length === 0) {
+        return (
+            <div 
+                className="flex flex-col items-center justify-center h-[240px] rounded-[8px] border" 
+                style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#141414' }}
+            >
+                <span className="font-mono text-[10px] uppercase tracking-widest text-[#3A3A3A]">No_Data</span>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
-            <div className="flex gap-2 mb-2 flex-wrap">
+            <div className="flex items-center justify-between mb-3">
+                <span className="font-mono text-[10px] tracking-widest text-[#4A4A4A] uppercase">Alcance por Dia</span>
+            </div>
+
+            <div className="flex gap-2 mb-4 flex-wrap">
                 {options.map(opt => (
                     <button
                         key={opt.value}
                         onClick={() => setMetric(opt.value as any)}
-                        className={`text-[10px] sm:text-xs px-3 py-1.5 font-medium rounded-full transition-colors border ${
-                            metric === opt.value
-                                ? 'bg-[#FF7350]/20 text-[#FF7350] border-[#FF7350]/50'
-                                : 'bg-transparent text-[var(--v2-text-tertiary)] hover:text-[var(--v2-text-primary)] border-[var(--v2-border)]'
-                        }`}
+                        className="font-mono text-[10px] uppercase tracking-[0.12em] px-3 py-1 border transition-colors rounded-[3px]"
+                        style={metric === opt.value
+                            ? { color: '#A3E635', borderColor: 'rgba(163,230,53,0.3)', backgroundColor: 'rgba(163,230,53,0.06)' }
+                            : { color: '#4A4A4A', borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'transparent' }
+                        }
                     >
                         {opt.label}
                     </button>
@@ -78,50 +93,62 @@ export function MetaPostingDayChart({ posts }: Props) {
 
             <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--v2-border)" opacity={0.5} />
+                    <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="rgba(255,255,255,0.03)" />
                     <XAxis
                         dataKey="dia"
-                        tick={{ fontSize: 11, fill: 'var(--v2-text-tertiary)' }}
+                        tick={{ fontSize: 9, fill: '#3A3A3A', fontFamily: 'ui-monospace, monospace' }}
                         tickLine={false}
                         axisLine={false}
                     />
                     <YAxis
-                        tick={{ fontSize: 10, fill: 'var(--v2-text-tertiary)' }}
+                        tick={{ fontSize: 9, fill: '#3A3A3A', fontFamily: 'ui-monospace, monospace' }}
                         tickLine={false}
                         axisLine={false}
                         tickFormatter={fmt}
                     />
                     <Tooltip
-                        contentStyle={{
-                            backgroundColor: 'var(--v2-bg-surface-hover)',
-                            borderColor: 'var(--v2-border)',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            color: 'var(--v2-text-primary)'
+                        contentStyle={{ 
+                            backgroundColor: '#141414', 
+                            borderColor: 'rgba(255,255,255,0.08)', 
+                            borderRadius: '4px', 
+                            fontSize: '11px', 
+                            fontFamily: 'ui-monospace, monospace', 
+                            color: '#F5F5F5', 
+                            padding: '8px 12px' 
                         }}
-                        labelStyle={{ color: 'var(--v2-text-secondary)', marginBottom: '4px' }}
-                        cursor={{ fill: 'var(--v2-bg-surface)', opacity: 0.2 }}
+                        itemStyle={{ color: '#8A8A8A', fontSize: '10px' }}
+                        labelStyle={{ color: '#A3E635', fontSize: '10px', marginBottom: '4px', fontFamily: 'ui-monospace, monospace' }}
+                        cursor={{ fill: 'rgba(163,230,53,0.04)' }}
                         formatter={(value: any, name: any) => [fmt(value as number), name === 'metricaAvg' ? 'Média ' + options.find(o => o.value === metric)?.label : 'Média Engajamento']}
                     />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                    <Bar name={options.find(o => o.value === metric)?.label} dataKey="metricaAvg" radius={[4, 4, 0, 0]}>
+                    
+                    <Bar name={options.find(o => o.value === metric)?.label} dataKey="metricaAvg" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                         {data.map((entry) => (
                             <Cell
                                 key={`metrica-${entry.dia}`}
-                                fill={entry.metricaAvg === maxValue && maxValue > 0 ? '#FF7350' : 'rgba(255,115,80,0.3)'}
+                                fill={entry.metricaAvg === maxValue && maxValue > 0 ? '#A3E635' : 'rgba(163,230,53,0.15)'}
                             />
                         ))}
                     </Bar>
-                    <Bar name="Engajamento" dataKey="engAvg" radius={[4, 4, 0, 0]}>
+                    <Bar name="Engajamento" dataKey="engAvg" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                         {data.map((entry) => (
                             <Cell
                                 key={`eng-${entry.dia}`}
-                                fill={entry.engAvg === maxEngValue && maxEngValue > 0 ? '#8b5cf6' : 'rgba(139,92,246,0.3)'}
+                                fill={entry.engAvg === maxEngValue && maxEngValue > 0 ? '#FBBF24' : 'rgba(251,191,36,0.15)'}
                             />
                         ))}
                     </Bar>
                 </BarChart>
             </ResponsiveContainer>
+
+            <div className="flex items-center gap-4 pt-2 border-t mt-2" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                <span className="flex items-center gap-1.5 font-mono text-[9px] text-[#3A3A3A]">
+                    <div className="w-2 h-2 rounded-[2px]" style={{ backgroundColor: '#A3E635' }} /> Métrica
+                </span>
+                <span className="flex items-center gap-1.5 font-mono text-[9px] text-[#3A3A3A]">
+                    <div className="w-2 h-2 rounded-[2px]" style={{ backgroundColor: '#FBBF24' }} /> Engajamento
+                </span>
+            </div>
         </div>
     );
-}
+});
