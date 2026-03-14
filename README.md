@@ -24,6 +24,9 @@
   <em>Todo o codigo, arquitetura, design de UI e logica de negocios foram desenvolvidos<br/>em parceria entre um humano e Claude Code (Anthropic), demonstrando o potencial<br/>da colaboracao humano-IA no desenvolvimento de software profissional.</em>
 </p>
 
+> **Esta e a branch `main` (V1 — versao estavel).**
+> A versao ativa com o novo **Industrial HUD Design System** e o **Motor Estatistico v3.0** (12 modulos, Bayesian A/B, Isolation Forest, Shapley, MMM) esta na branch [`v2-dashboard`](https://github.com/avaranda66-oss/DASHBOARINSTAGRAM/tree/v2-dashboard).
+
 ---
 
 ## Indice
