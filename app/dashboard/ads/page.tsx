@@ -24,6 +24,8 @@ import { downloadCsv, csvFilename, campaignsToCSV, dailyInsightsToCSV } from '@/
 import { AdsDemographicsSection } from '@/features/ads/components/ads-demographics-section';
 import { AdsAccountSwitcher } from '@/features/ads/components/ads-account-switcher';
 import { AdsMultiAccountOverview } from '@/features/ads/components/ads-multi-account-overview';
+import { AdsBudgetPacing } from '@/features/ads/components/ads-budget-pacing';
+import { AdsRulesEngine } from '@/features/ads/components/ads-rules-engine';
 
 type ViewTab = 'overview' | 'charts' | 'intelligence' | 'creatives';
 
@@ -755,6 +757,16 @@ export default function AdsDashboardPage() {
                                 accountId={adsAccountId}
                                 datePreset={filters.customRange ? undefined : filters.datePreset}
                                 timeRange={filters.customRange}
+                            />
+                            {/* US-63: Budget Pacing Alerts */}
+                            {campaigns.length > 0 && (
+                                <AdsBudgetPacing campaigns={campaigns} currency={currency} />
+                            )}
+                            {/* US-64: Automated Rules Engine */}
+                            <AdsRulesEngine
+                                campaigns={campaigns}
+                                token={adsToken}
+                                accountId={adsAccountId}
                             />
                         </div>
                     )}

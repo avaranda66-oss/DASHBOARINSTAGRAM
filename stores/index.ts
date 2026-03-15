@@ -7,3 +7,4 @@ export { useAnalyticsStore } from './analytics-slice';
 export { useAutomationStore } from './automation-slice';
 export { useSettingsStore } from './settings-slice';
 export { useAdsStore } from './ads-slice';
+export { useAdsRulesStore } from './ads-rules-slice';

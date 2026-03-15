@@ -355,3 +355,82 @@ export interface CreativeScore {
     suggestions: string[];
     analyzedAt: string;
 }
+
+// ─── Budget Pacing Types (US-63) ─────────────────────────────────────────────
+
+export type PacingStatus = 'on_track' | 'overspending' | 'underspending' | 'exhausted';
+
+export interface BudgetPacingAlert {
+    campaignId: string;
+    campaignName: string;
+    status: PacingStatus;
+    budgetTotal: number;
+    budgetSpent: number;
+    budgetRemaining: number;
+    avgDailySpend: number;
+    daysElapsed: number;
+    daysRemaining: number;
+    daysUntilExhaustion: number | null;
+    /** Budget utilization % (budgetSpent / budgetTotal) */
+    utilizationPct: number;
+    /** Expected utilization % at this point in time */
+    expectedUtilizationPct: number;
+    /** Pacing ratio: actual pace vs ideal pace (>1.2 = overspend, <0.6 = underspend) */
+    pacingRatio: number;
+    message: string;
+    severity: 'info' | 'warn' | 'critical';
+}
+
+// ─── Rules Engine Types (US-64) ──────────────────────────────────────────────
+
+export type RuleMetric = 'cpa' | 'roas' | 'ctr' | 'cpc' | 'cpm' | 'spend' | 'conversions' | 'impressions' | 'frequency';
+export type RuleOperator = 'gt' | 'gte' | 'lt' | 'lte' | 'eq';
+export type RuleAction = 'pause_campaign' | 'increase_budget' | 'decrease_budget' | 'notify';
+
+export interface RuleCondition {
+    metric: RuleMetric;
+    operator: RuleOperator;
+    value: number;
+}
+
+export interface AutomationRule {
+    id: string;
+    name: string;
+    description?: string;
+    conditions: RuleCondition[];
+    action: RuleAction;
+    /** For increase/decrease_budget: percentage to adjust (e.g. 15 = +15%) */
+    actionValue?: number;
+    /** Which campaigns: 'all' or specific IDs */
+    targetCampaignIds: string[] | 'all';
+    enabled: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface RuleExecutionLog {
+    id: string;
+    ruleId: string;
+    ruleName: string;
+    campaignId: string;
+    campaignName: string;
+    action: RuleAction;
+    actionValue?: number;
+    conditionsSummary: string;
+    executedAt: string;
+    success: boolean;
+    error?: string;
+    simulated: boolean;
+}
+
+export interface RuleSimulationResult {
+    ruleId: string;
+    ruleName: string;
+    matchedCampaigns: {
+        campaignId: string;
+        campaignName: string;
+        currentValues: Record<string, number>;
+        wouldTrigger: boolean;
+        projectedAction: string;
+    }[];
+}
