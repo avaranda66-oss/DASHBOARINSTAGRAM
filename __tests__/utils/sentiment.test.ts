@@ -87,7 +87,7 @@ describe('analyzeCommentsSentiment', () => {
     timestamp: '2026-03-01T10:00:00Z',
     displayUrl: 'https://example.com/img.jpg',
     ownerUsername: postOwner,
-    latestComments: comments.map((c, i) => ({ id: `c${i}`, text: c.text, ownerUsername: c.ownerUsername, timestamp: '' })),
+    latestComments: comments.map((c, i) => ({ id: `c${i}`, text: c.text, ownerUsername: c.ownerUsername, timestamp: '', likesCount: 0 })),
   });
 
   it('counts positive, neutral, negative correctly', () => {

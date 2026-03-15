@@ -5,6 +5,7 @@ export const activeCampaign: AdCampaign = {
   id: 'camp_001',
   name: 'Test Campaign Active',
   status: 'ACTIVE',
+  effective_status: 'ACTIVE',
   objective: 'CONVERSIONS',
   daily_budget: '5000', // $50.00 in cents
   lifetime_budget: undefined,
@@ -39,6 +40,7 @@ export const noBudgetCampaign: AdCampaign = {
   id: 'camp_002',
   name: 'No Budget Campaign',
   status: 'ACTIVE',
+  effective_status: 'ACTIVE',
   objective: 'REACH',
   daily_budget: undefined,
   lifetime_budget: undefined,
@@ -64,6 +66,7 @@ export const zeroSpendCampaign: AdCampaign = {
   id: 'camp_003',
   name: 'Zero Spend Campaign',
   status: 'PAUSED',
+  effective_status: 'PAUSED',
   objective: 'CONVERSIONS',
   daily_budget: '10000', // $100 in cents
   start_time: '2026-03-10T00:00:00Z',

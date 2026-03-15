@@ -164,6 +164,8 @@ describe('evaluateRule', () => {
     action: 'notify',
     targetCampaignIds: 'all',
     enabled: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
   });
 
   it('returns false for empty conditions', () => {
@@ -205,6 +207,8 @@ describe('simulateRule', () => {
       action: 'notify',
       targetCampaignIds: 'all',
       enabled: true,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
     };
     const campaigns = [activeCampaign, zeroSpendCampaign, noInsightsCampaign];
     const result = simulateRule(rule, campaigns);
@@ -222,6 +226,8 @@ describe('simulateRule', () => {
       action: 'pause_campaign',
       targetCampaignIds: ['camp_001'],
       enabled: true,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
     };
 
     const result = simulateRule(rule, [activeCampaign, zeroSpendCampaign]);
@@ -238,6 +244,8 @@ describe('simulateRule', () => {
       actionValue: 20,
       targetCampaignIds: 'all',
       enabled: true,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
     };
 
     const campaigns = [activeCampaign, noBudgetCampaign, zeroSpendCampaign];
@@ -259,6 +267,8 @@ describe('simulateRule', () => {
       actionValue: 15,
       targetCampaignIds: 'all',
       enabled: true,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
     };
 
     const result = simulateRule(rule, [activeCampaign]);
