@@ -51,7 +51,6 @@ export async function POST(req: NextRequest) {
         }
 
         // Log explícito
-        console.log(`[APIFY RUN] Disparando Actor para ${profileUrls.join(', ')} (Limit: ${resultsLimit}, Period: ${periodDays || 'Inf'}). Run Diária: ${dailyRunCount + 1}/${MAX_DAILY_RUNS}`);
 
         // Incrementa o contador SEGURO ANTES de chamar, para evitar race conditions básicas
         dailyRunCount++;

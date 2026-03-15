@@ -1,9 +1,11 @@
 'use client';
 
+import { memo, useMemo } from 'react';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip,
     ResponsiveContainer, CartesianGrid, Cell
 } from 'recharts';
+import { hookRate } from '@/lib/utils/causal-behavioral';
 
 interface MetaPost {
     reach?: number;
@@ -12,8 +14,7 @@ interface MetaPost {
     commentsCount: number;
     likesCount: number;
     media_product_type?: string;
-    video_views?: number;
-    average_video_watch_time?: number; // Might vary what name it is, maybe just use standard metrics if undefined
+    ig_reels_avg_watch_time?: number; // ms — disponível em MetaPostMetrics
 }
 
 interface Props {
@@ -26,9 +27,18 @@ function fmt(n: number) {
     return n.toLocaleString('pt-BR');
 }
 
-export function MetaReelsChart({ posts }: Props) {
+export const MetaReelsChart = memo(function MetaReelsChart({ posts }: Props) {
     const reels = posts.filter(p => p.media_product_type === 'REELS');
     const feed = posts.filter(p => !p.media_product_type || p.media_product_type === 'FEED' || p.media_product_type === 'CAROUSEL_ALBUM');
+
+    // Hook Rate médio dos reels — usa ig_reels_avg_watch_time se disponível
+    // Assume duração padrão de reel = 30s (benchmark do setor)
+    const hookRateResult = useMemo(() => {
+        const reelsWithWatch = reels.filter(r => (r.ig_reels_avg_watch_time ?? 0) > 0);
+        if (reelsWithWatch.length === 0) return null;
+        const avgWatchMs = reelsWithWatch.reduce((s, r) => s + (r.ig_reels_avg_watch_time ?? 0), 0) / reelsWithWatch.length;
+        return hookRate(avgWatchMs, 30_000, 'reel');
+    }, [reels]);
 
     const totalReelsReach = reels.reduce((acc, p) => acc + (p.reach ?? 0), 0);
     const avgReelsReach = reels.length > 0 ? Math.round(totalReelsReach / reels.length) : 0;
@@ -47,53 +57,93 @@ export function MetaReelsChart({ posts }: Props) {
 
     if (posts.length === 0) {
         return (
-            <div className="flex items-center justify-center p-8 text-sm text-muted-foreground bg-zinc-900/10 rounded-xl border border-dashed border-zinc-800">
-                Sem dados de postagens.
+            <div 
+                className="flex flex-col items-center justify-center h-[200px] rounded-[8px] border" 
+                style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#141414' }}
+            >
+                <span className="font-mono text-[10px] uppercase tracking-widest text-[#3A3A3A]">No_Data</span>
             </div>
         );
     }
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="bg-zinc-900/30 rounded-lg p-4 border border-[var(--v2-border)]">
-                    <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider mb-2">Total de Reels</p>
-                    <p className="text-2xl font-bold font-mono text-purple-400">{reels.length}</p>
+            <div className="flex items-center justify-between mb-4">
+                <span className="font-mono text-[10px] tracking-widest text-[#4A4A4A] uppercase">Performance Reels</span>
+                <span className="font-mono text-[10px] text-[#A3E635] opacity-80">[{reels.length.toString().padStart(2, '0')} reels]</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="rounded-[6px] border p-3" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#0A0A0A' }}>
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-[#3A3A3A] mb-1">Total Reels</p>
+                    <p className="font-mono text-xl font-bold text-[#A3E635]">{reels.length}</p>
                 </div>
-                <div className="bg-zinc-900/30 rounded-lg p-4 border border-[var(--v2-border)]">
-                    <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider mb-2">Engajamento Reels</p>
-                    <p className="text-2xl font-bold font-mono text-purple-400">{fmt(totalReelsSaves + totalReelsShares + totalReelsLikes)}</p>
-                    <p className="text-[10px] text-zinc-500 mt-1">likes + saves + shares</p>
+                <div className="rounded-[6px] border p-3" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#0A0A0A' }}>
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-[#3A3A3A] mb-1">Engajamento Reels</p>
+                    <p className="font-mono text-xl font-bold text-[#A3E635]">{fmt(totalReelsSaves + totalReelsShares + totalReelsLikes)}</p>
+                    <p className="font-mono text-[9px] text-[#3A3A3A] mt-1">likes + saves + shares</p>
                 </div>
             </div>
 
-            <div>
-                <p className="text-sm font-semibold mb-3">Reels VS Feed (Alcance Médio)</p>
-                <div className="h-[200px] w-full">
+            {hookRateResult && (
+                <div className="rounded-[6px] border p-3 mb-4 flex items-center justify-between"
+                     style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#0A0A0A' }}>
+                    <div>
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-[#3A3A3A] mb-1">Hook Rate Médio</p>
+                        <p className="font-mono text-xl font-bold" style={{
+                            color: hookRateResult.classification === 'excelente' ? '#A3E635'
+                                 : hookRateResult.classification === 'bom' ? '#FBBF24'
+                                 : hookRateResult.classification === 'medio' ? '#8A8A8A'
+                                 : '#EF4444'
+                        }}>
+                            {hookRateResult.hookRate.toFixed(1)}%
+                        </p>
+                    </div>
+                    <div className="text-right">
+                        <p className="font-mono text-[9px] uppercase tracking-widest"
+                           style={{
+                               color: hookRateResult.classification === 'excelente' ? '#A3E635'
+                                    : hookRateResult.classification === 'bom' ? '#FBBF24'
+                                    : '#4A4A4A'
+                           }}>
+                            {hookRateResult.classification.toUpperCase()}
+                        </p>
+                        <p className="font-mono text-[8px] text-[#3A3A3A] mt-0.5">{hookRateResult.benchmark}</p>
+                    </div>
+                </div>
+            )}
+
+            <div className="space-y-2">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#3A3A3A] block mb-2">Reels vs Feed · alcance médio</span>
+                <div className="h-[140px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--v2-border)" opacity={0.5} />
+                            <CartesianGrid strokeDasharray="2 4" horizontal={false} stroke="rgba(255,255,255,0.03)" />
                             <XAxis type="number" hide />
                             <YAxis 
                                 type="category" 
                                 dataKey="name" 
                                 axisLine={false} 
                                 tickLine={false} 
-                                tick={{ fontSize: 11, fill: 'var(--v2-text-tertiary)' }} 
+                                tick={{ fontSize: 10, fill: '#3A3A3A', fontFamily: 'ui-monospace, monospace' }} 
                             />
                             <Tooltip
-                                contentStyle={{
-                                    backgroundColor: 'var(--v2-bg-surface-hover)',
-                                    borderColor: 'var(--v2-border)',
-                                    borderRadius: '8px',
-                                    fontSize: '12px',
-                                    color: 'var(--v2-text-primary)'
+                                contentStyle={{ 
+                                    backgroundColor: '#141414', 
+                                    borderColor: 'rgba(255,255,255,0.08)', 
+                                    borderRadius: '4px', 
+                                    fontSize: '11px', 
+                                    fontFamily: 'ui-monospace, monospace', 
+                                    color: '#F5F5F5', 
+                                    padding: '8px 12px' 
                                 }}
-                                cursor={{ fill: 'var(--v2-bg-surface)', opacity: 0.2 }}
+                                itemStyle={{ color: '#8A8A8A', fontSize: '10px' }}
+                                labelStyle={{ color: '#A3E635', fontSize: '10px', marginBottom: '4px', fontFamily: 'ui-monospace, monospace' }}
+                                cursor={{ fill: 'rgba(163,230,53,0.04)' }}
                             />
-                            <Bar dataKey="AlcanceMédio" radius={[0, 4, 4, 0]} maxBarSize={30}>
+                            <Bar dataKey="AlcanceMédio" radius={[0, 3, 3, 0]} maxBarSize={28} isAnimationActive={false}>
                                 {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.name === 'Reels' ? '#c026d3' : '#3b82f6'} />
+                                    <Cell key={`cell-${index}`} fill={entry.name === 'Reels' ? '#A3E635' : '#FBBF24'} />
                                 ))}
                             </Bar>
                         </BarChart>
@@ -102,4 +152,4 @@ export function MetaReelsChart({ posts }: Props) {
             </div>
         </div>
     );
-}
+});

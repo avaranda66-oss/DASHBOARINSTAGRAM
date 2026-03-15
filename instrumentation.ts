@@ -9,7 +9,6 @@ export async function register() {
                 update: { value: null },
                 create: { key: 'tunnel_url', value: null }
             });
-            console.log('[Instrumentation] tunnel_url limpa — aguardando novo túnel.');
         } catch { /* se o DB não existir ainda, ignorar */ }
 
         const { SchedulerService } = await import('./lib/services/scheduler.service');

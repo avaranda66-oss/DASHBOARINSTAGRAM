@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion, Reorder } from 'framer-motion';
-import { Calendar, Eye, EyeOff, RefreshCw, Sparkles, GripVertical, ArrowUpDown, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+// Lucide icons removed in favor of ASCII HUD glyphs
+import { Button } from '@/design-system/atoms/Button';
 import { FeedPreviewPhone } from './feed-preview-phone';
 import { FeedAnalysisPanel, type FeedAnalysisResult } from './feed-analysis-panel';
 import type { InstagramPostMetrics } from '@/types/analytics';
@@ -115,7 +115,8 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
         import('@/app/actions/analytics.actions').then(({ getFeedAnalysisAction }) => {
             getFeedAnalysisAction(account.username).then(cached => {
                 if (cached?.analysis) {
-                    setAnalysisResult(cached.analysis);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    setAnalysisResult(cached.analysis as any);
                 }
             }).catch(() => {});
         }).catch(() => {});
@@ -135,7 +136,6 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
                     }
                 }
                 if (Object.keys(thumbs).length > 0) {
-                    console.log(`[FeedPreview] Loaded ${Object.keys(thumbs).length} thumbnails from Apify cache`);
                     setApifyThumbnails(thumbs);
                 }
             }).catch(() => {});
@@ -471,7 +471,7 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
             {scheduledPosts.length > 0 && (
                 <motion.div variants={item} className="flex flex-wrap items-center justify-between gap-2 rounded-xl v2-glass p-3">
                     <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-blue-400" />
+                        <span className="font-mono text-xs text-blue-400">◷</span>
                         <span className="text-xs text-[var(--v2-text-secondary)]">
                             <strong className="text-[var(--v2-text-primary)]">{scheduledPosts.length}</strong> criativos agendados
                         </span>
@@ -484,7 +484,7 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
                             onClick={fetchScheduled}
                             disabled={isRefreshing}
                         >
-                            <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            <span className={`font-mono text-xs ${isRefreshing ? 'animate-spin' : ''}`}>↻</span>
                             Atualizar
                         </Button>
                         <Button
@@ -494,7 +494,7 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
                             onClick={handleAIReorder}
                             disabled={isAIReordering || scheduledContents.length < 2}
                         >
-                            <Sparkles className={`w-3 h-3 ${isAIReordering ? 'animate-pulse' : ''}`} />
+                            <span className={`font-mono text-xs ${isAIReordering ? 'animate-pulse' : ''}`}>◎</span>
                             {isAIReordering ? 'Organizando...' : 'IA Organizar'}
                         </Button>
                         <Button
@@ -503,7 +503,7 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
                             className="h-7 text-[10px] gap-1"
                             onClick={() => setShowScheduled(!showScheduled)}
                         >
-                            {showScheduled ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                            <span className="font-mono text-xs">◎</span>
                             {showScheduled ? 'Ocultar' : 'Mostrar'}
                         </Button>
                     </div>
@@ -514,7 +514,7 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
             {aiReorderReason && (
                 <motion.div variants={item} className="rounded-xl v2-glass p-3 border border-purple-500/20">
                     <div className="flex items-start gap-2">
-                        <Sparkles className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                        <span className="font-mono text-sm text-purple-400 shrink-0 mt-0.5">◎</span>
                         <p className="text-[11px] text-[var(--v2-text-secondary)] leading-relaxed">{aiReorderReason}</p>
                     </div>
                 </motion.div>
@@ -527,18 +527,18 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
                         <div className="w-full xl:w-56 shrink-0 space-y-2">
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-bold text-[var(--v2-text-secondary)] uppercase tracking-wider flex items-center gap-1">
-                                    <ArrowUpDown className="w-3 h-3" />
+                                    <span className="font-mono text-[10px]">↕</span>
                                     Ordem de Publicação
                                 </span>
                                 {orderChanged && (
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6 text-[9px] gap-1 text-green-400 hover:text-green-300"
-                                        onClick={handleSaveOrder}
-                                        disabled={isSavingOrder}
-                                    >
-                                        <Check className="w-3 h-3" />
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 text-[9px] gap-1 text-green-400 hover:text-green-300"
+                                            onClick={handleSaveOrder}
+                                            disabled={isSavingOrder}
+                                        >
+                                            <span className="font-mono text-[10px]">◎</span>
                                         {isSavingOrder ? 'Salvando...' : 'Salvar'}
                                     </Button>
                                 )}
@@ -550,12 +550,12 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
                                 className="space-y-1.5"
                             >
                                 {scheduledContents.map((content, idx) => (
-                                    <Reorder.Item
-                                        key={content.id}
-                                        value={content}
-                                        className="flex items-center gap-2 rounded-lg v2-glass p-1.5 cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-blue-500/30 transition-all"
-                                    >
-                                        <GripVertical className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                                        <Reorder.Item
+                                            key={content.id}
+                                            value={content}
+                                            className="flex items-center gap-2 rounded-lg v2-glass p-1.5 cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-blue-500/30 transition-all"
+                                        >
+                                            <span className="font-mono text-xs text-zinc-500 shrink-0">‖</span>
                                         <span className="text-[11px] font-bold text-blue-400 w-4 shrink-0">{idx + 1}</span>
                                         <div className="w-10 h-10 rounded overflow-hidden shrink-0 bg-zinc-800">
                                             {content.mediaUrls[0] && (
@@ -653,7 +653,7 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
                             </p>
                             {allPosts[selectedPostIndex].isScheduled ? (
                                 <div className="flex items-center gap-3 mt-2 text-[10px] text-blue-400">
-                                    <Calendar className="w-3 h-3" />
+                                    <span className="font-mono text-[10px]">◷</span>
                                     <span>{allPosts[selectedPostIndex].scheduledAt ? new Date(allPosts[selectedPostIndex].scheduledAt!).toLocaleDateString('pt-BR') : 'Data não definida'}</span>
                                 </div>
                             ) : (

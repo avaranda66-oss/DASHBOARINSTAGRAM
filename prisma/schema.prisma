@@ -14,8 +14,6 @@ model Account {
   provider          String
   providerAccountId String   @unique
   access_token      String?
-  ads_token         String?
-  ads_account_id    String?
   expires_at        Int?
   username          String?
   picture           String?
@@ -29,6 +27,8 @@ model Account {
   media_count       Int?
   name              String?
   website           String?
+  ads_account_id    String?
+  ads_token         String?
 }
 
 model Content {
@@ -41,9 +41,10 @@ model Content {
   hashtags    String
   mediaUrls   String
   accountId   String?
-  order       Int          @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  order        Int          @default(0)
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
   collections Collection[] @relation("CollectionToContent")
 }
 

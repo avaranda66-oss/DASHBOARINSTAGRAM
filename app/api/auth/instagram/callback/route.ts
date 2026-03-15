@@ -112,7 +112,6 @@ export async function GET(req: NextRequest) {
             },
         });
 
-        console.log(`[Meta OAuth] Conta @${username} conectada com sucesso (expira em ${new Date(expiresAt * 1000).toLocaleDateString('pt-BR')})`);
 
         return NextResponse.redirect(
             new URL(`/dashboard/settings?success=meta_connected&username=${encodeURIComponent(username)}`, req.url)

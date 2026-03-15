@@ -1,29 +1,28 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ExternalLink, Heart, MessageCircle, Eye, Play, Image as ImageIcon, Layers, Info } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import type { InstagramPostMetrics } from '@/types/analytics';
 
 function formatNum(n: number): string {
     return new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(n);
 }
 
-const TYPE_MAP: Record<string, { label: string; Icon: React.ElementType; color: string }> = {
-    Video: { label: 'Reel', Icon: Play, color: '#8b5cf6' },
-    Sidecar: { label: 'Carrossel', Icon: Layers, color: '#3b82f6' },
-    Image: { label: 'Imagem', Icon: ImageIcon, color: '#ec4899' },
+const TYPE_MAP: Record<string, { label: string; glyph: string; color: string }> = {
+    Video: { label: 'Reel', glyph: '▶', color: '#8b5cf6' },
+    Sidecar: { label: 'Carrossel', glyph: '⊞', color: '#3b82f6' },
+    Image: { label: 'Imagem', glyph: '◫', color: '#ec4899' },
 };
 
 /** Image with onError fallback to type icon */
 export function PostImage({ src, className, post }: { src: string; className: string; post: InstagramPostMetrics }) {
     const [broken, setBroken] = useState(false);
     const typeInfo = TYPE_MAP[post.type] ?? TYPE_MAP.Image;
-    const TypeIcon = typeInfo.Icon;
 
     if (broken || !src) {
         return (
             <div className={`${className} bg-zinc-800 flex items-center justify-center`}>
-                <TypeIcon className="h-5 w-5" style={{ color: typeInfo.color, opacity: 0.5 }} />
+                <span className="font-mono text-xl" style={{ color: typeInfo.color, opacity: 0.5 }}>{typeInfo.glyph}</span>
             </div>
         );
     }
@@ -43,7 +42,6 @@ export function PostImage({ src, className, post }: { src: string; className: st
 /** Standalone card showing full post details */
 export function PostDetailCard({ post }: { post: InstagramPostMetrics }) {
     const typeInfo = TYPE_MAP[post.type] ?? TYPE_MAP.Image;
-    const TypeIcon = typeInfo.Icon;
     const eng = post.likesCount + post.commentsCount;
     const dateStr = post.timestamp
         ? new Date(post.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -58,7 +56,7 @@ export function PostDetailCard({ post }: { post: InstagramPostMetrics }) {
                     className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono backdrop-blur-sm"
                     style={{ background: typeInfo.color + '30', color: typeInfo.color }}
                 >
-                    <TypeIcon className="h-3 w-3" />
+                    <span className="font-mono text-[10px]">{typeInfo.glyph}</span>
                     {typeInfo.label}
                 </span>
                 {dateStr && (
@@ -78,16 +76,16 @@ export function PostDetailCard({ post }: { post: InstagramPostMetrics }) {
                 {/* Metrics row */}
                 <div className="flex items-center gap-3 pt-1 border-t border-white/5">
                     <div className="flex items-center gap-1">
-                        <Heart className="h-3 w-3 text-rose-400" />
+                        <span className="font-mono text-[10px] text-rose-400">▲</span>
                         <span className="text-xs font-mono text-zinc-300">{formatNum(post.likesCount)}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <MessageCircle className="h-3 w-3 text-sky-400" />
+                        <span className="font-mono text-[10px] text-sky-400">◐</span>
                         <span className="text-xs font-mono text-zinc-300">{formatNum(post.commentsCount)}</span>
                     </div>
                     {post.videoViewCount != null && post.videoViewCount > 0 && (
                         <div className="flex items-center gap-1">
-                            <Eye className="h-3 w-3 text-violet-400" />
+                            <span className="font-mono text-[10px] text-violet-400">◎</span>
                             <span className="text-xs font-mono text-zinc-300">{formatNum(post.videoViewCount)}</span>
                         </div>
                     )}
@@ -101,7 +99,7 @@ export function PostDetailCard({ post }: { post: InstagramPostMetrics }) {
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
                 >
-                    <ExternalLink className="h-3 w-3" />
+                    <span className="font-mono text-[10px]">↳</span>
                     Ver no Instagram
                 </a>
             </div>
@@ -191,11 +189,11 @@ export function PostMiniCard({ post, rank }: { post: InstagramPostMetrics; rank?
             {/* Metrics */}
             <div className="text-right shrink-0">
                 <div className="flex items-center gap-1.5">
-                    <Heart className="h-2.5 w-2.5 text-rose-400/60" />
+                    <span className="font-mono text-[10px] text-rose-400/60">▲</span>
                     <span className="text-[10px] font-mono text-zinc-400">{formatNum(post.likesCount)}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    <MessageCircle className="h-2.5 w-2.5 text-sky-400/60" />
+                    <span className="font-mono text-[10px] text-sky-400/60">◐</span>
                     <span className="text-[10px] font-mono text-zinc-400">{formatNum(post.commentsCount)}</span>
                 </div>
             </div>
@@ -206,7 +204,7 @@ export function PostMiniCard({ post, rank }: { post: InstagramPostMetrics; rank?
                 rel="noopener noreferrer"
                 className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
             >
-                <ExternalLink className="h-3 w-3 text-zinc-500 hover:text-blue-400" />
+                <span className="font-mono text-[10px] text-zinc-500 hover:text-blue-400">↳</span>
             </a>
         </div>
     );
@@ -240,7 +238,7 @@ export function InfoTooltip({ text }: { text: string }) {
                 timeout.current = setTimeout(() => setShow(false), 100);
             }}
         >
-            <Info className="h-3 w-3 text-zinc-600 hover:text-zinc-400 transition-colors" />
+            <span className="font-mono text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors">◎</span>
             {show && (
                 <div
                     className={`absolute z-50 ${pos === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} left-1/2 -translate-x-1/2 w-[220px] px-3 py-2 rounded-lg border border-white/10 bg-zinc-900/95 backdrop-blur-md shadow-xl`}

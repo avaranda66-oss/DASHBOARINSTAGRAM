@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getInstagramUserId, publishImage } from '@/lib/services/instagram-graph.service';
+import { auth } from '@/lib/auth/auth';
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { token, imageUrl, caption } = body;
+        const { imageUrl, caption } = body;
+
+        // Usa token do body (legado) ou da sessão OAuth (novo)
+        let token: string | undefined = body.token;
+        if (!token) {
+            const session = await auth();
+            token = session?.accessToken;
+        }
 
         if (!token || !imageUrl) {
             return NextResponse.json(

@@ -3,9 +3,10 @@
 import { create } from 'zustand';
 import type {
     AdCampaign, AdSet, Ad, AdAccount, AdInsight,
-    AdsKpiSummary, DailyAdInsight, AdsDatePreset, AdsFilters,
-    IntelligenceMetrics,
+    AdsKpiSummary, AdsKpiDelta, DailyAdInsight, AdsDatePreset, AdsFilters,
+    IntelligenceMetrics, MetaAdAccount,
 } from '@/types/ads';
+import { cachedFetch, invalidateCache } from '@/lib/utils/request-cache';
 
 interface AdsSlice {
     // Data
@@ -16,6 +17,8 @@ interface AdsSlice {
     insights: AdInsight[];
     dailyInsights: DailyAdInsight[];
     kpiSummary: AdsKpiSummary | null;
+    kpiDelta: AdsKpiDelta | null;
+    dailyFallbackPreset: string | null; // preset usado quando fallback ativado
 
     // Creatives
     creativeAds: Ad[];
@@ -36,11 +39,23 @@ interface AdsSlice {
     expandedCampaignId: string | null;
     filters: AdsFilters;
 
+    // Cache metadata
+    campFromCache: boolean;
+    insightFromCache: boolean;
+
+    // Multi-Account — US-61
+    availableAccounts: MetaAdAccount[];
+    isLoadingAccounts: boolean;
+    fetchAdAccounts: (token: string) => Promise<void>;
+
     // Actions
-    fetchAll: (token: string, accountId: string) => Promise<void>;
+    fetchAll: (token: string, accountId: string, forceRefresh?: boolean) => Promise<void>;
     fetchInsights: (token: string, accountId: string) => Promise<void>;
     fetchCreatives: (token: string, accountId: string) => Promise<void>;
     fetchIntelligence: (token: string, accountId: string) => Promise<void>;
+    // TODO: Call setCreativeScores after /api/ads/creative-scores returns data
+    // (feature: visual score analysis — composition, contrast, textRatio, hierarchy)
+    setCreativeScores: (scores: Record<string, import('@/types/ads').CreativeScore>) => void;
     setFilters: (filters: Partial<AdsFilters>) => void;
     setSelectedCampaign: (id: string | null) => void;
     setExpandedCampaign: (id: string | null) => void;
@@ -57,6 +72,8 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
     insights: [],
     dailyInsights: [],
     kpiSummary: null,
+    kpiDelta: null,
+    dailyFallbackPreset: null,
     creativeAds: [],
     isLoadingCreatives: false,
     creativesError: null,
@@ -64,6 +81,8 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
     isLoadingIntelligence: false,
     intelligenceError: null,
     creativeScores: {},
+    campFromCache: false,
+    insightFromCache: false,
     isLoading: false,
     error: null,
     lastFetchedAt: null,
@@ -74,7 +93,26 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
         statusFilter: 'all',
     },
 
-    fetchAll: async (token, accountId) => {
+    // Multi-Account — US-61
+    availableAccounts: [],
+    isLoadingAccounts: false,
+
+    fetchAdAccounts: async (token) => {
+        set({ isLoadingAccounts: true });
+        try {
+            const res = await fetch(`/api/meta/adaccounts?token=${encodeURIComponent(token)}`);
+            const data = await res.json();
+            if (data.success) {
+                set({ availableAccounts: data.accounts, isLoadingAccounts: false });
+            } else {
+                set({ isLoadingAccounts: false });
+            }
+        } catch {
+            set({ isLoadingAccounts: false });
+        }
+    },
+
+    fetchAll: async (token, accountId, forceRefresh = false) => {
         set({ isLoading: true, error: null });
         try {
             const { filters } = get();
@@ -84,34 +122,22 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                 ? { timeRange: filters.customRange }
                 : { datePreset: filters.datePreset };
 
-            // Buscar campanhas + insights em paralelo (status filter is client-side)
-            const [campRes, insightRes] = await Promise.all([
-                fetch('/api/ads-campaigns', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        token,
-                        accountId,
-                        ...dateParams,
-                        includeSets: true,
-                    }),
-                }).then(r => {
-                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                    return r.json();
-                }),
-                fetch('/api/ads-insights', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        token,
-                        accountId,
-                        ...dateParams,
-                    }),
-                }).then(r => {
-                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                    return r.json();
-                }),
+            const campBody = { token, accountId, ...dateParams, includeSets: true };
+            const insightBody = {
+                token,
+                accountId,
+                ...dateParams,
+                ...(filters.attributionWindow ? { attributionWindow: filters.attributionWindow } : {}),
+            };
+
+            // Buscar campanhas + insights em paralelo com cache/dedup
+            const [campResult, insightResult] = await Promise.all([
+                cachedFetch<any>('/api/ads-campaigns', campBody, { forceRefresh }),
+                cachedFetch<any>('/api/ads-insights', insightBody, { forceRefresh }),
             ]);
+
+            const campRes = campResult.data;
+            const insightRes = insightResult.data;
 
             if (!campRes.success) throw new Error(campRes.error);
             if (!insightRes.success) throw new Error(insightRes.error);
@@ -124,25 +150,33 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                 insights: insightRes.insights || [],
                 dailyInsights: insightRes.daily || [],
                 kpiSummary: insightRes.kpiSummary || null,
+                kpiDelta: insightRes.kpiDelta || null,
+                dailyFallbackPreset: insightRes.usedPreset || null,
+                campFromCache: campResult.fromCache,
+                insightFromCache: insightResult.fromCache,
                 lastFetchedAt: new Date().toISOString(),
                 isLoading: false,
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('[AdsStore] fetchAll erro:', e);
-            set({ error: e.message || 'Erro ao buscar campanhas.', isLoading: false });
+            const msg = e instanceof Error ? e.message : 'Erro ao buscar campanhas.';
+            set({ error: msg, isLoading: false });
         }
     },
 
     fetchInsights: async (token, accountId) => {
         try {
             const { filters } = get();
+            const dateParams = filters.customRange
+                ? { timeRange: filters.customRange }
+                : { datePreset: filters.datePreset };
             const res = await fetch('/api/ads-insights', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     token,
                     accountId,
-                    datePreset: filters.datePreset,
+                    ...dateParams,
                 }),
             }).then(r => {
                 if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -155,8 +189,9 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                 dailyInsights: res.daily || [],
                 insights: res.insights || [],
                 kpiSummary: res.kpiSummary || null,
+                kpiDelta: res.kpiDelta || null,
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('[AdsStore] fetchInsights erro:', e);
         }
     },
@@ -220,6 +255,8 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
             set({ intelligenceError: message, isLoadingIntelligence: false });
         }
     },
+
+    setCreativeScores: (scores) => set({ creativeScores: scores }),
 
     setFilters: (partial) => {
         const { filters } = get();
@@ -295,6 +332,7 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
         insights: [],
         dailyInsights: [],
         kpiSummary: null,
+        kpiDelta: null,
         creativeAds: [],
         isLoadingCreatives: false,
         creativesError: null,
@@ -302,6 +340,8 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
         isLoadingIntelligence: false,
         intelligenceError: null,
         creativeScores: {},
+        campFromCache: false,
+        insightFromCache: false,
         error: null,
         lastFetchedAt: null,
         selectedCampaignId: null,

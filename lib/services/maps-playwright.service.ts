@@ -43,7 +43,6 @@ export async function scrapeGoogleMapsWithPlaywright(query: string): Promise<{
             fs.mkdirSync(userDataDir, { recursive: true });
         }
         
-        console.log('[MapsPlaywright] Launching Chrome...');
         
         context = await chromium.launchPersistentContext(userDataDir, {
             executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -65,7 +64,6 @@ export async function scrapeGoogleMapsWithPlaywright(query: string): Promise<{
             url = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
         }
 
-        console.log('[MapsPlaywright] Navigating to:', url);
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.waitForTimeout(3000);
 
@@ -164,7 +162,6 @@ export async function scrapeGoogleMapsWithPlaywright(query: string): Promise<{
                     if (chip) {
                         try {
                             const chipText = await chip.textContent();
-                            console.log(`[MapsPlaywright] Chip: ${chipText?.trim()}`);
                             await chip.click({ force: true });
                             await page.waitForTimeout(1500);
                         } catch (e) {}
@@ -222,8 +219,8 @@ export async function scrapeGoogleMapsWithPlaywright(query: string): Promise<{
                 }
                 finalReviews = Array.from(uniqueReviewsMap.values());
             }
-        } catch (e: any) {
-            console.error('[MapsPlaywright] Error:', e.message);
+        } catch (e: unknown) {
+            console.error('[MapsPlaywright] Error:', e instanceof Error ? e.message : String(e));
         }
 
         if (context) await context.close().catch(() => {});
@@ -236,9 +233,9 @@ export async function scrapeGoogleMapsWithPlaywright(query: string): Promise<{
                 reviews: finalReviews,
             },
         };
-    } catch (error: any) {
-        console.error('[MapsPlaywright] Fatal:', error.message);
+    } catch (error: unknown) {
+        console.error('[MapsPlaywright] Fatal:', error instanceof Error ? error.message : String(error));
         if (context) await context.close().catch(() => {});
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }

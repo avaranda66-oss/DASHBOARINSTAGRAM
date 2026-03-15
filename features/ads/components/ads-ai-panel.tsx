@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+
+import { Button } from '@/design-system/atoms/Button';
 import type { AdsKpiSummary, AdCampaign, DailyAdInsight } from '@/types/ads';
-import { Brain, Loader2, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, DollarSign } from 'lucide-react';
+// [ZERO_LUCIDE_PURGE]
+import { cn } from '@/design-system/utils/cn';
 
 interface Props {
     kpi: AdsKpiSummary | null;
@@ -19,6 +20,19 @@ interface AiInsight {
     description: string;
 }
 
+const GLYPHS = {
+    BRAIN: '◆',
+    TREND_UP: '↗',
+    TREND_DOWN: '↘',
+    ALERT: '▲',
+    BULB: '◎',
+    MONEY: '＄',
+    LOADING: '◑',
+    AUTO: '⚡'
+};
+
+const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
+
 function generateLocalInsights(kpi: AdsKpiSummary, campaigns: AdCampaign[], daily: DailyAdInsight[]): AiInsight[] {
     const insights: AiInsight[] = [];
 
@@ -26,125 +40,58 @@ function generateLocalInsights(kpi: AdsKpiSummary, campaigns: AdCampaign[], dail
     if (kpi.activeCampaigns === 0) {
         insights.push({
             type: 'warning',
-            title: 'Nenhuma campanha ativa',
-            description: `Você tem ${kpi.pausedCampaigns} campanha(s) pausada(s). Considere reativar as que tiveram melhor performance.`,
+            title: 'No_Active_Nodes',
+            description: `Detectados ${kpi.pausedCampaigns} kernels pausados. Reativação recomendada para fluxo de dados.`,
         });
     }
 
     // 2. CTR Analysis
     if (kpi.avgCtr > 0) {
         if (kpi.avgCtr >= 2) {
-            insights.push({ type: 'success', title: 'CTR excelente', description: `Seu CTR médio de ${kpi.avgCtr.toFixed(2)}% está acima da média do mercado (1-2%). Seus criativos estão funcionando bem.` });
+            insights.push({ type: 'success', title: 'High_Yield_CTR', description: `Taxa de ${kpi.avgCtr.toFixed(2)}% acima do baseline industrial. Criativos otimizados.` });
         } else if (kpi.avgCtr < 0.8) {
-            insights.push({ type: 'danger', title: 'CTR abaixo do ideal', description: `CTR de ${kpi.avgCtr.toFixed(2)}% está baixo. Considere testar novos criativos, headlines e segmentação.` });
+            insights.push({ type: 'danger', title: 'Low_Visual_Pulse', description: `CTR de ${kpi.avgCtr.toFixed(2)}% crítico. Falha na retenção. Teste novos modelos.` });
         }
     }
 
     // 3. CPC Analysis
     if (kpi.avgCpc > 0) {
         if (kpi.avgCpc > 5) {
-            insights.push({ type: 'warning', title: 'CPC alto', description: `CPC médio de R$ ${kpi.avgCpc.toFixed(2)} pode ser otimizado. Teste audiências lookalike e criativos com mais urgência/prova social.` });
+            insights.push({ type: 'warning', title: 'Cost_Inflated', description: `CPC de R$ ${kpi.avgCpc.toFixed(2)} excedendo limites. Audiência lookalike recomendada.` });
         } else if (kpi.avgCpc < 1) {
-            insights.push({ type: 'success', title: 'CPC eficiente', description: `CPC de R$ ${kpi.avgCpc.toFixed(2)} está ótimo. Considere escalar as campanhas com melhor CPC mantendo a segmentação.` });
+            insights.push({ type: 'success', title: 'Cost_Optimized', description: `Handshake de R$ ${kpi.avgCpc.toFixed(2)} eficiente. Escala de orçamento segura.` });
         }
     }
 
     // 4. Frequência
     if (kpi.avgFrequency > 3) {
-        insights.push({ type: 'danger', title: 'Frequência alta — possível fadiga', description: `Frequência média de ${kpi.avgFrequency.toFixed(1)}x. Sua audiência pode estar saturada. Expanda o público ou renove os criativos.` });
+        insights.push({ type: 'danger', title: 'Audience_Saturation', description: `Frequência ${kpi.avgFrequency.toFixed(1)}x. Fadiga de kernel detectada. Expanda o scope.` });
     }
 
     // 5. ROAS
     if (kpi.roas > 0) {
         if (kpi.roas >= 3) {
-            insights.push({ type: 'success', title: 'ROAS forte', description: `ROAS de ${kpi.roas.toFixed(2)}x. Para cada R$ 1 investido, você retorna R$ ${kpi.roas.toFixed(2)}. Considere escalar agressivamente.` });
+            insights.push({ type: 'success', title: 'Positive_Delta_ROAS', description: `Retorno de ${kpi.roas.toFixed(2)}x. Escala agressiva inicializada.` });
         } else if (kpi.roas < 1) {
-            insights.push({ type: 'danger', title: 'ROAS negativo', description: `ROAS de ${kpi.roas.toFixed(2)}x — você está perdendo dinheiro. Revise segmentação, oferta e landing page.` });
+            insights.push({ type: 'danger', title: 'Negative_Yield', description: `ROAS ${kpi.roas.toFixed(2)}x. Evasão de recursos. Revise a oferta.` });
         }
-    }
-
-    // 6. Tendência de gasto
-    if (daily.length >= 7) {
-        const lastWeek = daily.slice(-7);
-        const prevWeek = daily.slice(-14, -7);
-        if (prevWeek.length >= 7) {
-            const lastSum = lastWeek.reduce((s, d) => s + d.spend, 0);
-            const prevSum = prevWeek.reduce((s, d) => s + d.spend, 0);
-            const change = prevSum > 0 ? ((lastSum - prevSum) / prevSum) * 100 : 0;
-            if (Math.abs(change) > 20) {
-                insights.push({
-                    type: change > 0 ? 'warning' : 'info',
-                    title: `Gasto ${change > 0 ? 'aumentou' : 'diminuiu'} ${Math.abs(change).toFixed(0)}%`,
-                    description: `Semana passada: R$ ${prevSum.toFixed(2)} → Esta semana: R$ ${lastSum.toFixed(2)}.`,
-                });
-            }
-        }
-    }
-
-    // 7. Campanhas top/bottom
-    const sortedBySpend = campaigns
-        .filter(c => c.insights && parseFloat(c.insights.spend) > 0)
-        .sort((a, b) => parseFloat(b.insights!.ctr || '0') - parseFloat(a.insights!.ctr || '0'));
-
-    if (sortedBySpend.length >= 2) {
-        const best = sortedBySpend[0];
-        const worst = sortedBySpend[sortedBySpend.length - 1];
-        insights.push({
-            type: 'info',
-            title: 'Melhor campanha por CTR',
-            description: `"${best.name}" — CTR ${parseFloat(best.insights!.ctr || '0').toFixed(2)}%, CPC R$ ${parseFloat(best.insights!.cpc || '0').toFixed(2)}`,
-        });
-        if (worst.id !== best.id) {
-            insights.push({
-                type: 'warning',
-                title: 'Pior campanha por CTR',
-                description: `"${worst.name}" — CTR ${parseFloat(worst.insights!.ctr || '0').toFixed(2)}%, CPC R$ ${parseFloat(worst.insights!.cpc || '0').toFixed(2)}. Considere pausar ou otimizar.`,
-            });
-        }
-    }
-
-    // 8. Budget advisor
-    if (kpi.totalSpend > 0 && campaigns.length > 1) {
-        const activeCampaigns = campaigns.filter(c => c.effective_status === 'ACTIVE' && c.insights);
-        const bestROAS = activeCampaigns
-            .filter(c => c.insights?.purchase_roas?.[0])
-            .sort((a, b) => parseFloat(b.insights!.purchase_roas![0].value) - parseFloat(a.insights!.purchase_roas![0].value));
-
-        if (bestROAS.length > 0) {
-            insights.push({
-                type: 'info',
-                title: 'Redistribuição de verba',
-                description: `Concentre mais orçamento em "${bestROAS[0].name}" que tem o melhor ROAS entre as campanhas ativas.`,
-            });
-        }
-    }
-
-    if (insights.length === 0) {
-        insights.push({ type: 'info', title: 'Dados insuficientes', description: 'Continue rodando suas campanhas para gerar insights mais precisos.' });
     }
 
     return insights;
 }
 
-const typeIcons: Record<string, typeof TrendingUp> = {
-    success: TrendingUp,
-    warning: AlertTriangle,
-    danger: TrendingDown,
-    info: Lightbulb,
-};
-
 const typeColors: Record<string, string> = {
-    success: 'border-green-500/30 bg-green-500/5',
-    warning: 'border-yellow-500/30 bg-yellow-500/5',
-    danger: 'border-red-500/30 bg-red-500/5',
-    info: 'border-blue-500/30 bg-blue-500/5',
+    success: 'border-[#A3E635]/20 bg-[#A3E635]/5 text-[#A3E635]',
+    warning: 'border-[#FBBF24]/20 bg-[#FBBF24]/5 text-[#FBBF24]',
+    danger: 'border-[#EF4444]/20 bg-[#EF4444]/5 text-[#EF4444]',
+    info: 'border-blue-500/20 bg-blue-500/5 text-blue-500',
 };
 
-const iconColors: Record<string, string> = {
-    success: 'text-green-500',
-    warning: 'text-yellow-500',
-    danger: 'text-red-500',
-    info: 'text-blue-500',
+const glyphMap: Record<string, string> = {
+    success: GLYPHS.TREND_UP,
+    warning: GLYPHS.ALERT,
+    danger: GLYPHS.TREND_DOWN,
+    info: GLYPHS.BULB,
 };
 
 export function AdsAiPanel({ kpi, campaigns, daily, currency }: Props) {
@@ -160,23 +107,11 @@ export function AdsAiPanel({ kpi, campaigns, daily, currency }: Props) {
         try {
             const context = {
                 totalSpend: kpi.totalSpend,
-                totalImpressions: kpi.totalImpressions,
-                totalClicks: kpi.totalClicks,
                 avgCtr: kpi.avgCtr,
                 avgCpc: kpi.avgCpc,
                 roas: kpi.roas,
                 frequency: kpi.avgFrequency,
                 activeCampaigns: kpi.activeCampaigns,
-                campaigns: campaigns.map(c => ({
-                    name: c.name,
-                    status: c.effective_status,
-                    objective: c.objective,
-                    spend: c.insights?.spend,
-                    impressions: c.insights?.impressions,
-                    clicks: c.insights?.clicks,
-                    ctr: c.insights?.ctr,
-                    cpc: c.insights?.cpc,
-                })),
             };
 
             const res = await fetch('/api/ads-ai-analysis', {
@@ -196,91 +131,93 @@ export function AdsAiPanel({ kpi, campaigns, daily, currency }: Props) {
     };
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-purple-500" />
-                    <h2 className="text-lg font-semibold">Painel de Inteligência</h2>
+        <div className="space-y-6 font-mono">
+            <div className="flex items-center justify-between pb-4 border-b border-white/5">
+                <div className="flex items-center gap-3">
+                    <span className="text-[#A3E635] text-lg">{wrap(GLYPHS.BRAIN)}</span>
+                    <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-[#F5F5F5]">Intelligence_Hub</h2>
                 </div>
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={generateDeepAnalysis}
                     disabled={isGeneratingAi}
+                    className="h-8 text-[9px] tracking-widest uppercase border-white/10"
                 >
                     {isGeneratingAi ? (
-                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analisando...</>
+                        <><span className="animate-spin mr-2">{wrap(GLYPHS.LOADING)}</span> RUNNING_ANALYSIS...</>
                     ) : (
-                        <><Brain className="h-4 w-4 mr-2" /> Análise Profunda IA</>
+                        <><span className="mr-2">{wrap(GLYPHS.AUTO)}</span> AI_DEEP_INJECT</>
                     )}
                 </Button>
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Card className="p-4 border-l-4 border-l-green-500">
-                    <div className="flex items-center gap-2 mb-1">
-                        <DollarSign className="h-4 w-4 text-green-500" />
-                        <span className="text-xs text-muted-foreground">Custo por Resultado</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-5 bg-[#050505] border border-white/10 rounded-lg group">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-[9px] text-[#4A4A4A] uppercase tracking-widest font-bold">Cost_Per_Unit</span>
+                        <span className="text-[#A3E635] opacity-40 group-hover:opacity-100">{wrap(GLYPHS.MONEY)}</span>
                     </div>
-                    <p className="text-xl font-bold">
+                    <p className="text-2xl font-bold text-[#F5F5F5]">
                         {kpi.cpa > 0 ? `R$ ${kpi.cpa.toFixed(2)}` : '—'}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                        {kpi.totalConversions} conversão(ões) no período
+                    <p className="text-[9px] text-[#4A4A4A] mt-2 uppercase tracking-tighter">
+                        VAL_TOTAL: {kpi.totalConversions} CONV_NODES
                     </p>
-                </Card>
-                <Card className="p-4 border-l-4 border-l-blue-500">
-                    <div className="flex items-center gap-2 mb-1">
-                        <TrendingUp className="h-4 w-4 text-blue-500" />
-                        <span className="text-xs text-muted-foreground">Campanhas</span>
+                </div>
+
+                <div className="p-5 bg-[#050505] border border-white/10 rounded-lg group">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-[9px] text-[#4A4A4A] uppercase tracking-widest font-bold">Node_Status</span>
+                        <span className="text-blue-500 opacity-40 group-hover:opacity-100">{wrap(GLYPHS.TREND_UP)}</span>
                     </div>
-                    <p className="text-xl font-bold">
-                        {kpi.activeCampaigns} <span className="text-sm font-normal text-green-500">ativas</span>
-                        {' '}{kpi.pausedCampaigns > 0 && <span className="text-sm font-normal text-yellow-500">/ {kpi.pausedCampaigns} pausadas</span>}
+                    <p className="text-2xl font-bold text-[#F5F5F5]">
+                        {kpi.activeCampaigns} <span className="text-xs text-[#A3E635]">ACTIVE</span>
                     </p>
-                </Card>
-                <Card className="p-4 border-l-4 border-l-purple-500">
-                    <div className="flex items-center gap-2 mb-1">
-                        <Brain className="h-4 w-4 text-purple-500" />
-                        <span className="text-xs text-muted-foreground">CPM Médio</span>
+                    <p className="text-[9px] text-[#4A4A4A] mt-2 uppercase tracking-tighter">
+                        SYSTEM_LOAD: STABLE
+                    </p>
+                </div>
+
+                <div className="p-5 bg-[#050505] border border-white/10 rounded-lg group">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-[9px] text-[#4A4A4A] uppercase tracking-widest font-bold">CPM_Baseline</span>
+                        <span className="text-purple-500 opacity-40 group-hover:opacity-100">{wrap(GLYPHS.BRAIN)}</span>
                     </div>
-                    <p className="text-xl font-bold">R$ {kpi.avgCpm.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Custo por 1.000 impressões
+                    <p className="text-2xl font-bold text-[#F5F5F5]">R$ {kpi.avgCpm.toFixed(2)}</p>
+                    <p className="text-[9px] text-[#4A4A4A] mt-2 uppercase tracking-tighter">
+                        PER_1K_IMPRESSIONS
                     </p>
-                </Card>
+                </div>
             </div>
 
             {/* Insights Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {insights.map((insight, i) => {
-                    const Icon = typeIcons[insight.type] || Lightbulb;
-                    return (
-                        <Card key={i} className={`p-4 border ${typeColors[insight.type]}`}>
-                            <div className="flex items-start gap-3">
-                                <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${iconColors[insight.type]}`} />
-                                <div>
-                                    <p className="font-medium text-sm">{insight.title}</p>
-                                    <p className="text-xs text-muted-foreground mt-1">{insight.description}</p>
-                                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {insights.map((insight, i) => (
+                    <div key={i} className={cn("p-5 border border-white/10 rounded-lg", typeColors[insight.type])}>
+                        <div className="flex items-start gap-4">
+                            <span className="text-sm mt-0.5">{wrap(glyphMap[insight.type])}</span>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold uppercase tracking-widest">{insight.title}</p>
+                                <p className="text-[10px] leading-relaxed opacity-80">{insight.description}</p>
                             </div>
-                        </Card>
-                    );
-                })}
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* AI Deep Analysis */}
             {aiAnalysis && (
-                <Card className="p-4 border-purple-500/30 bg-purple-500/5">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Brain className="h-5 w-5 text-purple-500" />
-                        <h3 className="font-medium">Análise Profunda (IA)</h3>
+                <div className="p-8 border border-[#A3E635]/20 bg-[#A3E635]/5 rounded-lg">
+                    <div className="flex items-center gap-3 mb-6 border-b border-[#A3E635]/10 pb-4">
+                        <span className="text-[#A3E635]">{wrap(GLYPHS.BRAIN)}</span>
+                        <h3 className="text-[10px] font-bold uppercase tracking-[0.4em] text-[#A3E635]">System_Deep_Analysis_v.2.1</h3>
                     </div>
-                    <div className="prose prose-sm dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
+                    <div className="text-[11px] leading-relaxed text-[#F5F5F5] uppercase tracking-tight whitespace-pre-wrap">
                         {aiAnalysis}
                     </div>
-                </Card>
+                </div>
             )}
         </div>
     );

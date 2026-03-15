@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { FileText, FolderPlus, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/design-system/atoms/Button';
 import { toast } from 'sonner';
 import { useContentStore } from '@/stores';
+import { cn } from '@/design-system/utils/cn';
 
 export function ImportMdButton() {
     const [isImporting, setIsImporting] = useState(false);
@@ -34,7 +34,6 @@ export function ImportMdButton() {
 
             if (data.success) {
                 toast.success(data.message, { id: toastId });
-                // Recarregar o storyboard
                 loadContents();
             } else {
                 toast.error(data.error || 'Erro na importação', { id: toastId });
@@ -43,7 +42,6 @@ export function ImportMdButton() {
             toast.error(`Erro: ${err.message}`, { id: toastId });
         } finally {
             setIsImporting(false);
-            // Resetar os inputs pra poder importar de novo
             if (fileInputRef.current) fileInputRef.current.value = '';
             if (folderInputRef.current) folderInputRef.current.value = '';
         }
@@ -59,7 +57,6 @@ export function ImportMdButton() {
                 className="hidden"
                 onChange={handleImport}
             />
-            {/* Input de Pasta precisa de webkitdirectory (react aceita no formato camelCase string -> ts error, intão faz casting) */}
             <input
                 ref={folderInputRef}
                 type="file"
@@ -75,29 +72,19 @@ export function ImportMdButton() {
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isImporting}
-                className="gap-2 bg-white/90 backdrop-blur"
+                className="gap-2 font-mono text-[9px] tracking-widest uppercase"
             >
-                {isImporting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                    <FileText className="h-4 w-4" />
-                )}
-                {isImporting ? 'Importando...' : 'Arquivos MD'}
+                {isImporting ? '[ LOADING... ]' : '[ ATTACH_MD ]'}
             </Button>
 
             <Button
-                variant="default"
+                variant="outline"
                 size="sm"
                 onClick={() => folderInputRef.current?.click()}
                 disabled={isImporting}
-                className="gap-2 bg-gradient-to-tr from-yellow-400 to-fuchsia-600 text-white border-0 hover:opacity-90"
+                className="gap-2 font-mono text-[9px] tracking-widest uppercase border-[#A3E635]/20 text-[#A3E635] hover:bg-[#A3E635]/5"
             >
-                {isImporting ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-white" />
-                ) : (
-                    <FolderPlus className="h-4 w-4 text-white" />
-                )}
-                {isImporting ? 'Lendo...' : 'Importar Pasta'}
+                {isImporting ? '[ SCANNING... ]' : '[ INJECT_DIR ]'}
             </Button>
         </div>
     );

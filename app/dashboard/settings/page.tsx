@@ -2,14 +2,19 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
+import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { z } from 'zod';
 import { useContentStore, useCollectionStore, useAccountStore, useCalendarStore, useSettingsStore } from '@/stores';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Moon, Sun, Download, Upload, Trash2, Calendar, Monitor, Smartphone, Github, Instagram, ExternalLink, ShieldCheck, ShieldAlert, Key, Zap, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Button } from '@/design-system/atoms/Button';
+import { Badge } from '@/design-system/atoms/Badge';
+import { Input } from '@/design-system/atoms/Input';
+import { SectionCard } from '@/design-system/molecules/SectionCard';
 import { checkInstagramLoginAction, loginInstagramAction } from '@/app/actions/instagram.actions';
+import { getSettingAction, saveSettingAction } from '@/app/actions/settings.actions';
+import { motion } from 'framer-motion';
+import { cn } from '@/design-system/utils/cn';
 
 const exportSchema = z.object({
     contents: z.array(z.any()).optional().default([]),
@@ -17,6 +22,8 @@ const exportSchema = z.object({
     accounts: z.array(z.any()).optional().default([]),
     version: z.string(),
 });
+
+const SECTION_HEADER_STYLE = "font-mono text-[10px] uppercase tracking-[0.12em] text-[#4A4A4A] select-none flex items-center gap-2 mb-6";
 
 export default function SettingsPage() {
     const { theme, setTheme } = useTheme();
@@ -43,11 +50,12 @@ export default function SettingsPage() {
     const [metaToken, setMetaToken] = useState('');
     const [isSavingMeta, setIsSavingMeta] = useState(false);
     const [isVerifyingMeta, setIsVerifyingMeta] = useState(false);
+    const [tunnelUrl, setTunnelUrl] = useState('');
+    const [isSavingTunnel, setIsSavingTunnel] = useState(false);
 
     useEffect(() => {
         settingsStore.loadSettings();
 
-        // Feedback de OAuth redirect
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
             const success = params.get('success');
@@ -82,14 +90,36 @@ export default function SettingsPage() {
         }
     }, [settingsStore.settings]);
 
-    // Helpers Meta API
-    const metaConnected = !!settingsStore.settings?.metaAccessToken;
+    useEffect(() => {
+        getSettingAction('tunnel_url').then((val) => {
+            if (val) {
+                try { setTunnelUrl(JSON.parse(val)); } catch { setTunnelUrl(val); }
+            }
+        }).catch(() => {});
+    }, []);
+
+    const { data: session } = useSession();
+
+    // Considera conectado via OAuth (NextAuth) OU token manual (settings)
+    const metaConnected = !!(session?.accessToken || settingsStore.settings?.metaAccessToken);
     const metaUsername = settingsStore.settings?.metaUsername;
     const metaExpiresAt = settingsStore.settings?.metaTokenExpiresAt;
     const metaExpiresDate = metaExpiresAt ? new Date(metaExpiresAt * 1000) : null;
     const metaExpiringSoon = metaExpiresAt
         ? metaExpiresAt - Math.floor(Date.now() / 1000) < 7 * 24 * 60 * 60
         : false;
+
+    const handleSaveTunnelUrl = async () => {
+        setIsSavingTunnel(true);
+        try {
+            await saveSettingAction('tunnel_url', JSON.stringify(tunnelUrl.trim()));
+            toast.success('Tunnel URL salva!');
+        } catch {
+            toast.error('Erro ao salvar Tunnel URL.');
+        } finally {
+            setIsSavingTunnel(false);
+        }
+    };
 
     const handleSaveMetaToken = async () => {
         if (!metaToken.trim()) {
@@ -98,7 +128,6 @@ export default function SettingsPage() {
         }
         setIsSavingMeta(true);
         try {
-            // Verificar token via API antes de salvar (token no body, nunca na URL)
             const res = await fetch('/api/meta-insights', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -106,13 +135,12 @@ export default function SettingsPage() {
             });
             const json = await res.json();
             if (!json.success) {
-                toast.error('Token inválido ou expirado. Verifique e tente novamente.');
+                toast.error('Token inválido ou expirado.');
                 return;
             }
-            // Salvar com expiração estimada de 60 dias a partir de agora
             const expiresAt = Math.floor(Date.now() / 1000) + 60 * 24 * 60 * 60;
             await settingsStore.updateMetaToken(metaToken.trim(), expiresAt, json.username);
-            toast.success(`Meta API conectada! Conta @${json.username || 'desconhecida'}`);
+            toast.success(`Meta API conectada! Conta @${json.username}`);
         } catch {
             toast.error('Erro ao verificar o token Meta.');
         } finally {
@@ -121,34 +149,11 @@ export default function SettingsPage() {
     };
 
     const handleDisconnectMeta = async () => {
-        const ok = window.confirm('Desconectar conta Meta API? Você precisará reconectar para usar métricas privadas.');
+        const ok = window.confirm('Desconectar conta Meta API?');
         if (!ok) return;
         await settingsStore.clearMetaToken();
         setMetaToken('');
         toast.success('Conta Meta API desconectada.');
-    };
-
-    const handleVerifyMeta = async () => {
-        const token = settingsStore.settings?.metaAccessToken;
-        if (!token) return;
-        setIsVerifyingMeta(true);
-        try {
-            const res = await fetch('/api/meta-insights', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token, verifyOnly: true }),
-            });
-            const json = await res.json();
-            if (json.success) {
-                toast.success(`Token válido! Conta @${json.username}`);
-            } else {
-                toast.error('Token expirado ou inválido. Reconecte sua conta.');
-            }
-        } catch {
-            toast.error('Erro ao verificar token.');
-        } finally {
-            setIsVerifyingMeta(false);
-        }
     };
 
     const handleSaveApiKeys = async () => {
@@ -156,9 +161,9 @@ export default function SettingsPage() {
         try {
             await settingsStore.updateApiKeys(apifyKey, geminiKey, firecrawlKey);
             await settingsStore.updateAISettings(aiProvider, aiModel, antigravityKey, antigravityBaseUrl);
-            toast.success('Configurações de IA e chaves salvas com sucesso!');
+            toast.success('Configurações de IA salvas!');
         } catch (e) {
-            toast.error('Erro ao salvar as configurações.');
+            toast.error('Erro ao salvar.');
         } finally {
             setIsCheckingIg(false);
         }
@@ -171,616 +176,279 @@ export default function SettingsPage() {
                 collections: collectionStore.collections,
                 accounts: accountStore.accounts,
                 exportedAt: new Date().toISOString(),
-                version: '1.0.0',
+                version: '2.0.0',
             };
-
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `ig-dashboard-export-${format(new Date(), 'yyyy-MM-dd')}.json`;
+            a.download = `factory-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-
-            toast.success('Backup exportado com sucesso!');
+            toast.success('Exportação concluída!');
         } catch (e) {
-            console.error(e);
-            toast.error('Ocorreu um erro ao exportar os dados.');
+            toast.error('Falha na exportação.');
         }
     };
 
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         try {
             const raw = await file.text();
             const parsed = JSON.parse(raw);
             const result = exportSchema.safeParse(parsed);
-
             if (!result.success) {
-                toast.error('Arquivo inválido. Verifique o formato do JSON.');
-                if (fileInputRef.current) fileInputRef.current.value = '';
+                toast.error('Arquivo incompatível.');
                 return;
             }
-
-            const confirmed = window.confirm(
-                'Importar dados irá substituir TODOS os seus dados atuais. Deseja continuar?'
-            );
-
-            if (confirmed) {
+            if (window.confirm('Substituir todos os dados atuais?')) {
                 const { contents, collections, accounts } = result.data;
-
-                // Save to localeStorage via stores bypassing state for direct persistence
                 localStorage.setItem('ig-contents', JSON.stringify(contents));
                 localStorage.setItem('ig-collections', JSON.stringify(collections));
                 localStorage.setItem('ig-accounts', JSON.stringify(accounts));
-
-                toast.success(`Importados: ${contents.length} conteúdos, ${collections.length} coleções, ${accounts.length} contas.`);
-
-                // Reload to apply initial states
-                setTimeout(() => window.location.reload(), 1500);
+                toast.success('Restauração completa.');
+                setTimeout(() => window.location.reload(), 1000);
             }
-        } catch (error) {
-            console.error(error);
-            toast.error('Falha ao ler o arquivo JSON.');
+        } catch {
+            toast.error('Erro ao ler arquivo.');
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
-    const handleReset = () => {
-        const confirmed = window.confirm(
-            'AVISO: Isso apagará TODOS os seus dados permanentemente. Você tem certeza?'
-        );
-
-        if (confirmed) {
-            localStorage.clear();
-            toast.success('Todos os dados foram resetados.');
-            setTimeout(() => window.location.reload(), 1000);
-        }
-    };
-
-    const handleCheckInstagram = async () => {
-        setIsCheckingIg(true);
-        try {
-            const status = await checkInstagramLoginAction();
-            setIsInstagramLogged(status);
-            if (status) {
-                toast.success('Instagram está conectado com sucesso no Robô Local!');
-            } else {
-                toast.warning('Instagram desconectado. Por favor, faça login.');
-            }
-        } catch (e) {
-            toast.error('Erro ao verificar o status do Instagram.');
-        } finally {
-            setIsCheckingIg(false);
-        }
-    };
-
-    const handleLoginInstagram = async () => {
-        setIsCheckingIg(true);
-        try {
-            toast.info('Abrindo navegador do Robô... Por favor, aguarde.');
-            await loginInstagramAction();
-            toast.success('Navegador fechado. Verificando status atual...');
-            await handleCheckInstagram();
-        } catch (e) {
-            toast.error('Erro ao abrir o navegador de login.');
-        } finally {
-            setIsCheckingIg(false);
-        }
-    };
-
     return (
-        <div className="max-w-4xl space-y-8 pb-8">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">Configurações</h2>
-                <p className="text-muted-foreground mt-1 text-sm">
-                    Gerencie suas preferências de visualização e os dados do sistema.
-                </p>
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="max-w-4xl space-y-8 pb-12"
+        >
+            <div className="pb-6 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                <div className="flex items-center gap-3 mb-1">
+                    <span className="font-mono text-[#A3E635] text-[10px] tracking-widest">[SYS_CORE_V2]</span>
+                    <h1 className="text-[2rem] font-bold tracking-tight text-[#F5F5F5]">System Parameters</h1>
+                </div>
+                <p className="text-[14px] text-[#4A4A4A] tracking-tight">Otimização de rotas de automação, kernels de IA e chaves de segurança.</p>
             </div>
 
             <div className="grid gap-6">
-                {/* Appearance */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Monitor className="h-5 w-5 text-primary" />
-                            Aparência
-                        </CardTitle>
-                        <CardDescription>
-                            Personalize o tema da aplicação.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center gap-4">
-                            <Button
-                                variant={theme === 'light' ? 'default' : 'outline'}
-                                onClick={() => setTheme('light')}
-                                className="w-32"
+                {/* Visual Kernel */}
+                <SectionCard className="p-8">
+                    <h4 className={SECTION_HEADER_STYLE}><span className="text-[#A3E635]">◎</span> Interface Kernel [01]</h4>
+                    <div className="flex gap-4">
+                        {(['dark', 'light'] as const).map(t => (
+                            <button
+                                key={t}
+                                onClick={() => setTheme(t)}
+                                className={cn(
+                                    "px-6 py-3 border rounded font-mono text-[10px] tracking-widest transition-all uppercase flex-1",
+                                    theme === t ? "bg-[#A3E635] text-black border-[#A3E635]" : "text-[#4A4A4A] border-white/5 hover:border-white/10"
+                                )}
                             >
-                                <Sun className="mr-2 h-4 w-4" />
-                                Claro
-                            </Button>
-                            <Button
-                                variant={theme === 'dark' ? 'default' : 'outline'}
-                                onClick={() => setTheme('dark')}
-                                className="w-32"
-                            >
-                                <Moon className="mr-2 h-4 w-4" />
-                                Escuro
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+                                {t === 'dark' ? 'DEEP_SPACE_MODE' : 'SOLAR_GLOSS_MODE'}
+                            </button>
+                        ))}
+                    </div>
+                </SectionCard>
 
-                {/* Preferences */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Calendar className="h-5 w-5 text-primary" />
-                            Preferências
-                        </CardTitle>
-                        <CardDescription>
-                            Configurações padrão de visualização do calendário.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium mb-2 block">Visualização Padrão do Calendário</label>
-                                <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-1 w-fit">
-                                    {(['month', 'week', 'day'] as const).map((view) => (
-                                        <Button
-                                            key={view}
-                                            variant={calendarStore.calendarView === view ? 'default' : 'ghost'}
-                                            size="sm"
-                                            onClick={() => calendarStore.setView(view)}
-                                            className="text-xs capitalize"
-                                        >
-                                            {view === 'month' ? 'Mensal' : view === 'week' ? 'Semanal' : 'Diário'}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Instagram Automation */}
-                <Card className="border-border">
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Instagram className="h-5 w-5 text-pink-600" />
-                            Automação do Instagram (Bot Local)
-                        </CardTitle>
-                        <CardDescription>
-                            Gerencie as sessões ativas do Playwright para cada conta cadastrada.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {accountStore.accounts.length === 0 ? (
-                            <div className="p-4 text-center border border-dashed rounded-lg text-muted-foreground text-sm">
-                                Nenhuma conta cadastrada para monitorar.
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {accountStore.accounts.map((acc) => (
-                                    <div key={acc.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-border rounded-lg bg-card/50 hover:bg-card transition-colors gap-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full border border-border overflow-hidden bg-muted flex items-center justify-center shrink-0">
-                                                {acc.avatarUrl ? (
-                                                    <img src={`/api/image-proxy?url=${encodeURIComponent(acc.avatarUrl)}`} alt={acc.name} className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <Instagram className="h-5 w-5 text-muted-foreground/50" />
-                                                )}
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <h4 className="font-semibold text-sm">{acc.name}</h4>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] text-pink-500 font-medium">{acc.handle}</span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <div className={`h-1.5 w-1.5 rounded-full ${acc.isAutomationConnected ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
-                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${acc.isAutomationConnected ? 'text-green-600' : 'text-yellow-600'}`}>
-                                                            {acc.isAutomationConnected ? 'Conectado' : 'Desconectado'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex gap-2 w-full sm:w-auto">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-8 text-[10px] flex-1 sm:flex-none"
-                                                onClick={async () => {
-                                                    setIsCheckingIg(true);
-                                                    try {
-                                                        await accountStore.checkAutomationStatus(acc.id);
-                                                        const updatedAcc = accountStore.accounts.find(a => a.id === acc.id);
-                                                        if (updatedAcc?.isAutomationConnected) {
-                                                            toast.success(`${acc.name}: Conectado ao Bot Local! ✅`);
-                                                        } else {
-                                                            toast.warning(`${acc.name}: Desconectado. Sessão não encontrada.`);
-                                                        }
-                                                    } catch (e) {
-                                                        toast.error('Erro ao verificar status de automação.');
-                                                    } finally {
-                                                        setIsCheckingIg(false);
-                                                    }
-                                                }}
-                                                disabled={isCheckingIg}
-                                            >
-                                                {isCheckingIg ? 'Verificando...' : 'Verificar'}
-                                            </Button>
-                                            <Button
-                                                variant="default"
-                                                size="sm"
-                                                className="h-8 text-[10px] instagram-gradient border-0 text-white flex-1 sm:flex-none"
-                                                onClick={async () => {
-                                                    toast.info('Abrindo janela de login... Siga as instruções no terminal que irá aparecer.');
-                                                    await accountStore.connectAutomation(acc.id);
-                                                }}
-                                                disabled={isCheckingIg}
-                                            >
-                                                {acc.isAutomationConnected ? 'Reconectar' : 'Conectar Agora'}
-                                            </Button>
-                                        </div>
+                {/* Automation Hub */}
+                <SectionCard className="p-8">
+                    <h4 className={SECTION_HEADER_STYLE}><span className="text-[#A3E635]">◎</span> Meta API Bridge [02]</h4>
+                    <div className="space-y-6">
+                        {/* Status da sessão OAuth NextAuth */}
+                        {session?.accessToken && (
+                            <div className="p-4 border border-[#A3E635]/20 bg-[#A3E635]/5 flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <Badge intent="success" variant="subtle" size="sm">OAUTH_ACTIVE</Badge>
+                                        <span className="font-mono text-xs text-[#F5F5F5]">Conta Meta conectada via OAuth</span>
                                     </div>
-                                ))}
+                                    <p className="font-mono text-[10px] text-[#4A4A4A]">Token válido por 60 dias · Renovar em /connect</p>
+                                </div>
+                                <Button variant="outline" size="sm" className="font-mono text-[9px]" onClick={() => window.location.href = '/connect'}>RENOVAR</Button>
                             </div>
                         )}
-                        <p className="text-[10px] text-muted-foreground italic px-1 pt-2">
-                            A automação local utiliza Chromium na sua máquina para simular ações humanas reais com segurança.
-                        </p>
-                    </CardContent>
-                </Card>
 
-                {/* Meta API */}
-                <Card className="border-border">
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Zap className="h-5 w-5 text-blue-500" />
-                            Meta API Oficial
-                            {metaConnected && (
-                                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-bold text-green-500 border border-green-500/20">
-                                    <CheckCircle2 className="h-3 w-3" /> CONECTADO
-                                </span>
-                            )}
-                        </CardTitle>
-                        <CardDescription>
-                            Acesse métricas privadas da sua conta: alcance real, saves, compartilhamentos e muito mais — dados que o Apify não consegue obter.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {metaConnected && (
-                            <div className={`flex items-start gap-3 rounded-lg p-3 border ${metaExpiringSoon ? 'bg-amber-500/5 border-amber-500/20' : 'bg-green-500/5 border-green-500/20'}`}>
-                                <div className="mt-0.5">
-                                    {metaExpiringSoon
-                                        ? <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                        : <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    }
+                        {!session?.accessToken && !settingsStore.settings?.metaAccessToken && (
+                            <div className="p-4 border border-white/[0.06] bg-white/[0.02] flex items-center justify-between">
+                                <div>
+                                    <p className="font-mono text-xs text-white/60">Nenhuma conta Meta conectada.</p>
+                                    <p className="font-mono text-[10px] text-[#4A4A4A] mt-0.5">Conecte via OAuth para acessar Ads e publicar no Instagram.</p>
                                 </div>
-                                <div className="flex-1 space-y-0.5">
-                                    <p className="text-sm font-medium">
-                                        {metaUsername ? `@${metaUsername}` : 'Conta conectada'}
-                                    </p>
-                                    {metaExpiresDate && (
-                                        <p className={`text-xs ${metaExpiringSoon ? 'text-amber-500' : 'text-muted-foreground'}`}>
-                                            {metaExpiringSoon ? '⚠️ Token expira em breve — ' : 'Token válido até '}
-                                            {metaExpiresDate.toLocaleDateString('pt-BR')}
-                                        </p>
-                                    )}
+                                <Button variant="solid" size="sm" className="font-mono text-[9px] shrink-0" onClick={() => window.location.href = '/connect'}>⚡ CONECTAR META</Button>
+                            </div>
+                        )}
+
+                        {metaConnected && (
+                            <div className={cn(
+                                "p-4 border rounded flex items-center justify-between",
+                                metaExpiringSoon ? "border-[#EF4444]/20 bg-[#EF4444]/5" : "border-[#A3E635]/20 bg-[#A3E635]/5"
+                            )}>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <Badge intent={metaExpiringSoon ? 'error' : 'success'} variant="subtle" size="sm">
+                                            {metaExpiringSoon ? 'TOKEN_EXPIRING' : 'BRIDGE_ACTIVE'}
+                                        </Badge>
+                                        <span className="font-mono text-sm text-[#F5F5F5]">@{metaUsername}</span>
+                                    </div>
+                                    <p className="font-mono text-[10px] text-[#4A4A4A]">VAL_UNTIL: {metaExpiresDate?.toLocaleDateString('pt-BR')}</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-[10px]"
-                                        onClick={handleVerifyMeta}
-                                        disabled={isVerifyingMeta}
-                                    >
-                                        {isVerifyingMeta ? 'Verificando...' : 'Verificar'}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-7 text-[10px] text-destructive hover:text-destructive"
-                                        onClick={handleDisconnectMeta}
-                                    >
-                                        <XCircle className="h-3 w-3 mr-1" /> Desconectar
-                                    </Button>
+                                    <Button onClick={handleDisconnectMeta} variant="outline" size="sm" className="font-mono text-[9px]">DISCONNECT</Button>
                                 </div>
                             </div>
                         )}
 
-                        <div className="space-y-3 max-w-lg">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">
-                                    Token de Acesso (Long-lived Token)
-                                </label>
-                                <input
-                                    type="password"
-                                    placeholder="IGAAY..."
-                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                    value={metaToken}
-                                    onChange={(e) => setMetaToken(e.target.value)}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Cole aqui seu Long-lived Token do Instagram (válido por 60 dias).
-                                    Obtenha em{' '}
-                                    <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-primary underline">
-                                        Graph API Explorer
-                                    </a>.
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    onClick={handleSaveMetaToken}
-                                    disabled={isSavingMeta || !metaToken.trim()}
-                                    size="sm"
-                                >
-                                    {isSavingMeta ? 'Verificando...' : metaConnected ? 'Atualizar Token' : 'Salvar e Conectar'}
-                                </Button>
-                                {process.env.NEXT_PUBLIC_APP_URL && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => window.location.href = '/api/auth/instagram'}
-                                    >
-                                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                                        Conectar via OAuth
-                                    </Button>
-                                )}
+                        <div className="space-y-4">
+                            <Input
+                                type="password"
+                                label="Kernel_Link_Token"
+                                value={metaToken}
+                                onChange={e => setMetaToken(e.target.value)}
+                                placeholder="IGAAY..."
+                                isMono
+                            />
+                            <div className="flex gap-3">
+                                <Button onClick={handleSaveMetaToken} isLoading={isSavingMeta} variant="solid" className="font-mono text-[10px] tracking-widest uppercase flex-1">UPDATE_LINK</Button>
+                                <Button variant="outline" className="font-mono text-[10px] tracking-widest uppercase flex-1" onClick={() => window.location.href = '/connect'}>OAUTH_META ↗</Button>
                             </div>
                         </div>
 
-                        <div className="rounded-lg bg-blue-500/5 border border-blue-500/10 p-3 space-y-1.5">
-                            <p className="text-xs font-medium text-blue-400">O que a Meta API oferece vs Apify:</p>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                                {[
-                                    { label: 'Alcance real (reach)', meta: true, apify: false },
-                                    { label: 'Saves', meta: true, apify: false },
-                                    { label: 'Compartilhamentos', meta: true, apify: false },
-                                    { label: 'Total interações', meta: true, apify: false },
-                                    { label: 'Métricas de concorrentes', meta: false, apify: true },
-                                    { label: 'Sem limite de posts', meta: false, apify: true },
-                                ].map((row) => (
-                                    <div key={row.label} className="flex items-center gap-1.5">
-                                        <span className={`text-[10px] font-bold ${row.meta ? 'text-green-500' : 'text-muted-foreground/40'}`}>
-                                            {row.meta ? '✓' : '✗'}
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground">{row.label}</span>
-                                    </div>
+                        <div className="space-y-2 pt-4 border-t border-white/5">
+                            <label className={cn(
+                                "text-[10px] font-mono uppercase tracking-widest block",
+                                !tunnelUrl.trim() ? "text-[#F59E0B]/70" : "text-[#4A4A4A]"
+                            )}>
+                                Tunnel_URL_Proxy
+                            </label>
+                            <Input
+                                type="text"
+                                value={tunnelUrl}
+                                onChange={e => setTunnelUrl(e.target.value)}
+                                placeholder="https://seu-tunnel.ngrok.io"
+                                isMono
+                            />
+                            <p className="font-mono text-[10px] text-white/30 mt-1 leading-relaxed">
+                                Necessária para publicar mídia local via Meta API. O Meta precisa de uma URL
+                                pública para acessar suas imagens. Use ngrok, cloudflared ou similar.
+                                Exemplo: https://seu-tunnel.ngrok.io
+                            </p>
+                            <Button onClick={handleSaveTunnelUrl} isLoading={isSavingTunnel} variant="solid" className="w-full font-mono text-[10px] tracking-widest uppercase">SAVE_TUNNEL_URL</Button>
+                        </div>
+                    </div>
+                </SectionCard>
+
+                {/* AI & Scraper Core */}
+                <SectionCard className="p-8">
+                    <h4 className={SECTION_HEADER_STYLE}><span className="text-[#A3E635]">◎</span> Intelligence Kernels [03]</h4>
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Input 
+                                type="password" 
+                                label="Gemini_Prot_Key"
+                                value={geminiKey} 
+                                onChange={e => setGeminiKey(e.target.value)} 
+                                placeholder="AIza..." 
+                                isMono
+                            />
+                            <Input 
+                                type="password" 
+                                label="Firecrawl_Link"
+                                value={firecrawlKey} 
+                                onChange={e => setFirecrawlKey(e.target.value)} 
+                                placeholder="fc-..." 
+                                isMono
+                            />
+                        </div>
+
+                        <div className="pt-6 border-t border-white/5">
+                            <label className="text-[10px] font-mono uppercase tracking-widest text-[#4A4A4A] mb-2 block">AI_Logic_Provider</label>
+                            <div className="flex gap-2 mb-4">
+                                {(['gemini', 'antigravity'] as const).map(p => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setAiProvider(p)}
+                                        className={cn(
+                                            "flex-1 py-2 border rounded font-mono text-[10px] tracking-widest transition-all uppercase",
+                                            aiProvider === p ? "bg-white/10 text-[#A3E635] border-[#A3E635]/60" : "text-[#4A4A4A] border-white/5"
+                                        )}
+                                    >
+                                        {p.toUpperCase()}
+                                    </button>
                                 ))}
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* API Keys */}
-                <Card className="border-border">
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Key className="h-5 w-5 text-indigo-500" />
-                            Integrações Locais (API Keys)
-                        </CardTitle>
-                        <CardDescription>
-                            Configure as chaves de API necessárias para rodar os robôs de inteligência artificial e scraping no seu computador de forma autônoma.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-4 max-w-lg">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Google Gemini API Key</label>
-                                <input
-                                    type="password"
-                                    placeholder="AIzaSy..."
-                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={geminiKey}
-                                    onChange={(e) => setGeminiKey(e.target.value)}
-                                />
-                                <p className="text-xs text-muted-foreground">Chave necessária para gerar imagens, stories montados e legendas com IA.</p>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Apify API Key</label>
-                                <input
-                                    type="password"
-                                    placeholder="apify_api_..."
-                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={apifyKey}
-                                    onChange={(e) => setApifyKey(e.target.value)}
-                                />
-                                <p className="text-xs text-muted-foreground">Opcional. Usado por automações em background que raspam dados não estruturados.</p>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Firecrawl API Key <span className="text-[10px] text-emerald-500 font-normal">(Novo — Alternativa gratuita)</span></label>
-                                <input
-                                    type="password"
-                                    placeholder="fc-..."
-                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={firecrawlKey}
-                                    onChange={(e) => setFirecrawlKey(e.target.value)}
-                                />
-                                <p className="text-xs text-muted-foreground">Opcional. Alternativa gratuita ao Apify (500 páginas/mês). Obtenha em <a href="https://firecrawl.dev" target="_blank" rel="noopener noreferrer" className="text-primary underline">firecrawl.dev</a>.</p>
-                            </div>
-
-                            {/* AI Provider & Model Selection */}
-                            <div className="border-t border-border pt-4 mt-4">
-                                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                    🧠 Provedor de IA para Análises
-                                </h4>
-                                <div className="space-y-3">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-medium text-muted-foreground">Provedor</label>
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => { setAiProvider('gemini'); setAiModel('gemini-2.5-flash'); }}
-                                                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-all ${aiProvider === 'gemini' ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'border-border text-muted-foreground hover:border-muted-foreground/50'}`}
-                                            >
-                                                Google Gemini
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setAiProvider('antigravity'); setAiModel('claude-sonnet-4-20250514'); }}
-                                                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-all ${aiProvider === 'antigravity' ? 'border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-400' : 'border-border text-muted-foreground hover:border-muted-foreground/50'}`}
-                                            >
-                                                OpenRouter / Custom
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-medium text-muted-foreground">Modelo</label>
-                                        <select
-                                            value={aiModel}
-                                            onChange={(e) => setAiModel(e.target.value)}
-                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                        >
-                                            {aiProvider === 'gemini' ? (
-                                                <>
-                                                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (Rápido)</option>
-                                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Balanceado)</option>
-                                                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Avançado)</option>
-                                                    <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Novo)</option>
-                                                    <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview (Máximo)</option>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (Balanceado)</option>
-                                                    <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Rápido)</option>
-                                                    <option value="gpt-4o">GPT-4o (OpenAI)</option>
-                                                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Google)</option>
-                                                    <option value="o3">o3 (Raciocínio Avançado)</option>
-                                                </>
-                                            )}
-                                        </select>
-                                    </div>
-                                    {aiProvider === 'antigravity' && (
-                                        <>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-medium text-muted-foreground">API Key do Provedor</label>
-                                                <input
-                                                    type="password"
-                                                    placeholder="sk-ant-..."
-                                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                                    value={antigravityKey}
-                                                    onChange={(e) => setAntigravityKey(e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-medium text-muted-foreground">Base URL (opcional)</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="https://api.antigravity.ai/v1"
-                                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                                    value={antigravityBaseUrl}
-                                                    onChange={(e) => setAntigravityBaseUrl(e.target.value)}
-                                                />
-                                                <p className="text-xs text-muted-foreground">Endpoint OpenAI-compatible. Deixe vazio para usar o padrão.</p>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-
-                            <Button
-                                onClick={handleSaveApiKeys}
-                                className="w-full sm:w-auto mt-2"
-                                disabled={isCheckingIg}
+                            
+                            <label className="text-[10px] font-mono uppercase tracking-widest text-[#4A4A4A] mb-2 block">Target_Neural_Model</label>
+                            <select 
+                                value={aiModel} 
+                                onChange={e => setAiModel(e.target.value)}
+                                className={cn(
+                                    "flex h-10 w-full rounded border border-white/10 bg-[#050505] px-3 py-1 font-mono text-sm text-[#F5F5F5] transition-all placeholder:text-[#4A4A4A] focus:outline-none focus:border-[#A3E635]/50 focus:ring-1 focus:ring-[#A3E635]/20",
+                                    "appearance-none cursor-pointer"
+                                )}
                             >
-                                Salvar Configurações
-                            </Button>
+                                {aiProvider === 'gemini' ? (
+                                    <>
+                                        <option value="gemini-2.0-flash">GEMINI_2.0_FLASH</option>
+                                        <option value="gemini-2.5-flash">GEMINI_2.5_FLASH</option>
+                                        <option value="gemini-2.5-pro">GEMINI_2.5_PRO</option>
+                                    </>
+                                ) : (
+                                    <>
+                                        <option value="claude-sonnet-4">CLAUDE_SONNET_V4</option>
+                                        <option value="gpt-4o">GPT_4O_KERNEL</option>
+                                        <option value="o3">O3_REASONING</option>
+                                    </>
+                                )}
+                            </select>
                         </div>
-                    </CardContent>
-                </Card>
 
-                {/* Data Management */}
-                <Card className="border-border">
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Upload className="h-5 w-5 text-primary" />
-                            Gerenciamento de Dados
-                        </CardTitle>
-                        <CardDescription>
-                            Faça backup dos seus conteúdos ou importe um JSON preexistente.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <div className="flex-1 space-y-2">
-                                <h4 className="text-sm font-semibold">Exportar Backup</h4>
-                                <p className="text-xs text-muted-foreground">
-                                    Faz o download de um arquivo JSON contendo todos os seus posts, coleções e contas.
-                                </p>
-                                <Button onClick={handleExport} variant="outline" className="w-full sm:w-auto">
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Exportar Dados (JSON)
-                                </Button>
+                        <Button onClick={handleSaveApiKeys} isLoading={isCheckingIg} variant="solid" className="w-full font-mono text-[10px] tracking-widest">INITIALIZE_AI_STACK</Button>
+                    </div>
+                </SectionCard>
+
+                {/* Data Security */}
+                <SectionCard className="p-8">
+                    <h4 className={SECTION_HEADER_STYLE}><span className="text-[#A3E635]">◎</span> Factory Data Hub [04]</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        <div>
+                            <h5 className="font-mono text-[10px] text-[#8A8A8A] mb-2 uppercase tracking-tighter">Export_Backup</h5>
+                            <p className="text-[11px] text-[#4A4A4A] mb-4">Gerar snapshot local de todas as instâncias e conteúdos.</p>
+                            <Button onClick={handleExport} variant="outline" size="sm" className="w-full font-mono text-[10px]">DOWNLOAD_SNAP.JSON</Button>
+                        </div>
+                        <div>
+                            <h5 className="font-mono text-[10px] text-[#8A8A8A] mb-2 uppercase tracking-tighter">Restore_Kernel</h5>
+                            <p className="text-[11px] text-[#4A4A4A] mb-4">Injetar snapshot de banco de dados via pipeline externo.</p>
+                            <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" />
+                            <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm" className="w-full font-mono text-[10px]">INJECT_RESTORE_HEX</Button>
+                        </div>
+                    </div>
+                    
+                    <div className="pt-8 border-t border-[#EF4444]/20">
+                        <div className="flex items-center justify-between p-6 rounded bg-[#EF4444]/5 border border-[#EF4444]/20">
+                            <div className="space-y-1">
+                                <h5 className="font-bold text-[#EF4444] text-[12px] uppercase tracking-widest flex items-center gap-2">
+                                    <span className="text-sm">☢</span> CRITICAL_ZONE
+                                </h5>
+                                <p className="text-[10px] text-[#EF4444]/60 uppercase font-mono">Format_All_Local_Storage_Nodes</p>
                             </div>
-
-                            <div className="h-[1px] sm:h-auto sm:w-[1px] bg-border my-2 sm:my-0" />
-
-                            <div className="flex-1 space-y-2">
-                                <h4 className="text-sm font-semibold">Importar Backup</h4>
-                                <p className="text-xs text-muted-foreground">
-                                    Restaura os dados a partir de um arquivo JSON. Isso substituirá os dados atuais.
-                                </p>
-                                <div>
-                                    <input
-                                        type="file"
-                                        accept=".json,application/json"
-                                        className="hidden"
-                                        ref={fileInputRef}
-                                        onChange={handleImport}
-                                    />
-                                    <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full sm:w-auto">
-                                        <Upload className="mr-2 h-4 w-4" />
-                                        Importar Dados
-                                    </Button>
-                                </div>
-                            </div>
+                            <Button variant="outline" className="border-[#EF4444]/40 text-[#EF4444] hover:bg-[#EF4444] hover:text-white font-mono text-[10px]" onClick={() => {
+                                if(window.confirm('RESET_SYSTEM_ALL?')) {
+                                    localStorage.clear();
+                                    window.location.reload();
+                                }
+                            }}>WIPE_FACTORY_STATE</Button>
                         </div>
-
-                        <div className="pt-6 border-t border-destructive/20">
-                            <div className="flex items-center justify-between p-4 bg-destructive/5 rounded-lg border border-destructive/20">
-                                <div>
-                                    <h4 className="font-semibold text-destructive inline-flex items-center">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Zona de Perigo
-                                    </h4>
-                                    <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                                        Isso irá apagar todos os dados armazenados localmente no seu navegador. Essa ação não pode ser desfeita.
-                                    </p>
-                                </div>
-                                <Button onClick={handleReset} variant="destructive">
-                                    Resetar Tudo
-                                </Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* About */}
-                <Card>
-                    <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between text-sm text-muted-foreground">
-                        <div className="space-y-1 mb-4 md:mb-0">
-                            <span className="font-semibold text-foreground mr-2">Dashboard Instagram</span>
-                            <span>v1.0.0</span>
-                            <p className="text-xs">Feito com Next.js 15, Zustand e Tailwind CSS.</p>
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={() => window.open('https://github.com/avaranda66-oss/DASHBOARINSTAGRAM', '_blank')}>
-                            <Github className="mr-2 h-4 w-4" />
-                            Visitar Repositório
-                        </Button>
-                    </CardContent>
-                </Card>
+                    </div>
+                </SectionCard>
             </div>
-        </div>
+
+            <div className="p-6 flex items-center justify-between opacity-30 font-mono text-[9px] tracking-[0.4em] uppercase">
+                <span>INTEL_DASHBOARD_V2 // BUILD_2026.03.14</span>
+                <span>ROOT_USER_AUTH_OK</span>
+            </div>
+        </motion.div>
     );
 }

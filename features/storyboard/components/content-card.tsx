@@ -1,31 +1,14 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useMemo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Image, Circle, Film, Layers, Megaphone, GripVertical } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { TYPE_BADGE_COLORS } from '@/lib/constants';
+import { cn } from '@/design-system/utils/cn';
 import type { Content } from '@/types/content';
 import { useCollectionStore } from '@/stores';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-
-const TYPE_ICONS: Record<string, React.ElementType> = {
-    post: Image,
-    story: Circle,
-    reel: Film,
-    carousel: Layers,
-    campaign: Megaphone,
-};
-
-const TYPE_LABELS: Record<string, string> = {
-    post: 'Post',
-    story: 'Story',
-    reel: 'Reel',
-    carousel: 'Carrossel',
-    campaign: 'Campanha',
-};
+import { TYPE_HEX_COLORS, TYPE_ABBR } from '@/lib/constants';
+import { foggBehaviorScore } from '@/lib/utils/causal-behavioral';
 
 interface ContentCardProps {
     content: Content;
@@ -36,8 +19,6 @@ interface ContentCardProps {
 export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProps) {
     const { collections } = useCollectionStore();
     const primaryCollection = collections.find(c => content.collectionIds?.includes(c.id));
-    const TypeIcon = TYPE_ICONS[content.type] ?? Image;
-    const badgeColor = TYPE_BADGE_COLORS[content.type] ?? '';
 
     const {
         attributes,
@@ -54,63 +35,107 @@ export function ContentCard({ content, onClick, isDragOverlay }: ContentCardProp
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.4 : 1,
+        opacity: isDragging ? 0.3 : 1,
+        backgroundColor: '#0A0A0A',
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderRadius: '8px',
     };
+
+    const typeKey = content.type?.toLowerCase() ?? '';
+    const typeColor = TYPE_HEX_COLORS[typeKey] ?? '#8A8A8A';
+    const typeLabel = TYPE_ABBR[typeKey] ?? content.type?.toUpperCase() ?? '???';
+
+    const fogg = useMemo(() => {
+        const caption = [content.title, content.description].filter(Boolean).join(' ');
+        const contentTypeMap: Record<string, 'post' | 'reel' | 'carousel' | 'story'> = {
+            post: 'post', reel: 'reel', carousel: 'carousel', story: 'story',
+        };
+        const contentType = contentTypeMap[content.type ?? ''] ?? 'post';
+        const publishedHour = content.scheduledAt
+            ? new Date(content.scheduledAt).getHours()
+            : undefined;
+        return foggBehaviorScore({ caption, contentType, publishedHour });
+    }, [content.title, content.description, content.type, content.scheduledAt]);
+
+    const foggColor = fogg.classification === 'alto_impacto'
+        ? '#A3E635'
+        : fogg.classification === 'moderado'
+        ? '#FBBF24'
+        : '#4A4A4A';
 
     return (
         <div
             ref={setNodeRef}
             style={style}
+            {...attributes}
+            {...listeners}
             onClick={isDragging ? undefined : onClick}
-            className={`group cursor-pointer rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow hover:shadow-md hover:border-border/80 backdrop-blur-sm ${isDragOverlay ? 'shadow-xl rotate-2 scale-105' : ''}`}
+            className={cn(
+                "group cursor-grab active:cursor-grabbing border p-3 transition-colors duration-100 select-none",
+                isDragOverlay ? 'shadow-2xl border-[#A3E635]/40 rotate-1 scale-[1.02] z-50 cursor-grabbing' : ''
+            )}
+            onMouseEnter={(e) => {
+                if (!isDragging) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)';
+            }}
+            onMouseLeave={(e) => {
+                if (!isDragging) e.currentTarget.style.backgroundColor = '#0A0A0A';
+            }}
         >
             {/* Header row */}
-            <div className="mb-2 flex items-center justify-between">
-                <Badge variant="outline" className={`text-xs ${badgeColor}`}>
-                    <TypeIcon className="mr-1 h-3 w-3" />
-                    {TYPE_LABELS[content.type]}
-                </Badge>
-                <div className="flex items-center gap-1.5">
+            <div className="mb-3 flex items-center justify-between">
+                <span
+                    className="font-mono text-[10px] tracking-wider"
+                    style={{ color: typeColor }}
+                >
+                    [{typeLabel}]
+                </span>
+
+                <div className="flex items-center gap-2">
                     {primaryCollection && (
                         <div
-                            className="h-2 w-2 rounded-full shadow-sm"
+                            className="h-1.5 w-1.5 rounded-full"
                             style={{ backgroundColor: primaryCollection.color }}
-                            title={primaryCollection.name}
                         />
                     )}
-                    <button
-                        {...attributes}
-                        {...listeners}
-                        className="cursor-grab active:cursor-grabbing rounded p-0.5 hover:bg-accent/50 opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="Arrastar card"
-                    >
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    </button>
+                    {/* Visual drag hint */}
+                    <span className="font-mono text-[10px] text-[#3A3A3A] group-hover:text-[#4A4A4A] transition-colors select-none">
+                        ⠿
+                    </span>
                 </div>
             </div>
 
             {/* Title */}
-            <h4 className="text-sm font-medium leading-snug line-clamp-2">
+            <h4 className="text-[12px] font-bold text-[#F5F5F5] leading-snug line-clamp-2 uppercase tracking-wide">
                 {content.title}
             </h4>
 
-            {/* Scheduled date */}
-            {content.scheduledAt && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                    📅{' '}
-                    {format(parseISO(content.scheduledAt), "dd MMM, HH:mm", {
-                        locale: ptBR,
-                    })}
-                </p>
-            )}
+            {/* Metadata Footer */}
+            <div className="mt-4 pt-3 flex items-center justify-between border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                <div className="font-mono text-[9px] text-[#4A4A4A] tracking-wider">
+                    {content.scheduledAt ? (
+                        <span className="flex items-center gap-1">
+                            ◷ {format(parseISO(content.scheduledAt), "dd.MM | HH:mm")}
+                        </span>
+                    ) : (
+                        'UNSCHEDULED'
+                    )}
+                </div>
 
-            {/* Hashtags preview */}
-            {content.hashtags.length > 0 && (
-                <p className="mt-1.5 text-xs text-muted-foreground truncate">
-                    {content.hashtags.slice(0, 3).join(' ')}
-                    {content.hashtags.length > 3 && ` +${content.hashtags.length - 3}`}
-                </p>
-            )}
+                <div className="flex items-center gap-2">
+                    {content.hashtags.length > 0 && (
+                        <span className="font-mono text-[9px] text-[#A3E635] opacity-60">
+                            #{content.hashtags.length.toString().padStart(2, '0')}
+                        </span>
+                    )}
+                    <span
+                        className="font-mono text-[8px] tracking-wider"
+                        style={{ color: foggColor }}
+                        title={`Fogg Score: ${fogg.totalScore} — ${fogg.classification}`}
+                    >
+                        [{fogg.totalScore}]
+                    </span>
+                </div>
+            </div>
         </div>
     );
 }

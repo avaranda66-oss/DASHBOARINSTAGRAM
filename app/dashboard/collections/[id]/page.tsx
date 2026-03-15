@@ -2,8 +2,6 @@
 
 import { useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useCollectionStore, useContentStore } from '@/stores';
 import { CollectionDetail } from '@/features/collections/components/collection-detail';
 
@@ -20,10 +18,24 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
 
     return (
         <div className="space-y-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/collections')} className="text-muted-foreground -ml-2 hover:text-foreground">
-                <ChevronLeft className="mr-1 h-4 w-4" />
-                Voltar para Coleções
-            </Button>
+            <button
+                onClick={() => router.push('/dashboard/collections')}
+                className="flex items-center gap-2 -ml-1"
+                style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#4A4A4A',
+                    transition: 'color 100ms',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#F5F5F5')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#4A4A4A')}
+            >
+                <span className="font-mono text-[11px]">←</span>
+                <span className="text-[13px]">Voltar para Coleções</span>
+            </button>
 
             <CollectionDetail id={id} />
         </div>

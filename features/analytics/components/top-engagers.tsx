@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Crown, MessageCircle, User } from 'lucide-react';
 import type { InstagramPostMetrics } from '@/types/analytics';
 
 interface TopEngagersProps {
@@ -64,7 +63,7 @@ export function TopEngagers({ posts }: TopEngagersProps) {
     if (totalComments === 0) {
         return (
             <div className="rounded-xl border border-border bg-card p-6 text-center">
-                <MessageCircle className="mx-auto h-8 w-8 text-muted-foreground/40" />
+                <span className="mx-auto text-muted-foreground/40 font-mono text-2xl mb-2">◐</span>
                 <p className="mt-2 text-sm text-muted-foreground">
                     Nenhum dado de comentários disponível.
                 </p>
@@ -80,12 +79,12 @@ export function TopEngagers({ posts }: TopEngagersProps) {
             {/* Summary bar */}
             <div className="flex items-center gap-4 rounded-lg border border-border bg-card px-4 py-2.5">
                 <div className="flex items-center gap-1.5 text-sm">
-                    <MessageCircle className="h-4 w-4 text-blue-400" />
+                    <span className="text-blue-400 font-mono text-xs mr-1">◐</span>
                     <span className="font-semibold">{totalComments}</span>
                     <span className="text-muted-foreground text-xs">comentários analisados</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-sm">
-                    <User className="h-4 w-4 text-purple-400" />
+                    <span className="text-purple-400 font-mono text-xs mr-1">◎</span>
                     <span className="font-semibold">{engagers.length}</span>
                     <span className="text-muted-foreground text-xs">comentaristas únicos</span>
                 </div>
@@ -94,7 +93,7 @@ export function TopEngagers({ posts }: TopEngagersProps) {
             {/* Ranking */}
             <div className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/30">
-                    <Crown className="h-4 w-4 text-amber-400" />
+                    <span className="text-amber-400 font-mono text-xs mr-1">◆</span>
                     <h4 className="text-sm font-semibold">Top Engajadores</h4>
                 </div>
                 <div className="divide-y divide-border">

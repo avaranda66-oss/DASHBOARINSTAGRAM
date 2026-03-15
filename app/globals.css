@@ -327,3 +327,31 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Hidden scrollbar — cross-browser */
+.scrollbar-none {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;                /* Chrome/Safari/Opera */
+}
+
+/* HUD thin scrollbar — for areas where scroll indication is needed */
+.scrollbar-hud {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(163,230,53,0.2) transparent;
+}
+.scrollbar-hud::-webkit-scrollbar {
+  width: 3px;
+}
+.scrollbar-hud::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-hud::-webkit-scrollbar-thumb {
+  background-color: rgba(163,230,53,0.2);
+  border-radius: 3px;
+}
+.scrollbar-hud::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(163,230,53,0.4);
+}

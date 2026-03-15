@@ -11,6 +11,8 @@ export interface UserSettings {
     aiModel?: string;
     antigravityApiKey?: string;
     antigravityBaseUrl?: string;
+    // Scheduler tunnel
+    tunnelUrl?: string;
     // Meta Graph API
     metaAccessToken?: string;
     metaTokenExpiresAt?: number; // Unix timestamp

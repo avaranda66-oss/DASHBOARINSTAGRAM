@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
     if (!forceRefresh) {
         const cached = getCachedHighlights(username);
         if (cached && cached.success) {
-            console.log(`[API/instagram-highlights] Returning cached data for @${username}`);
             return NextResponse.json({ ...cached, fromCache: true });
         }
     }

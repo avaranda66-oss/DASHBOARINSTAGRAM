@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useRef, type KeyboardEvent } from 'react';
-import { X } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+// [ZERO_LUCIDE_PURGE]
+import { Badge } from '@/design-system/atoms/Badge';
+import { cn } from '@/design-system/utils/cn';
 
 interface TagInputProps {
     tags: string[];
@@ -12,11 +12,18 @@ interface TagInputProps {
     placeholder?: string;
 }
 
+const GLYPHS = {
+    CLOSE: '✕',
+    TAG: '◆'
+};
+
+const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
+
 export function TagInput({
     tags,
     onChange,
     maxTags = 30,
-    placeholder = 'Adicionar hashtag...',
+    placeholder = 'PROTOCOL_TAG...',
 }: TagInputProps) {
     const [inputValue, setInputValue] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
@@ -44,17 +51,19 @@ export function TagInput({
     };
 
     return (
-        <div>
+        <div className="font-mono">
             <div
-                className="flex flex-wrap gap-1.5 rounded-lg border border-input bg-background p-2 focus-within:ring-2 focus-within:ring-ring cursor-text"
+                className="flex flex-wrap gap-2 rounded-lg border border-white/10 bg-[#0A0A0A] p-3 focus-within:border-[#A3E635]/40 transition-all cursor-text min-h-[44px]"
                 onClick={() => inputRef.current?.focus()}
             >
                 {tags.map((tag, index) => (
                     <Badge
                         key={`${tag}-${index}`}
-                        variant="secondary"
-                        className="gap-1 text-xs"
+                        variant="subtle"
+                        intent="default"
+                        className="gap-2 text-[9px] uppercase tracking-widest bg-white/5 text-[#F5F5F5] border-white/10 hover:bg-white/10 transition-colors py-1 px-2 rounded"
                     >
+                        <span className="text-[#A3E635] opacity-60">{wrap(GLYPHS.TAG)}</span>
                         {tag}
                         <button
                             type="button"
@@ -62,9 +71,9 @@ export function TagInput({
                                 e.stopPropagation();
                                 removeTag(index);
                             }}
-                            className="rounded-full hover:bg-foreground/10"
+                            className="text-[#4A4A4A] hover:text-[#EF4444] transition-colors"
                         >
-                            <X className="h-3 w-3" />
+                            {wrap(GLYPHS.CLOSE)}
                         </button>
                     </Badge>
                 ))}
@@ -77,13 +86,16 @@ export function TagInput({
                         onKeyDown={handleKeyDown}
                         onBlur={() => addTag(inputValue)}
                         placeholder={tags.length === 0 ? placeholder : ''}
-                        className="min-w-[120px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                        className="min-w-[120px] flex-1 bg-transparent text-[11px] outline-none placeholder:text-[#2A2A2A] uppercase font-bold text-[#F5F5F5]"
                     />
                 )}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground text-right">
-                {tags.length}/{maxTags} hashtags
-            </p>
+            <div className="mt-2 flex justify-between items-center px-1">
+                <span className="text-[8px] text-[#4A4A4A] uppercase tracking-[0.2em] font-bold">Protocol_Hashtag_Array</span>
+                <p className="text-[9px] font-bold text-[#4A4A4A]">
+                    {tags.length}/{maxTags} KEY_NODES
+                </p>
+            </div>
         </div>
     );
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Plus } from 'lucide-react';
 import {
     DndContext,
     DragOverlay,
@@ -9,19 +8,18 @@ import {
     KeyboardSensor,
     useSensor,
     useSensors,
-    closestCorners,
+    closestCenter,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useContentStore } from '@/stores';
 import { BOARD_COLUMNS } from '@/lib/constants';
 import { BoardColumn } from './board-column';
 import { ContentCard } from './content-card';
-import { FilterPanel } from '@/components/shared/filter-panel';
-import { ActiveFiltersBar } from '@/components/shared/active-filters-bar';
+import { FilterPanel, ActiveFiltersBar } from '@/design-system/molecules';
 import { ImportMdButton } from './import-md-button';
 import { useBoardDnd } from '../hooks/use-board-dnd';
 import { useFilteredContents } from '@/hooks/use-filtered-contents';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/design-system/atoms/Button';
 import type { Content } from '@/types/content';
 
 interface BoardProps {
@@ -32,7 +30,7 @@ interface BoardProps {
 export function Board({ onAddContent, onEditContent }: BoardProps) {
     const { isLoaded, loadContents, refreshContents } = useContentStore();
     const filteredContents = useFilteredContents();
-    const { activeCard, onDragStart, onDragEnd } = useBoardDnd();
+    const { activeCard, onDragStart, onDragOver, onDragEnd } = useBoardDnd();
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -42,7 +40,6 @@ export function Board({ onAddContent, onEditContent }: BoardProps) {
     useEffect(() => {
         if (!isLoaded) loadContents();
 
-        // Configurar auto-refresh a cada 30 segundos
         const interval = setInterval(() => {
             refreshContents();
         }, 30000);
@@ -51,18 +48,18 @@ export function Board({ onAddContent, onEditContent }: BoardProps) {
     }, [isLoaded, loadContents, refreshContents]);
 
     return (
-        <div className="relative h-full flex flex-col">
+        <div className="relative h-full flex flex-col space-y-4">
             <ActiveFiltersBar />
 
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 overflow-hidden">
                 <DndContext
                     sensors={sensors}
-                    collisionDetection={closestCorners}
+                    collisionDetection={closestCenter}
                     onDragStart={onDragStart}
+                    onDragOver={onDragOver}
                     onDragEnd={onDragEnd}
                 >
-                    {/* Board grid — todas as colunas visíveis sem scroll */}
-                    <div className="grid grid-cols-6 gap-3 pb-4 h-full">
+                    <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3 pb-4 h-full">
                         {BOARD_COLUMNS.map((column) => (
                             <BoardColumn
                                 key={column.id}
@@ -74,23 +71,21 @@ export function Board({ onAddContent, onEditContent }: BoardProps) {
                         ))}
                     </div>
 
-                    {/* Drag overlay */}
-                    <DragOverlay>
+                    <DragOverlay dropAnimation={null}>
                         {activeCard ? (
                             <ContentCard content={activeCard} isDragOverlay />
                         ) : null}
                     </DragOverlay>
                 </DndContext>
 
-                {/* Action Buttons */}
-                <div className="fixed bottom-6 right-6 flex items-center gap-3 z-50">
+                <div className="fixed bottom-8 right-8 flex items-center gap-4 z-50">
                     <ImportMdButton />
                     <Button
-                        size="lg"
-                        className="h-14 w-14 rounded-full shadow-lg instagram-gradient text-white border-0 hover:opacity-90"
                         onClick={() => onAddContent?.()}
+                        variant="solid"
+                        className="h-14 w-14 rounded-full shadow-[0_0_20px_rgba(163,230,53,0.3)] !p-0"
                     >
-                        <Plus className="h-6 w-6" />
+                        <span className="text-2xl font-light">+</span>
                     </Button>
                 </div>
 

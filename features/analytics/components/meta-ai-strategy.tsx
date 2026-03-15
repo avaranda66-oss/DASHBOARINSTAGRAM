@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, RefreshCw, AlertCircle, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+// Lucide icons removed in favor of ASCII HUD glyphs
+import { Button } from '@/design-system/atoms/Button';
 
 interface MetaPost {
     caption?: string;
@@ -63,7 +63,7 @@ export function MetaAiStrategy({ posts, summary, accountInsights, demographics }
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl v2-glass bg-gradient-to-r from-[var(--v2-accent)]/5 to-[var(--v2-accent-secondary)]/5 p-4">
                 <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-[var(--v2-accent)]" />
+                        <span className="font-mono text-sm text-[var(--v2-accent)]">◎</span>
                         <span className="font-semibold text-sm">Relatório Estratégico com IA</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -77,11 +77,11 @@ export function MetaAiStrategy({ posts, summary, accountInsights, demographics }
                     className="bg-[var(--v2-accent)] hover:bg-[var(--v2-accent-hover)] text-white shrink-0"
                 >
                     {isLoading ? (
-                        <><RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> Gerando...</>
+                        <><span className="mr-2 font-mono text-xs animate-spin">↻</span> Gerando...</>
                     ) : report ? (
-                        <><RefreshCw className="mr-2 h-3.5 w-3.5" /> Regenerar</>
+                        <><span className="mr-2 font-mono text-xs">↻</span> Regenerar</>
                     ) : (
-                        <><Sparkles className="mr-2 h-3.5 w-3.5" /> Gerar Relatório Estratégico</>
+                        <><span className="mr-2 font-mono text-xs">◎</span> Gerar Relatório Estratégico</>
                     )}
                 </Button>
             </div>
@@ -89,7 +89,7 @@ export function MetaAiStrategy({ posts, summary, accountInsights, demographics }
             {/* Error */}
             {error && (
                 <div className="flex items-start gap-2 rounded-lg border border-[var(--v2-danger)]/20 bg-[var(--v2-danger)]/5 p-3">
-                    <AlertCircle className="h-4 w-4 text-[var(--v2-danger)] mt-0.5 shrink-0" />
+                    <span className="font-mono text-sm text-[var(--v2-danger)] mt-0.5 shrink-0">⚠</span>
                     <p className="text-sm text-[var(--v2-danger)]">{error}</p>
                 </div>
             )}
@@ -116,10 +116,10 @@ export function MetaAiStrategy({ posts, summary, accountInsights, demographics }
                         className="flex items-center justify-between w-full px-4 py-3 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors border-b border-border bg-[var(--v2-bg-surface)]"
                     >
                         <span className="flex items-center gap-1.5">
-                            <Sparkles className="h-3.5 w-3.5 text-[var(--v2-accent)]" />
+                            <span className="font-mono text-xs text-[var(--v2-accent)]">◎</span>
                             Relatório Estratégico
                         </span>
-                        <ChevronDown className={`h-4 w-4 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
+                        <span className={`font-mono text-sm transition-transform ${collapsed ? '' : 'rotate-180'}`}>▼</span>
                     </button>
                     {!collapsed && (
                         <div className="px-4 py-4 space-y-3 text-xs">
@@ -161,7 +161,7 @@ export function MetaAiStrategy({ posts, summary, accountInsights, demographics }
             {/* Empty prompt */}
             {!report && !isLoading && !error && (
                 <div className="rounded-xl border border-dashed border-[var(--v2-accent)]/20 p-8 text-center">
-                    <Sparkles className="h-8 w-8 text-[var(--v2-accent)]/40 mx-auto mb-3" />
+                    <span className="font-mono text-3xl text-[var(--v2-accent)]/40 block mb-3">◎</span>
                     <p className="text-sm text-muted-foreground">
                         Clique em <strong className="text-foreground">Gerar Relatório Estratégico</strong> para obter análise personalizada da sua conta com recomendações de IA.
                     </p>

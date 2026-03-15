@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Layers, ChevronRight, Image as ImageIcon, Film } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import type { InstagramPostMetrics } from '@/types/analytics';
 
 interface CarouselSlideAnalysisProps {
@@ -58,7 +58,7 @@ export function CarouselSlideAnalysis({ posts, metaToken }: CarouselSlideAnalysi
             className="rounded-2xl border border-white/[0.06] bg-zinc-900/60 backdrop-blur-md p-5"
         >
             <div className="flex items-center gap-2 mb-4">
-                <Layers className="h-4 w-4 text-violet-400" />
+                <span className="font-mono text-sm text-violet-400">⊞</span>
                 <h3 className="text-sm font-semibold text-zinc-200">Análise de Carrosséis</h3>
                 <span className="text-xs text-zinc-500">({carousels.length} posts)</span>
             </div>
@@ -74,7 +74,7 @@ export function CarouselSlideAnalysis({ posts, metaToken }: CarouselSlideAnalysi
                                 <img src={`/api/image-proxy?url=${encodeURIComponent(post.displayUrl)}`} alt="" className="w-10 h-10 rounded-lg object-cover" />
                             ) : (
                                 <div className="w-10 h-10 rounded-lg bg-zinc-700 flex items-center justify-center">
-                                    <Layers className="h-4 w-4 text-zinc-500" />
+                                    <span className="font-mono text-sm text-zinc-500">⊞</span>
                                 </div>
                             )}
                             <div className="flex-1 min-w-0">
@@ -83,7 +83,7 @@ export function CarouselSlideAnalysis({ posts, metaToken }: CarouselSlideAnalysi
                                     {post.likesCount.toLocaleString()} likes · {post.commentsCount.toLocaleString()} comments
                                 </p>
                             </div>
-                            <ChevronRight className={`h-4 w-4 text-zinc-500 transition-transform ${expandedPost === post.id ? 'rotate-90' : ''}`} />
+                            <span className={`font-mono text-xs text-zinc-500 transition-transform ${expandedPost === post.id ? 'rotate-90' : ''}`}>›</span>
                         </button>
 
                         {expandedPost === post.id && (
@@ -99,7 +99,11 @@ export function CarouselSlideAnalysis({ posts, metaToken }: CarouselSlideAnalysi
                                                         <img src={`/api/image-proxy?url=${encodeURIComponent(slide.media_url)}`} alt="" className="w-full h-full object-cover" />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center">
-                                                            {slide.media_type === 'VIDEO' ? <Film className="h-4 w-4 text-zinc-500" /> : <ImageIcon className="h-4 w-4 text-zinc-500" />}
+                                                            {slide.media_type === 'VIDEO' ? (
+                                                                <span className="font-mono text-xs text-zinc-500">▶</span>
+                                                            ) : (
+                                                                <span className="font-mono text-xs text-zinc-500">◫</span>
+                                                            )}
                                                         </div>
                                                     )}
                                                     <span className="absolute top-0.5 left-0.5 text-[9px] bg-black/60 text-white px-1 rounded">

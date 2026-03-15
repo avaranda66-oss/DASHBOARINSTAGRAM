@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Save, X, Trash2, Palette } from 'lucide-react';
+// [ZERO_LUCIDE_PURGE]
 import { useCollectionStore } from '@/stores';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Input } from '@/design-system/atoms/Input';
+import { Button } from '@/design-system/atoms/Button';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
-import * as Icons from 'lucide-react';
 import type { Collection } from '@/types/collection';
+import { cn } from '@/design-system/utils/cn';
 
 const PRESET_COLORS = [
     '#E1306C', // Instagram Pink
@@ -21,11 +21,16 @@ const PRESET_COLORS = [
     '#EF4444', // Red
 ];
 
-const AVAILABLE_ICONS = [
-    'Sparkles', 'Star', 'Heart', 'Tag', 'Megaphone',
-    'Gift', 'Camera', 'Palette', 'Rocket', 'Globe',
-    'Music', 'ShoppingBag', 'Coffee', 'Sun', 'Leaf'
-];
+const GLYPHS = {
+    SAVE: '◆',
+    CLOSE: '✕',
+    DELETE: '✕',
+    COLOR: '◎',
+    ICON: '◆',
+    PLUS: '+'
+};
+
+const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
 
 interface CollectionFormDialogProps {
     open: boolean;
@@ -43,18 +48,6 @@ export function CollectionFormDialog({ open, onOpenChange, collection }: Collect
     const [icon, setIcon] = useState(collection?.icon || 'Sparkles');
     const [startDate, setStartDate] = useState(collection?.startDate ? collection.startDate.substring(0, 10) : '');
     const [endDate, setEndDate] = useState(collection?.endDate ? collection.endDate.substring(0, 10) : '');
-
-    // Reset form when opened with new collection
-    useState(() => {
-        if (open) {
-            setName(collection?.name || '');
-            setDescription(collection?.description || '');
-            setColor(collection?.color || PRESET_COLORS[0]);
-            setIcon(collection?.icon || 'Sparkles');
-            setStartDate(collection?.startDate ? collection.startDate.substring(0, 10) : '');
-            setEndDate(collection?.endDate ? collection.endDate.substring(0, 10) : '');
-        }
-    });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -82,7 +75,7 @@ export function CollectionFormDialog({ open, onOpenChange, collection }: Collect
 
     const handleDelete = () => {
         if (!collection) return;
-        if (confirm('Tem certeza que deseja excluir esta coleção? Os conteúdos continuarão existindo, apenas perderão a tag desta coleção.')) {
+        if (confirm('Tem certeza que deseja excluir esta coleção? Os conteúdos continuarão existindo.')) {
             deleteCollection(collection.id);
             toast.success('Coleção excluída');
             onOpenChange(false);
@@ -91,120 +84,99 @@ export function CollectionFormDialog({ open, onOpenChange, collection }: Collect
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0" showCloseButton={false}>
-                <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <SheetTitle className="text-lg font-semibold">
-                            {isEditing ? 'Editar Coleção' : 'Nova Coleção'}
+            <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0 border-l border-white/10 bg-[#050505]" showCloseButton={false}>
+                <div className="p-8 font-mono">
+                    <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
+                        <SheetTitle className="text-[11px] font-bold uppercase tracking-[0.4em] text-[#F5F5F5]">
+                            {isEditing ? 'CONFIG_KERNEL_UPDATE' : 'INIT_NEW_COLLECTION'}
                         </SheetTitle>
-                        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="h-8 w-8">
-                            <X className="h-4 w-4" />
-                        </Button>
+                        <button onClick={() => onOpenChange(false)} className="h-8 w-8 flex items-center justify-center text-[#4A4A4A] hover:text-[#F5F5F5] transition-colors">
+                            <span className="text-sm">{wrap(GLYPHS.CLOSE)}</span>
+                        </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-8">
                         {/* Name */}
-                        <div>
-                            <label className="text-sm font-medium">Nome *</label>
-                            <Input
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                placeholder="Ex: Campanha Dia das Mães"
-                                className="mt-1.5"
-                                required
-                            />
-                        </div>
+                        <Input
+                            label="COL_LABEL_NAME"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="NAME_REQUIRED..."
+                            required
+                            isMono={true}
+                        />
 
                         {/* Description */}
-                        <div>
-                            <label className="text-sm font-medium">Descrição</label>
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A]">DESCRIPTION_META</label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Detalhes da campanha..."
-                                rows={3}
-                                className="mt-1.5 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                placeholder="PROTOCOL_DETAILS..."
+                                rows={4}
+                                className="w-full bg-[#0A0A0A] border border-white/10 rounded-md p-4 text-[11px] text-[#F5F5F5] font-mono focus:border-white/20 outline-none uppercase placeholder:text-[#2A2A2A] transition-all"
                             />
                         </div>
 
                         {/* Colors */}
-                        <div>
-                            <label className="text-sm font-medium mb-1.5 block">Cor Tema</label>
-                            <div className="flex flex-wrap gap-2">
+                        <div className="space-y-4">
+                            <label className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A4A] flex items-center gap-2">
+                                <span>{wrap(GLYPHS.COLOR)}</span> THEME_HEX_NODE
+                            </label>
+                            <div className="flex flex-wrap gap-3">
                                 {PRESET_COLORS.map(c => (
                                     <button
                                         key={c}
                                         type="button"
                                         onClick={() => setColor(c)}
-                                        className={`h-8 w-8 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-primary scale-110' : 'border-transparent'}`}
+                                        className={cn(
+                                            "h-7 w-7 rounded border-2 transition-all hover:scale-110",
+                                            color === c ? 'border-[#A3E635] scale-110' : 'border-transparent'
+                                        )}
                                         style={{ backgroundColor: c }}
                                     />
                                 ))}
-                                <div className="relative h-8 w-8 rounded-full overflow-hidden border-2 border-border flex items-center justify-center bg-muted">
-                                    <Palette className="h-4 w-4 text-muted-foreground absolute pointer-events-none" />
+                                <div className="relative h-7 w-7 rounded overflow-hidden border border-white/10 flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                                    <span className="text-[10px] text-[#4A4A4A]">{wrap(GLYPHS.PLUS)}</span>
                                     <input
                                         type="color"
                                         value={color}
                                         onChange={(e) => setColor(e.target.value)}
-                                        className="opacity-0 w-[200%] h-[200%] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                                        className="opacity-0 absolute inset-0 cursor-pointer"
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Icons */}
-                        <div>
-                            <label className="text-sm font-medium mb-1.5 block">Ícone</label>
-                            <div className="grid grid-cols-5 gap-2">
-                                {AVAILABLE_ICONS.map(i => {
-                                    const LucideIcon = (Icons as any)[i];
-                                    return (
-                                        <button
-                                            key={i}
-                                            type="button"
-                                            onClick={() => setIcon(i)}
-                                            className={`flex h-10 w-10 items-center justify-center rounded-lg border transition-colors ${icon === i ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted'}`}
-                                        >
-                                            {LucideIcon && <LucideIcon className="h-5 w-5" />}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
                         {/* Dates row */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-sm font-medium">Data Início</label>
-                                <Input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="mt-1.5"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium">Data Fim</label>
-                                <Input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="mt-1.5"
-                                />
-                            </div>
+                        <div className="grid grid-cols-2 gap-6">
+                            <Input
+                                type="date"
+                                label="START_EPOCH"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                isMono={true}
+                            />
+                            <Input
+                                type="date"
+                                label="END_EPOCH"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                isMono={true}
+                            />
                         </div>
 
                         {/* Actions */}
-                        <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                            <Button type="submit" className="w-full" style={{ backgroundColor: color, color: '#fff' }}>
-                                <Save className="mr-2 h-4 w-4" />
-                                Salvar Coleção
+                        <div className="flex flex-col gap-3 pt-8 border-t border-white/5">
+                            <Button type="submit" className="w-full h-11 text-[10px] font-black uppercase tracking-widest bg-[#A3E635] text-black hover:bg-[#A3E635]/90">
+                                <span className="mr-2">{wrap(GLYPHS.SAVE)}</span>
+                                COMMIT_CHANGES
                             </Button>
 
                             {isEditing && (
-                                <Button type="button" variant="destructive" onClick={handleDelete} className="w-full">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Excluir
+                                <Button type="button" variant="ghost" onClick={handleDelete} className="w-full h-11 text-[9px] uppercase tracking-widest text-[#EF4444] hover:bg-[#EF4444]/5 hover:text-[#EF4444]">
+                                    <span className="mr-2">{wrap(GLYPHS.DELETE)}</span>
+                                    PURGE_COLLECTION
                                 </Button>
                             )}
                         </div>

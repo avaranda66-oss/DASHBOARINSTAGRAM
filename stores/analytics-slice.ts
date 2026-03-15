@@ -69,6 +69,9 @@ function computeSummary(posts: InstagramPostMetrics[], period: 'all' | '7d' | '3
     const totalLikes = filteredPosts.reduce((sum, p) => sum + p.likesCount, 0);
     const totalComments = filteredPosts.reduce((sum, p) => sum + p.commentsCount, 0);
     const totalViews = filteredPosts.reduce((sum, p) => sum + (p.videoViewCount ?? 0), 0);
+    // Meta-specific fields: reach and impressions (0 for Apify-only posts without enrichment)
+    const totalReach = filteredPosts.reduce((sum, p) => sum + ((p as any).reach ?? 0), 0);
+    const totalImpressions = filteredPosts.reduce((sum, p) => sum + ((p as any).impressions ?? p.videoViewCount ?? 0), 0);
 
     const avgLikesPerPost = totalPosts > 0 ? Math.round(totalLikes / totalPosts) : 0;
     const avgCommentsPerPost = totalPosts > 0 ? Math.round(totalComments / totalPosts) : 0;
@@ -119,6 +122,8 @@ function computeSummary(posts: InstagramPostMetrics[], period: 'all' | '7d' | '3
         totalLikes,
         totalComments,
         totalViews,
+        totalReach,
+        totalImpressions,
         avgLikesPerPost,
         avgCommentsPerPost,
         avgEngagementRate,
@@ -172,7 +177,6 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
                 const isFresh = (Date.now() - fetchedAt) < CACHE_MAX_AGE_MS;
 
                 if (isFresh && !period && resultsLimit <= cached.posts.length) { // Só usa cache se não pediu período e já temos posts suficientes
-                    console.log(`[Cache] Usando dados recentes do banco para ${handle}`);
                     const summary = computeSummary(cached.posts, get().filterPeriod, get().customDateRange);
                     set({
                         posts: cached.posts,
@@ -190,7 +194,6 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
         }
 
         // 2. Se não tiver no banco ou estiver velho, buscar na API (Incremental)
-        console.log(`[API] Buscando novos dados para ${handle}...`);
         if (period) {
             set({ filterPeriod: `${period}d` as any });
         }
@@ -273,9 +276,13 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
 
     loadFromCache: async (accountHandle: string) => {
         const handle = extractHandle(accountHandle);
-        // Tenta carregar como conta primeiro, depois concorrente
-        let cached = await getAnalyticsAction(handle, 'account');
-        if (!cached) cached = await getAnalyticsAction(handle, 'competitor');
+        set({ isLoading: true, error: null });
+        // Tenta carregar como conta primeiro, depois concorrente (paralelo)
+        const [asAccount, asCompetitor] = await Promise.all([
+            getAnalyticsAction(handle, 'account'),
+            getAnalyticsAction(handle, 'competitor'),
+        ]);
+        const cached = asAccount || asCompetitor;
 
         if (cached && cached.posts.length > 0) {
             const freshSummary = computeSummary(cached.posts, get().filterPeriod, get().customDateRange);
@@ -286,11 +293,13 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
                 avatarUrl: cached.avatarUrl || null,
                 profileUrl: `https://www.instagram.com/${cached.accountHandle}/`,
                 selectedAccountHandle: cached.accountHandle,
+                isLoading: false,
                 error: null,
                 insightsHtml: null,
             });
             return true;
         }
+        set({ isLoading: false });
         return false;
     },
 

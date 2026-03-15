@@ -1,15 +1,29 @@
 'use client';
 
-import { Card } from '@/components/ui/card';
-import type { AdsKpiSummary } from '@/types/ads';
-import {
-    DollarSign, Eye, MousePointerClick, Target,
-    TrendingUp, Users, BarChart3, Zap,
-} from 'lucide-react';
+import { useMemo } from 'react';
+import type { AdsKpiSummary, AdsKpiDelta } from '@/types/ads';
+import { cn } from '@/design-system/utils/cn';
+import { viralPotentialIndex } from '@/lib/utils/statistics';
+import { useProfitConfigStore } from '@/stores/profit-config-slice';
+import { getRoasStatus } from '@/lib/utils/profit-calculator';
 
 interface Props {
     kpi: AdsKpiSummary;
+    delta?: AdsKpiDelta | null;
 }
+
+const GLYPHS = {
+    MONEY: '＄',
+    EYE: '◎',
+    CLICK: '◈',
+    TARGET: '◎',
+    TREND: '↗',
+    USERS: '○',
+    CHART: '▤',
+    AUTO: '⚡',
+};
+
+const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
 
 function formatCurrency(value: number, currency: string = 'BRL'): string {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(value);
@@ -25,79 +39,251 @@ function formatPercent(value: number): string {
     return `${value.toFixed(2)}%`;
 }
 
-export function AdsKpiCards({ kpi }: Props) {
+/** Badge de variação vs período anterior */
+function DeltaBadge({ value, invert = false }: { value: number | null | undefined; invert?: boolean }) {
+    if (value == null || !isFinite(value)) return null;
+    // invert=true: queda é boa (ex: CPC — menor é melhor)
+    const isPositive = invert ? value < 0 : value > 0;
+    const color = isPositive ? '#A3E635' : '#EF4444';
+    const arrow = value > 0 ? '↑' : '↓';
+    const abs = Math.abs(value);
+    const label = abs >= 1000 ? `${(abs / 1000).toFixed(1)}K%` : `${abs.toFixed(1)}%`;
+
+    return (
+        <span
+            className="font-mono text-[9px] font-semibold mt-1 flex items-center gap-0.5"
+            style={{ color }}
+        >
+            {arrow} {label}
+        </span>
+    );
+}
+
+const ROAS_STATUS_LABEL = { profit: '▲ PROFIT', breakeven: '─ BREAKEVEN', loss: '▼ LOSS', unknown: '' };
+const ROAS_STATUS_COLOR = { profit: '#A3E635', breakeven: '#FBBF24', loss: '#EF4444', unknown: '#4A4A4A' };
+
+export function AdsKpiCards({ kpi, delta }: Props) {
+    const { config: profitConfig } = useProfitConfigStore();
+    const roasStatus = useMemo(
+        () => profitConfig.enabled ? getRoasStatus(kpi.roas, profitConfig) : null,
+        [kpi.roas, profitConfig]
+    );
+
+    // US-55: Viral Potential Index — computed de totalEngagements/impressions + CTR
+    const viral = useMemo(() => {
+        if (!kpi.totalImpressions || kpi.totalImpressions === 0) return null;
+        return viralPotentialIndex({
+            engagementRate: kpi.totalEngagements / kpi.totalImpressions,
+            ctr: kpi.avgCtr / 100, // avgCtr vem em % (ex: 1.5 = 1.5%)
+        });
+    }, [kpi.totalEngagements, kpi.totalImpressions, kpi.avgCtr]);
+
+    const viralColor = viral
+        ? viral.classification === 'VIRAL'   ? '#A3E635'
+        : viral.classification === 'ALTO'    ? '#FBBF24'
+        : viral.classification === 'MODERADO'? '#F97316'
+        : '#EF4444'
+        : '#4A4A4A';
+
+    // ─── Frequency Badge ──────────────────────────────────────────────────────────
+
+type FrequencyLevel = 'UNDEREXPOSED' | 'OPTIMAL' | 'WARNING' | 'SATURATED';
+
+function getFrequencyLevel(freq: number): FrequencyLevel {
+    if (freq < 2.0) return 'UNDEREXPOSED';
+    if (freq <= 3.5) return 'OPTIMAL';
+    if (freq <= 5.0) return 'WARNING';
+    return 'SATURATED';
+}
+
+const FREQ_LEVEL_COLOR: Record<FrequencyLevel, string> = {
+    UNDEREXPOSED: '#6B7280',
+    OPTIMAL:      '#A3E635',
+    WARNING:      '#EAB308',
+    SATURATED:    '#EF4444',
+};
+
+const FREQ_LEVEL_DESC: Record<FrequencyLevel, string> = {
+    UNDEREXPOSED: 'Pouca exposição — amplie o alcance',
+    OPTIMAL:      'Audiência bem trabalhada',
+    WARNING:      'Risco de saturação — monitore',
+    SATURATED:    'Saturação — pause ou renove criativos',
+};
+
+function FrequencyBadge({ frequency }: { frequency: number }) {
+    const level = getFrequencyLevel(frequency);
+    const color = FREQ_LEVEL_COLOR[level];
+    return (
+        <span
+            className="inline-flex items-center px-1.5 py-0.5 rounded border font-mono text-[8px] font-black uppercase tracking-widest"
+            style={{ color, borderColor: `${color}40`, backgroundColor: `${color}10` }}
+        >
+            {level}
+        </span>
+    );
+}
+
     const cards = [
         {
-            label: 'Gasto Total',
+            label: 'Total_Spend',
             value: formatCurrency(kpi.totalSpend, kpi.currency),
-            icon: DollarSign,
-            color: 'text-red-500',
-            bg: 'bg-red-500/10',
+            glyph: GLYPHS.MONEY,
+            color: 'text-[#F5F5F5]',
+            accent: 'text-[#EF4444]',
+            deltaKey: delta?.totalSpend,
+            invert: false, // mais gasto = neutro, sem inversão
         },
         {
-            label: 'Impressões',
+            label: 'Impressions',
             value: formatNumber(kpi.totalImpressions),
-            icon: Eye,
-            color: 'text-blue-500',
-            bg: 'bg-blue-500/10',
+            glyph: GLYPHS.EYE,
+            color: 'text-[#F5F5F5]',
+            accent: 'text-blue-500',
+            deltaKey: delta?.totalImpressions,
+            invert: false,
         },
         {
-            label: 'Cliques',
+            label: 'Clicks',
             value: formatNumber(kpi.totalClicks),
-            icon: MousePointerClick,
-            color: 'text-green-500',
-            bg: 'bg-green-500/10',
+            glyph: GLYPHS.CLICK,
+            color: 'text-[#F5F5F5]',
+            accent: 'text-green-500',
+            deltaKey: delta?.totalClicks,
+            invert: false,
         },
         {
-            label: 'CTR',
+            label: 'Yield_CTR',
             value: formatPercent(kpi.avgCtr),
-            icon: Target,
-            color: 'text-purple-500',
-            bg: 'bg-purple-500/10',
+            glyph: GLYPHS.TARGET,
+            color: 'text-[#A3E635]',
+            accent: 'text-[#A3E635]',
+            deltaKey: delta?.avgCtr,
+            invert: false,
         },
         {
-            label: 'CPC Médio',
+            label: 'Avg_CPC',
             value: formatCurrency(kpi.avgCpc, kpi.currency),
-            icon: BarChart3,
-            color: 'text-orange-500',
-            bg: 'bg-orange-500/10',
+            glyph: GLYPHS.CHART,
+            color: 'text-[#FBBF24]',
+            accent: 'text-[#FBBF24]',
+            deltaKey: delta?.avgCpc,
+            invert: true, // CPC menor = melhor
         },
         {
-            label: 'Alcance',
+            label: 'Total_Reach',
             value: formatNumber(kpi.totalReach),
-            icon: Users,
-            color: 'text-cyan-500',
-            bg: 'bg-cyan-500/10',
+            glyph: GLYPHS.USERS,
+            color: 'text-[#F5F5F5]',
+            accent: 'text-cyan-500',
+            deltaKey: delta?.totalReach,
+            invert: false,
         },
         {
-            label: 'Conversões',
+            label: 'Conversions',
             value: formatNumber(kpi.totalConversions),
-            icon: Zap,
-            color: 'text-yellow-500',
-            bg: 'bg-yellow-500/10',
+            glyph: GLYPHS.AUTO,
+            color: 'text-[#A3E635]',
+            accent: 'text-[#A3E635]',
+            deltaKey: delta?.totalConversions,
+            invert: false,
         },
         {
-            label: 'ROAS',
+            label: 'ROAS_Factor',
             value: kpi.roas > 0 ? `${kpi.roas.toFixed(2)}x` : '—',
-            icon: TrendingUp,
-            color: kpi.roas >= 2 ? 'text-green-500' : kpi.roas >= 1 ? 'text-yellow-500' : 'text-red-500',
-            bg: kpi.roas >= 2 ? 'bg-green-500/10' : kpi.roas >= 1 ? 'bg-yellow-500/10' : 'bg-red-500/10',
+            glyph: GLYPHS.TREND,
+            color: kpi.roas >= 2 ? 'text-[#A3E635]' : kpi.roas >= 1 ? 'text-[#FBBF24]' : 'text-[#EF4444]',
+            accent: kpi.roas >= 2 ? 'text-[#A3E635]' : kpi.roas >= 1 ? 'text-[#FBBF24]' : 'text-[#EF4444]',
+            deltaKey: delta?.roas,
+            invert: false,
         },
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 font-mono">
             {cards.map((card) => (
-                <Card key={card.label} className="p-4 flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${card.bg}`}>
-                        <card.icon className={`h-5 w-5 ${card.color}`} />
+                <div
+                    key={card.label}
+                    className="p-5 bg-[#0A0A0A] border border-white/10 rounded-lg flex flex-col justify-between group hover:border-white/20 transition-all"
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <span className="text-[9px] text-[#4A4A4A] font-bold uppercase tracking-[0.2em]">{card.label}</span>
+                        <span className={cn('text-xs opacity-40 group-hover:opacity-100 transition-opacity', card.accent)}>{wrap(card.glyph)}</span>
                     </div>
                     <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground truncate">{card.label}</p>
-                        <p className="text-lg font-bold truncate">{card.value}</p>
+                        <p className={cn('text-[1.5rem] font-bold tracking-tighter leading-none mb-1', card.color)}>{card.value}</p>
+                        <div className="h-0.5 w-8 bg-white/5 group-hover:bg-[#A3E635]/20 transition-colors mb-1" />
+                        <DeltaBadge value={card.deltaKey} invert={card.invert} />
+                        {card.label === 'ROAS_Factor' && roasStatus && roasStatus !== 'unknown' && (
+                            <span
+                                className="inline-flex items-center mt-1 px-1.5 py-0.5 rounded border font-mono text-[8px] font-black uppercase tracking-widest"
+                                style={{
+                                    color: ROAS_STATUS_COLOR[roasStatus],
+                                    borderColor: `${ROAS_STATUS_COLOR[roasStatus]}40`,
+                                    backgroundColor: `${ROAS_STATUS_COLOR[roasStatus]}10`,
+                                }}
+                            >
+                                {ROAS_STATUS_LABEL[roasStatus]}
+                            </span>
+                        )}
                     </div>
-                </Card>
+                </div>
             ))}
+
+            {/* Frequency Alert card */}
+            {kpi.avgFrequency > 0 && (() => {
+                const freqLevel = getFrequencyLevel(kpi.avgFrequency);
+                const freqColor = FREQ_LEVEL_COLOR[freqLevel];
+                return (
+                    <div className="p-5 bg-[#0A0A0A] border border-white/10 rounded-lg flex flex-col justify-between group hover:border-white/20 transition-all">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-[9px] text-[#4A4A4A] font-bold uppercase tracking-[0.2em]">Avg_Frequency</span>
+                            <span className="text-xs opacity-40 group-hover:opacity-100 transition-opacity font-mono" style={{ color: freqColor }}>
+                                {wrap('∿')}
+                            </span>
+                        </div>
+                        <div className="min-w-0 space-y-2">
+                            <div className="flex items-end gap-2">
+                                <p className="text-[1.5rem] font-bold tracking-tighter leading-none" style={{ color: freqColor }}>
+                                    {kpi.avgFrequency.toFixed(2)}x
+                                </p>
+                                <FrequencyBadge frequency={kpi.avgFrequency} />
+                            </div>
+                            <div className="h-0.5 w-8 bg-white/5 group-hover:bg-[#A3E635]/20 transition-colors" />
+                            <p className="text-[8px] uppercase tracking-[0.15em]" style={{ color: `${freqColor}90` }}>
+                                {FREQ_LEVEL_DESC[freqLevel]}
+                            </p>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* US-55 — Viral Potential Index card */}
+            {viral && (
+                <div className="p-5 bg-[#0A0A0A] border border-white/10 rounded-lg flex flex-col justify-between group hover:border-white/20 transition-all">
+                    <div className="flex items-center justify-between mb-4">
+                        <span className="text-[9px] text-[#4A4A4A] font-bold uppercase tracking-[0.2em]">Viral_Potential</span>
+                        <span className="text-xs opacity-40 group-hover:opacity-100 transition-opacity" style={{ color: viralColor }}>
+                            {wrap('◆')}
+                        </span>
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-[1.5rem] font-bold tracking-tighter leading-none mb-1" style={{ color: viralColor }}>
+                            {viral.score.toFixed(0)}
+                        </p>
+                        <div className="h-0.5 w-8 bg-white/5 group-hover:bg-[#A3E635]/20 transition-colors mb-1" />
+                        <span
+                            className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border"
+                            style={{
+                                color: viralColor,
+                                borderColor: `${viralColor}40`,
+                                backgroundColor: `${viralColor}10`,
+                            }}
+                        >
+                            {viral.classification}
+                        </span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

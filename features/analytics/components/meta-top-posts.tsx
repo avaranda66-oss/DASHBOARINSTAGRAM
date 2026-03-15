@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, Heart, Bookmark, Share2, TrendingDown, ExternalLink, Image, Video, Layers } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -25,11 +25,11 @@ interface Props {
 
 type MetricKey = 'reach' | 'saved' | 'shares' | 'likesCount';
 
-const TABS: { key: MetricKey; label: string; icon: React.ElementType; color: string }[] = [
-    { key: 'reach', label: 'Alcance', icon: Eye, color: 'text-blue-400' },
-    { key: 'saved', label: 'Saves', icon: Bookmark, color: 'text-amber-400' },
-    { key: 'shares', label: 'Shares', icon: Share2, color: 'text-emerald-400' },
-    { key: 'likesCount', label: 'Likes', icon: Heart, color: 'text-pink-400' },
+const TABS: { key: MetricKey; label: string; glyph: string; color: string }[] = [
+    { key: 'reach', label: 'Alcance', glyph: '◎', color: 'text-blue-400' },
+    { key: 'saved', label: 'Saves', glyph: '◆', color: 'text-amber-400' },
+    { key: 'shares', label: 'Shares', glyph: '◎', color: 'text-emerald-400' },
+    { key: 'likesCount', label: 'Likes', glyph: '▲', color: 'text-pink-400' },
 ];
 
 function fmt(n: number) {
@@ -39,9 +39,9 @@ function fmt(n: number) {
 }
 
 function TypeIcon({ type }: { type: string }) {
-    if (type === 'Video') return <Video className="h-3 w-3 text-purple-400" />;
-    if (type === 'Sidecar') return <Layers className="h-3 w-3 text-blue-400" />;
-    return <Image className="h-3 w-3 text-emerald-400" />;
+    if (type === 'Video') return <span className="font-mono text-[10px] text-purple-400">▶</span>;
+    if (type === 'Sidecar') return <span className="font-mono text-[10px] text-blue-400">⊞</span>;
+    return <span className="font-mono text-[10px] text-emerald-400">◫</span>;
 }
 
 function PostCard({
@@ -49,13 +49,13 @@ function PostCard({
     rank,
     metricKey,
     metricColor,
-    metricIcon: MetricIcon,
+    metricGlyph,
 }: {
     post: MetaPost;
     rank: number;
     metricKey: MetricKey;
     metricColor: string;
-    metricIcon: React.ElementType;
+    metricGlyph: string;
 }) {
     const value = (post as any)[metricKey] ?? 0;
     return (
@@ -80,19 +80,19 @@ function PostCard({
                 </p>
                 <div className="flex items-center gap-3 mt-1.5">
                     <span className={`text-sm font-bold ${metricColor}`}>
-                        <MetricIcon className="h-3 w-3 inline mr-0.5" />
+                        <span className="font-mono text-xs mr-0.5">{metricGlyph}</span>
                         {fmt(value)}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
-                        <Heart className="h-2.5 w-2.5 inline mr-0.5" />{fmt(post.likesCount)}
-                        <Eye className="h-2.5 w-2.5 inline ml-2 mr-0.5" />{fmt(post.reach ?? 0)}
+                        <span className="font-mono text-[10px] mr-0.5">▲</span>{fmt(post.likesCount)}
+                        <span className="font-mono text-[10px] ml-2 mr-0.5">◎</span>{fmt(post.reach ?? 0)}
                     </span>
                 </div>
             </div>
             {post.url && (
                 <a href={post.url} target="_blank" rel="noopener noreferrer"
                     className="shrink-0 text-muted-foreground/40 hover:text-muted-foreground transition-colors mt-1">
-                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span className="font-mono text-[10px]">↳</span>
                 </a>
             )}
         </div>
@@ -134,7 +134,7 @@ export function MetaTopPosts({ posts }: Props) {
                             : 'text-[var(--v2-text-tertiary)] hover:text-[var(--v2-text-primary)]'
                             }`}
                     >
-                        <t.icon className={`h-3 w-3 ${activeTab === t.key ? t.color : ''}`} />
+                        <span className={`font-mono text-[10px] ${activeTab === t.key ? t.color : ''}`}>{t.glyph}</span>
                         {t.label}
                     </button>
                 ))}
@@ -152,7 +152,7 @@ export function MetaTopPosts({ posts }: Props) {
                         rank={idx + 1}
                         metricKey={activeTab}
                         metricColor={tab.color}
-                        metricIcon={tab.icon}
+                        metricGlyph={tab.glyph}
                     />
                 ))}
             </div>
@@ -164,7 +164,7 @@ export function MetaTopPosts({ posts }: Props) {
                         onClick={() => setShowWorst((v) => !v)}
                         className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
                     >
-                        <TrendingDown className="h-3.5 w-3.5 text-red-400" />
+                        <span className="font-mono text-[10px] text-red-400">↘</span>
                         {showWorst ? 'Ocultar' : 'Mostrar'} 3 Posts com Menor Desempenho
                         <span className="text-[10px] text-muted-foreground/50">(aprenda o que evitar)</span>
                     </button>
@@ -177,7 +177,7 @@ export function MetaTopPosts({ posts }: Props) {
                                         rank={idx + 1}
                                         metricKey={activeTab}
                                         metricColor="text-red-400"
-                                        metricIcon={tab.icon}
+                                        metricGlyph={tab.glyph}
                                     />
                                 </div>
                             ))}

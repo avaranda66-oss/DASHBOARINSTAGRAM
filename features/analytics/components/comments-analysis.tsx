@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquareQuote, Search, SlidersHorizontal, ArrowDownAZ, Heart, CornerDownRight, Sparkles, Loader2, RefreshCw, CheckCircle2, X } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import { InstagramPostMetrics, PostComment } from '@/types/analytics';
 import { useAnalyticsStore } from '@/stores/analytics-slice';
 import { analyzeSingleComment, SentimentResult } from '@/lib/utils/sentiment';
@@ -137,25 +137,25 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
 
     if (allComments.length === 0) {
         return (
-            <div className="rounded-xl border border-border bg-card p-6 text-center text-muted-foreground flex flex-col items-center justify-center">
-                <MessageSquareQuote className="h-8 w-8 mb-3 opacity-20" />
+            <div className="rounded-xl border border-white/[0.08] bg-[#141414] p-6 text-center text-[#8A8A8A] flex flex-col items-center justify-center">
+                <span className="font-mono text-xl mb-3 opacity-20">◐</span>
                 <p className="text-sm">Nenhum comentário encontrado neste período.</p>
             </div>
         );
     }
 
     return (
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="rounded-xl border border-white/[0.08] bg-[#141414] overflow-hidden">
             {/* Header */}
-            <div className="p-4 md:p-5 border-b border-border bg-muted/20">
+            <div className="p-4 md:p-5 border-b border-white/[0.08] bg-white/[0.04]">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h3 className="text-sm font-semibold flex items-center gap-2">
-                            <MessageSquareQuote className="h-4 w-4 text-purple-400" />
+                            <span className="font-mono text-xs text-purple-400">◐</span>
                             Raio-X de Comentários
                         </h3>
                         <div className="flex items-center gap-2 mt-1">
-                            <p className="text-[10px] text-muted-foreground">Análise individual baseada nos últimos comentários raspados.</p>
+                            <p className="text-[10px] text-[#8A8A8A]">Análise individual baseada nos últimos comentários raspados.</p>
                             {/* Botão: Atualizar via Apify (sempre disponível se há conta) */}
                             {profileUrl && (
                                 <button
@@ -165,11 +165,11 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                                     className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/5 px-2 py-0.5 text-[10px] font-medium text-orange-400 hover:bg-orange-500/15 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                 >
                                     {isApifyRefreshing ? (
-                                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                        <span className="font-mono text-[10px] animate-spin">↻</span>
                                     ) : apifyResult === 'ok' ? (
-                                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />
+                                        <span className="font-mono text-[10px] text-emerald-400">◎</span>
                                     ) : (
-                                        <RefreshCw className="h-2.5 w-2.5" />
+                                        <span className="font-mono text-[10px]">↻</span>
                                     )}
                                     {isApifyRefreshing
                                         ? 'Buscando...'
@@ -188,11 +188,11 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                                     className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/5 px-2 py-0.5 text-[10px] font-medium text-blue-400 hover:bg-blue-500/15 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                 >
                                     {isRefreshingComments ? (
-                                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                        <span className="font-mono text-[10px] animate-spin">↻</span>
                                     ) : refreshResult ? (
-                                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />
+                                        <span className="font-mono text-[10px] text-emerald-400">◎</span>
                                     ) : (
-                                        <RefreshCw className="h-2.5 w-2.5" />
+                                        <span className="font-mono text-[10px]">↻</span>
                                     )}
                                     {isRefreshingComments
                                         ? 'Buscando novos...'
@@ -206,16 +206,16 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
 
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                         {/* Summary Badges */}
-                        <div className="flex bg-background border border-border rounded-md px-1 py-1 gap-1 h-8 items-center text-[10px] font-medium mr-2">
+                        <div className="flex bg-[#0A0A0A] border border-white/[0.08] rounded-md px-1 py-1 gap-1 h-8 items-center text-[10px] font-medium mr-2">
                             <span className="px-1.5 py-0.5 rounded text-green-400 bg-green-400/10" title="Positivos">{stats.pos} Positivos</span>
-                            <span className="px-1.5 py-0.5 rounded text-muted-foreground bg-muted" title="Neutros">{stats.neu} Neutros</span>
+                            <span className="px-1.5 py-0.5 rounded text-[#8A8A8A] bg-[#1A1A1A]" title="Neutros">{stats.neu} Neutros</span>
                             <span className="px-1.5 py-0.5 rounded text-red-400 bg-red-400/10" title="Negativos">{stats.neg} Negativos</span>
                             {stats.brand > 0 && <span className="px-1.5 py-0.5 rounded text-blue-400 bg-blue-400/10" title="Respostas da Marca">{stats.brand} Respostas</span>}
                         </div>
 
                         {/* Filter Buttons */}
                         <select
-                            className="h-8 px-2 rounded-md border border-border bg-background text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-500/50"
+                            className="h-8 px-2 rounded-md border border-white/[0.08] bg-[#0A0A0A] text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-500/50"
                             value={filter}
                             onChange={(e) => setFilter(e.target.value as FilterOption)}
                         >
@@ -236,9 +236,9 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                             className="h-8 px-3 rounded-md bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[10px] font-bold flex items-center gap-1.5 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-purple-500/20"
                         >
                             {isLoadingInsights ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <span className="font-mono text-xs animate-spin">↻</span>
                             ) : (
-                                <Sparkles className="h-3 w-3" />
+                                <span className="font-mono text-xs">◎</span>
                             )}
                             {isLoadingInsights ? 'Analisando...' : `Analisar com IA (${commentsToAnalyze.length})`}
                         </button>
@@ -266,7 +266,7 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                             disabled={isLoadingInsights}
                             className="h-8 px-3 rounded-md border border-purple-500/30 bg-purple-500/5 text-purple-400 text-[10px] font-bold flex items-center gap-1.5 hover:bg-purple-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
-                            <MessageSquareQuote className="h-3 w-3" />
+                            <span className="font-mono text-xs">◐</span>
                             Sugerir Respostas
                         </button>
 
@@ -318,7 +318,7 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
 
                         {/* Sort Order */}
                         <select
-                            className="h-8 px-2 rounded-md border border-border bg-background text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-500/50"
+                            className="h-8 px-2 rounded-md border border-white/[0.08] bg-[#0A0A0A] text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-500/50"
                             value={sort}
                             onChange={(e) => setSort(e.target.value as SortOption)}
                         >
@@ -330,10 +330,10 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
             </div>
 
             {/* List */}
-            <div className="divide-y divide-border/50 max-h-[500px] overflow-y-auto">
+            <div className="divide-y divide-white/[0.04] max-h-[500px] overflow-y-auto">
                 <AnimatePresence mode="popLayout">
                     {displayedComments.length === 0 ? (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 text-center text-sm text-muted-foreground">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 text-center text-sm text-[#8A8A8A]">
                             Nenhum comentário corresponde a esse filtro.
                         </motion.div>
                     ) : (
@@ -345,11 +345,11 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 transition={{ duration: 0.2 }}
-                                className={`p-4 hover:bg-muted/10 transition-colors flex gap-3 ${comment.sentiment === 'NEGATIVE' ? 'bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500' : ''}`}
+                                className={`p-4 hover:bg-white/[0.02] transition-colors flex gap-3 ${comment.sentiment === 'NEGATIVE' ? 'bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500' : ''}`}
                             >
                                 <div className="mt-1 flex-shrink-0">
                                     {comment.sentiment === 'POSITIVE' && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500/20 text-green-400 text-xs shadow-sm shadow-green-500/10">🟢</span>}
-                                    {comment.sentiment === 'NEUTRAL' && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs">⚪</span>}
+                                    {comment.sentiment === 'NEUTRAL' && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1A1A1A] text-[#8A8A8A] text-xs">⚪</span>}
                                     {comment.sentiment === 'NEGATIVE' && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500/20 text-red-400 text-xs shadow-sm shadow-red-500/10">🔴</span>}
                                     {comment.sentiment === 'BRAND_REPLY' && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-blue-400 text-xs shadow-sm shadow-blue-500/10">🔵</span>}
                                 </div>
@@ -361,11 +361,11 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                                                 <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 text-[9px] rounded uppercase font-bold">Autor</span>
                                             )}
                                         </p>
-                                        <div className="flex items-center gap-3 whitespace-nowrap text-[10px] text-muted-foreground">
+                                        <div className="flex items-center gap-3 whitespace-nowrap text-[10px] text-[#8A8A8A]">
                                             <span>{fmtD(comment.timestamp)}</span>
                                             <a href={`https://instagram.com/p/${comment.postShortCode}`} target="_blank" rel="noopener noreferrer"
                                                 className="hover:text-blue-400 flex items-center gap-0.5 transition-colors">
-                                                Ver Post <CornerDownRight className="h-2.5 w-2.5" />
+                                                Ver Post <span className="font-mono text-[10px]">↳</span>
                                             </a>
                                         </div>
                                     </div>
@@ -374,11 +374,11 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                                     </p>
 
                                     {comment.aiOpinion && (
-                                        <div className="mt-2 p-2 rounded-lg bg-muted/30 border border-border/50 relative overflow-hidden group/ai">
+                                        <div className="mt-2 p-2 rounded-lg bg-white/[0.06] border border-white/[0.04] relative overflow-hidden group/ai">
                                             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-purple-500 to-blue-500 opacity-50" />
                                             <div className="flex items-start gap-2">
-                                                <Sparkles className="h-2.5 w-2.5 text-purple-400 mt-0.5" />
-                                                <p className="text-[10px] italic text-muted-foreground leading-tight">
+                                                <span className="font-mono text-[10px] text-purple-400 mt-0.5">◎</span>
+                                                <p className="text-[10px] italic text-[#8A8A8A] leading-tight">
                                                     <span className="font-semibold text-purple-400/80 not-italic mr-1 text-[9px] uppercase tracking-wider">IA:</span>
                                                     {comment.aiOpinion}
                                                 </p>
@@ -387,9 +387,9 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                                     )}
 
                                     {comment.aiReplySuggestion && (
-                                        <div className="mt-2 p-2 rounded-lg bg-foreground/5 border border-dashed border-border flex flex-col gap-1">
+                                        <div className="mt-2 p-2 rounded-lg bg-foreground/5 border border-dashed border-white/[0.08] flex flex-col gap-1">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-[9px] font-bold text-muted-foreground flex items-center gap-1 uppercase tracking-tighter">
+                                                <span className="text-[9px] font-bold text-[#8A8A8A] flex items-center gap-1 uppercase tracking-tighter">
                                                     🤖 Sugestão de Resposta
                                                 </span>
                                                 <div className="flex items-center gap-1.5">
@@ -413,9 +413,9 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                                                         <button
                                                             onClick={() => clearReplySuggestion(comment.postShortCode, comment.id)}
                                                             title="Limpar sugestão para gerar nova"
-                                                            className="ml-1 h-4 w-4 flex items-center justify-center rounded text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                                            className="ml-1 h-4 w-4 flex items-center justify-center rounded text-[#8A8A8A]/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
                                                         >
-                                                            <X className="h-2.5 w-2.5" />
+                                                            <span className="font-mono text-[10px]">×</span>
                                                         </button>
                                                     )}
                                                 </div>
@@ -426,8 +426,8 @@ export function CommentsAnalysis({ posts, metaToken }: CommentsAnalysisProps) {
                                         </div>
                                     )}
                                     <div className="flex items-center justify-between mt-2">
-                                        <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                            <Heart className={`h-3 w-3 ${comment.likesCount > 0 ? 'text-pink-400 fill-pink-400/20' : ''}`} />
+                                        <span className="flex items-center gap-1.5 text-[10px] text-[#8A8A8A]">
+                                            <span className={`font-mono text-[10px] ${comment.likesCount > 0 ? 'text-pink-400' : ''}`}>▲</span>
                                             {comment.likesCount} {comment.likesCount === 1 ? 'curtida' : 'curtidas'}
                                         </span>
                                         {comment.sentimentScore > 0 && (

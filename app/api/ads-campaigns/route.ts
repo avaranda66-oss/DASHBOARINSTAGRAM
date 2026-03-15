@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCampaigns, getAdSets, getAds, getAdAccount, getInsights } from '@/lib/services/facebook-ads.service';
+import { auth } from '@/lib/auth/auth';
+
+const NO_CACHE = { headers: { 'Cache-Control': 'no-store' } };
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { token, accountId, statusFilter, includeSets, includeAds } = body;
+        const { accountId, statusFilter, includeSets, includeAds } = body;
+
+        // Token resolution: session (OAuth) → body.token (manual config)
+        const session = await auth();
+        const token: string | undefined = session?.accessToken ?? body.token;
 
         if (!token || !accountId) {
             return NextResponse.json(
-                { success: false, error: 'Token e accountId são obrigatórios.' },
-                { status: 400 },
+                { success: false, error: 'NO_TOKEN', campaigns: [], adSets: null, ads: null },
+                { status: 401, ...NO_CACHE },
             );
         }
 
@@ -28,7 +35,6 @@ export async function POST(req: NextRequest) {
             timeRange,
         });
 
-        console.log(`[ads-campaigns] datePreset=${datePreset}, timeRange=${JSON.stringify(timeRange)}, insights returned: ${campaignInsights.length}, campaigns: ${campaigns.length}`);
 
         // Merge insights nas campanhas
         const insightMap = new Map(campaignInsights.map(i => [i.campaign_id, i]));
@@ -42,10 +48,19 @@ export async function POST(req: NextRequest) {
         let ads = null;
 
         if (includeSets) {
-            adSets = await getAdSets(token, accountId);
-            const adsetInsights = await getInsights(token, accountId, { level: 'adset', datePreset, timeRange });
-            const adsetInsightMap = new Map(adsetInsights.map(i => [i.adset_id, i]));
-            adSets = adSets.map(s => ({ ...s, insights: adsetInsightMap.get(s.id) || null }));
+            // AdSets são dados secundários — falha graciosamente para não derrubar KPIs/campanhas
+            try {
+                const [rawAdSets, adsetInsights] = await Promise.all([
+                    getAdSets(token, accountId),
+                    getInsights(token, accountId, { level: 'adset', datePreset, timeRange }),
+                ]);
+                const adsetInsightMap = new Map(adsetInsights.map(i => [i.adset_id, i]));
+                adSets = rawAdSets.map(s => ({ ...s, insights: adsetInsightMap.get(s.id) || null }));
+            } catch (adsetErr: any) {
+                // Rate limit ou erro secundário — retorna adsets vazios, não falha a rota inteira
+                console.warn('[ads-campaigns] adsets indisponíveis (rate limit?):', adsetErr.message);
+                adSets = [];
+            }
         }
 
         if (includeAds) {
@@ -58,12 +73,12 @@ export async function POST(req: NextRequest) {
             campaigns: enrichedCampaigns,
             adSets,
             ads,
-        });
+        }, NO_CACHE);
     } catch (e: any) {
         console.error('[ads-campaigns] Erro:', e);
         return NextResponse.json(
             { success: false, error: e.message || 'Erro interno.' },
-            { status: 500 },
+            { status: 500, ...NO_CACHE },
         );
     }
 }

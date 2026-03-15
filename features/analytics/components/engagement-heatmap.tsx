@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useMemo, memo } from 'react';
 import type { InstagramPostMetrics } from '@/types/analytics';
 
 interface EngagementHeatmapProps {
@@ -12,15 +11,15 @@ interface EngagementHeatmapProps {
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-function getColorClass(intensity: number): string {
-    if (intensity === 0) return 'bg-zinc-800/50';
-    if (intensity < 0.25) return 'bg-emerald-900/60';
-    if (intensity < 0.5) return 'bg-emerald-700/60';
-    if (intensity < 0.75) return 'bg-emerald-500/70';
-    return 'bg-emerald-400/80';
+function getCellColor(intensity: number): string {
+    if (intensity === 0) return 'rgba(255,255,255,0.03)';   // vazio — quase invisível
+    if (intensity < 0.25) return 'rgba(163,230,53,0.12)';  // nível 1 — traço
+    if (intensity < 0.5)  return 'rgba(163,230,53,0.35)';  // nível 2 — leve
+    if (intensity < 0.75) return 'rgba(163,230,53,0.65)';  // nível 3 — médio
+    return 'rgba(163,230,53,0.92)';                         // nível 4 — pico
 }
 
-export function EngagementHeatmap({ posts, weeks = 26 }: EngagementHeatmapProps) {
+export const EngagementHeatmap = memo(function EngagementHeatmap({ posts, weeks = 26 }: EngagementHeatmapProps) {
     const { grid, maxEng, monthLabels } = useMemo(() => {
         // Build a map of date -> total engagement
         const engMap = new Map<string, number>();
@@ -72,51 +71,71 @@ export function EngagementHeatmap({ posts, weeks = 26 }: EngagementHeatmapProps)
         return { grid, maxEng, monthLabels };
     }, [posts, weeks]);
 
+    const cellMap = useMemo(() => {
+        const map = new Map<string, typeof grid[0]>();
+        for (const cell of grid) {
+            map.set(`${cell.weekIndex}_${cell.dayOfWeek}`, cell);
+        }
+        return map;
+    }, [grid]);
+
     const totalWeeks = Math.ceil(grid.length / 7);
+    const postCount = posts.filter(p => p.likesCount + p.commentsCount > 0).length;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-white/[0.06] bg-zinc-900/60 backdrop-blur-md p-5"
+        <div
+            className="rounded-[8px] border p-4"
+            style={{ backgroundColor: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}
         >
-            <h3 className="mb-4 text-sm font-semibold text-zinc-200">Mapa de Engajamento</h3>
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] tracking-widest text-[#4A4A4A] uppercase">
+                        Mapa de Engajamento
+                    </span>
+                    <span className="font-mono text-[10px] text-[#A3E635] opacity-80">
+                        [{postCount.toString().padStart(2, '0')} posts]
+                    </span>
+                </div>
+                <span className="font-mono text-[10px] text-[#3A3A3A]">
+                    {weeks}w
+                </span>
+            </div>
 
             {/* Month labels */}
-            <div className="flex mb-1 ml-8">
+            <div className="relative mb-1 ml-6 h-4">
                 {monthLabels.map((m, i) => (
                     <span
                         key={i}
-                        className="text-[10px] text-zinc-500"
-                        style={{
-                            position: 'relative',
-                            left: `${(m.weekIndex / totalWeeks) * 100}%`,
-                            width: 0,
-                            whiteSpace: 'nowrap',
-                        }}
+                        className="absolute font-mono text-[9px] text-[#3A3A3A] whitespace-nowrap"
+                        style={{ left: `${(m.weekIndex / totalWeeks) * 100}%` }}
                     >
                         {m.label}
                     </span>
                 ))}
             </div>
 
-            <div className="flex gap-1">
+            <div className="flex gap-2">
                 {/* Day labels */}
-                <div className="flex flex-col gap-[3px] mr-1">
+                <div className="flex flex-col gap-[2px] mr-2 justify-stretch">
                     {DAYS.map((day, i) => (
-                        <span key={i} className="text-[10px] text-zinc-500 h-[13px] leading-[13px]">
+                        <span
+                            key={i}
+                            className="font-mono text-[9px] text-[#3A3A3A] flex-1 flex items-center"
+                            style={{ minHeight: 0 }}
+                        >
                             {i % 2 === 1 ? day : ''}
                         </span>
                     ))}
                 </div>
 
-                {/* Grid */}
-                <div className="flex gap-[3px] overflow-x-auto">
+                {/* Grid container: flex sem overflow-x */}
+                <div className="flex-1 flex gap-[2px] min-w-0">
                     {Array.from({ length: totalWeeks }).map((_, weekIdx) => (
-                        <div key={weekIdx} className="flex flex-col gap-[3px]">
+                        <div key={weekIdx} className="flex-1 min-w-0 flex flex-col gap-[2px]">
                             {Array.from({ length: 7 }).map((_, dayIdx) => {
-                                const cell = grid.find(c => c.weekIndex === weekIdx && c.dayOfWeek === dayIdx);
-                                if (!cell) return <div key={dayIdx} className="w-[13px] h-[13px]" />;
+                                const cell = cellMap.get(`${weekIdx}_${dayIdx}`);
+                                if (!cell) return <div key={dayIdx} className="w-full aspect-square" />;
 
                                 const intensity = maxEng > 0 ? cell.engagement / maxEng : 0;
                                 const d = new Date(cell.date);
@@ -125,7 +144,12 @@ export function EngagementHeatmap({ posts, weeks = 26 }: EngagementHeatmapProps)
                                 return (
                                     <div
                                         key={dayIdx}
-                                        className={`w-[13px] h-[13px] rounded-sm ${getColorClass(intensity)} ${isToday ? 'ring-1 ring-sky-400/50' : ''} cursor-pointer transition-colors hover:ring-1 hover:ring-white/20`}
+                                        className="w-full aspect-square rounded-[2px] cursor-pointer transition-opacity hover:opacity-80"
+                                        style={{ 
+                                            backgroundColor: getCellColor(intensity),
+                                            outline: isToday ? '1px solid rgba(163,230,53,0.5)' : 'none',
+                                            outlineOffset: '1px',
+                                        }}
                                         title={`${d.toLocaleDateString('pt-BR')} — ${cell.engagement > 0 ? `${cell.engagement.toLocaleString()} interações` : 'Sem posts'}`}
                                     />
                                 );
@@ -136,15 +160,17 @@ export function EngagementHeatmap({ posts, weeks = 26 }: EngagementHeatmapProps)
             </div>
 
             {/* Legend */}
-            <div className="flex items-center gap-2 mt-3 text-[10px] text-zinc-500">
-                <span>Menos</span>
-                <div className="w-[13px] h-[13px] rounded-sm bg-zinc-800/50" />
-                <div className="w-[13px] h-[13px] rounded-sm bg-emerald-900/60" />
-                <div className="w-[13px] h-[13px] rounded-sm bg-emerald-700/60" />
-                <div className="w-[13px] h-[13px] rounded-sm bg-emerald-500/70" />
-                <div className="w-[13px] h-[13px] rounded-sm bg-emerald-400/80" />
-                <span>Mais</span>
+            <div className="flex items-center gap-2 mt-3">
+                <span className="font-mono text-[9px] text-[#4A4A4A]">Menos</span>
+                {[0, 0.12, 0.35, 0.65, 0.92].map((alpha, i) => (
+                    <div
+                        key={i}
+                        className="w-[10px] h-[10px] rounded-[2px]"
+                        style={{ backgroundColor: alpha === 0 ? 'rgba(255,255,255,0.03)' : `rgba(163,230,53,${alpha})` }}
+                    />
+                ))}
+                <span className="font-mono text-[9px] text-[#4A4A4A]">Mais</span>
             </div>
-        </motion.div>
+        </div>
     );
-}
+});

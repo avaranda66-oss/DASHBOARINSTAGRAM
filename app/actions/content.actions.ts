@@ -16,6 +16,7 @@ function safeJsonArray(value: string | null | undefined): string[] {
 }
 
 // Helper to convert DB Content to App Content (handling JSON strings)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapToContent(dbContent: any): Content {
     return {
         ...dbContent,
@@ -24,6 +25,7 @@ function mapToContent(dbContent: any): Content {
         updatedAt: dbContent.updatedAt.toISOString(),
         hashtags: safeJsonArray(dbContent.hashtags),
         mediaUrls: safeJsonArray(dbContent.mediaUrls),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         collectionIds: dbContent.collections ? dbContent.collections.map((c: any) => c.id) : [],
     };
 }

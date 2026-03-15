@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+// Lucide icons removed in favor of ASCII HUD glyphs
 import type { InstagramPostMetrics } from '@/types/analytics';
 
 interface ContentCalendarProps {
@@ -89,18 +89,18 @@ export function ContentCalendar({ posts }: ContentCalendarProps) {
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <CalendarIcon className="h-4 w-4 text-violet-400" />
+                    <span className="font-mono text-sm text-violet-400">◷</span>
                     <h3 className="text-sm font-semibold text-zinc-200">Calendário de Conteúdo</h3>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={prevMonth} className="p-1 rounded-lg hover:bg-white/[0.05]">
-                        <ChevronLeft className="h-4 w-4 text-zinc-400" />
+                        <span className="font-mono text-xs text-zinc-400">‹</span>
                     </button>
                     <span className="text-sm text-zinc-300 min-w-[140px] text-center">
                         {MONTHS_PT[currentDate.getMonth()]} {currentDate.getFullYear()}
                     </span>
                     <button onClick={nextMonth} className="p-1 rounded-lg hover:bg-white/[0.05]">
-                        <ChevronRight className="h-4 w-4 text-zinc-400" />
+                        <span className="font-mono text-xs text-zinc-400">›</span>
                     </button>
                 </div>
             </div>

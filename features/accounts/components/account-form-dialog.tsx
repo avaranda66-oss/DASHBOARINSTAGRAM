@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Save, X, Trash2, Camera, Eye, EyeOff, MapPin, Phone, Clock, Globe, Info, Briefcase, Zap } from 'lucide-react';
 import { useAccountStore } from '@/stores';
 import {
     accountSchema,
@@ -14,16 +13,35 @@ import {
     parseBusinessInfo,
 } from '../schemas/account.schema';
 import { saveAccountAction } from '@/app/actions/account.actions';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Input } from '@/design-system/atoms/Input';
+import { Button } from '@/design-system/atoms/Button';
+import { Badge } from '@/design-system/atoms/Badge';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import type { Account } from '@/types/account';
+import { cn } from '@/design-system/utils/cn';
 
 interface AccountFormDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     account?: Account | null;
 }
+
+const GLYPHS = {
+    CAMERA: '◎',
+    SAVE: '◆',
+    TRASH: '✕',
+    EYE: '◎',
+    EYE_OFF: '─',
+    MAP: '〒',
+    PHONE: '↳',
+    CLOCK: '◷',
+    GLOBE: '⊕',
+    INFO: '◎',
+    BIZ: '◆',
+    AUTO: '⚡'
+};
+
+const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
 
 export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDialogProps) {
     const isEditing = !!account;
@@ -101,7 +119,7 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
 
     const handleDelete = () => {
         if (!account) return;
-        if (confirm('Tem certeza que deseja excluir esta conta? Os conteúdos vinculados não serão excluídos, apenas perderão o vínculo com a conta.')) {
+        if (confirm('Tem certeza que deseja excluir esta conta?')) {
             deleteAccount(account.id);
             toast.success('Conta excluída');
             handleClose();
@@ -135,249 +153,188 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
 
     return (
         <Sheet open={open} onOpenChange={handleClose}>
-            <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0" showCloseButton={false}>
-                <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <SheetTitle className="text-lg font-semibold">
-                            {isEditing ? 'Editar Conta' : 'Nova Conta Instagram'}
-                        </SheetTitle>
-                        <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
-                            <X className="h-4 w-4" />
-                        </Button>
+            <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0 bg-[#0A0A0A] border-l border-white/10" showCloseButton={false}>
+                <div className="flex flex-col h-full text-[#F5F5F5]">
+                    {/* Header */}
+                    <div className="p-8 border-b border-white/10 bg-[#050505]">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                                <span className="font-mono text-[#A3E635] text-[10px] tracking-widest">[ACC_SHELL_V2]</span>
+                                <SheetTitle className="text-[18px] font-bold uppercase tracking-tight text-[#F5F5F5]">
+                                    {isEditing ? 'Update Identity' : 'New Identity'}
+                                </SheetTitle>
+                            </div>
+                            <button onClick={handleClose} className="text-[#4A4A4A] hover:text-[#F5F5F5] font-mono text-xs">CLOSE_X</button>
+                        </div>
+                        <p className="text-[11px] text-[#4A4A4A] uppercase tracking-wider italic">Configuração de parâmetros de perfil industrial.</p>
                     </div>
 
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                    <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-8 flex-1 overflow-y-auto scrollbar-none">
                         {/* Avatar Upload */}
-                        <div className="flex flex-col items-center justify-center pt-2 pb-4">
+                        <div className="flex flex-col items-center justify-center py-4">
                             <div className="relative group">
-                                <div className="h-24 w-24 rounded-full border-2 border-border overflow-hidden bg-muted flex items-center justify-center">
+                                <div className="h-24 w-24 rounded border border-white/10 overflow-hidden bg-white/5 flex items-center justify-center transition-all group-hover:border-[#A3E635]/40">
                                     {avatarPreview ? (
-                                        <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover" />
+                                        <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all" />
                                     ) : (
-                                        <Camera className="h-8 w-8 text-muted-foreground/50" />
+                                        <span className="text-2xl text-[#4A4A4A] font-mono mb-1">{wrap(GLYPHS.CAMERA)}</span>
                                     )}
                                 </div>
-                                <label className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-full cursor-pointer transition-opacity backdrop-blur-[2px]">
-                                    <Camera className="h-6 w-6" />
+                                <label className="absolute inset-0 bg-black/60 text-[#A3E635] opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-opacity backdrop-blur-[2px]">
+                                    <span className="font-mono text-[10px] tracking-widest uppercase">UPLOAD_IMG</span>
                                     <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                                 </label>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-2">Clique para alterar (opcional)</p>
+                            <p className="text-[9px] font-mono text-[#4A4A4A] mt-3 uppercase tracking-widest leading-tight text-center">Identity_Media_Slot<br/>(Max 2MB)</p>
                         </div>
 
                         {/* Name */}
-                        <div>
-                            <label className="text-sm font-medium">Nome *</label>
-                            <Input
-                                {...register('name')}
-                                placeholder="Ex: Minha Empresa"
-                                className="mt-1.5"
-                                autoComplete="off"
-                            />
-                            {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
-                        </div>
+                        <Input
+                            label="Display_Name"
+                            {...register('name')}
+                            placeholder="BRAND_IDENTIFIER"
+                            error={errors.name?.message}
+                            autoComplete="off"
+                        />
 
                         {/* Handle */}
-                        <div>
-                            <label className="text-sm font-medium">Handle / @ *</label>
-                            <Input
-                                {...register('handle')}
-                                placeholder="Ex: @minhaempresa"
-                                className="mt-1.5"
-                                autoComplete="off"
-                            />
-                            {errors.handle && <p className="mt-1 text-xs text-destructive">{errors.handle.message}</p>}
-                        </div>
+                        <Input
+                            label="Handle_Tag"
+                            {...register('handle')}
+                            placeholder="@IDENTIFIER"
+                            error={errors.handle?.message}
+                            isMono
+                            autoComplete="off"
+                        />
 
                         {/* Password */}
-                        <div>
-                            <label className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-                                <span>Senha (Opcional)</span>
-                                <span className="text-[10px] font-normal border rounded px-1.5 py-0.5 bg-muted/50">Auto-login</span>
-                            </label>
-                            <div className="relative mt-1.5">
-                                <Input
-                                    type={showPassword ? 'text' : 'password'}
-                                    {...register('password')}
-                                    placeholder="Senha do Instagram"
-                                    autoComplete="new-password"
-                                    className="pr-10"
-                                />
+                        <Input
+                            label="Security_Handshake"
+                            type={showPassword ? 'text' : 'password'}
+                            {...register('password')}
+                            placeholder="••••••••"
+                            hint="Permite que o kernel restaure a sessão automaticamente."
+                            isMono
+                            autoComplete="new-password"
+                            suffix={
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    className="text-[#4A4A4A] hover:text-[#A3E635] font-mono text-[10px]"
                                 >
-                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    {showPassword ? wrap(GLYPHS.EYE_OFF) : wrap(GLYPHS.EYE)}
                                 </button>
-                            </div>
-                            <p className="mt-1.5 text-[11px] text-muted-foreground leading-tight">
-                                Informar a senha permite que o robô faça login sozinho se a sessão expirar.
-                            </p>
-                        </div>
+                            }
+                        />
 
                         {/* Meta API Token */}
-                        <div>
-                            <label className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-                                <span className="flex items-center gap-1.5">
-                                    <Zap className="h-3.5 w-3.5 text-blue-500" />
-                                    Token Meta API (Opcional)
-                                </span>
-                                <span className="text-[10px] font-normal border rounded px-1.5 py-0.5 bg-muted/50">Publicação oficial</span>
-                            </label>
-                            <div className="relative mt-1.5">
-                                <Input
-                                    type={showToken ? 'text' : 'password'}
-                                    {...register('oauthToken')}
-                                    placeholder="IGAAY..."
-                                    autoComplete="off"
-                                    className="pr-10"
-                                />
+                        <Input
+                            label="Bridge_Token (META)"
+                            type={showToken ? 'text' : 'password'}
+                            {...register('oauthToken')}
+                            placeholder="IGAAY..."
+                            hint="Long-lived token para publicação oficial via API."
+                            isMono
+                            autoComplete="off"
+                            suffix={
                                 <button
                                     type="button"
                                     onClick={() => setShowToken(!showToken)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    className="text-[#4A4A4A] hover:text-[#A3E635] font-mono text-[10px]"
                                 >
-                                    {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    {showToken ? wrap(GLYPHS.EYE_OFF) : wrap(GLYPHS.EYE)}
                                 </button>
-                            </div>
-                            <p className="mt-1.5 text-[11px] text-muted-foreground leading-tight">
-                                Long-lived Token do Instagram para publicar via Meta API oficial. Cada conta precisa do seu próprio token.
-                            </p>
-                        </div>
+                            }
+                        />
 
-                        {/* Facebook Ads Token */}
-                        <div>
-                            <label className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-                                <span className="flex items-center gap-1.5">
-                                    <Zap className="h-3.5 w-3.5 text-green-500" />
-                                    Token Facebook Ads (Opcional)
-                                </span>
-                                <span className="text-[10px] font-normal border rounded px-1.5 py-0.5 bg-muted/50">Campanhas</span>
-                            </label>
-                            <div className="relative mt-1.5">
-                                <Input
-                                    type={showAdsToken ? 'text' : 'password'}
-                                    {...register('adsToken')}
-                                    placeholder="EAAQQ..."
-                                    autoComplete="off"
-                                    className="pr-10"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAdsToken(!showAdsToken)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                >
-                                    {showAdsToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </button>
-                            </div>
-                            <div className="mt-1.5">
-                                <Input
-                                    {...register('adsAccountId')}
-                                    placeholder="act_1705249383524385"
-                                    autoComplete="off"
-                                    className="mt-1"
-                                />
-                            </div>
-                            <p className="mt-1.5 text-[11px] text-muted-foreground leading-tight">
-                                Token com permissão ads_management para gerenciar campanhas. O Ad Account ID (act_XXXX) vincula à conta de anúncios.
-                            </p>
+                        {/* Facebook Ads */}
+                        <div className="space-y-4 pt-4 border-t border-white/5">
+                            <h4 className="text-[10px] font-mono text-[#A3E635] uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <span>{wrap(GLYPHS.AUTO)}</span> ADS_OPTIMIZATION_KERNEL
+                            </h4>
+                            <Input
+                                label="Ads_Bridge_Token"
+                                type={showAdsToken ? 'text' : 'password'}
+                                {...register('adsToken')}
+                                placeholder="EAAQQ..."
+                                isMono
+                                autoComplete="off"
+                                suffix={
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAdsToken(!showAdsToken)}
+                                        className="text-[#4A4A4A] hover:text-[#A3E635] font-mono text-[10px]"
+                                    >
+                                        {showAdsToken ? GLYPHS.EYE_OFF : GLYPHS.EYE}
+                                    </button>
+                                }
+                            />
+                            <Input
+                                label="Ad_Account_ID"
+                                {...register('adsAccountId')}
+                                placeholder="act_XXXXXXXX"
+                                isMono
+                                autoComplete="off"
+                            />
                         </div>
 
                         {/* Business Info Section */}
-                        <div className="pt-1">
-                            <div className="flex items-center gap-2 mb-3">
-                                <Info className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm font-medium">Informações do Negócio</span>
-                            </div>
-                            <p className="text-[11px] text-muted-foreground mb-3 leading-tight">
-                                Essas informações são usadas pela IA para sugerir respostas mais precisas aos comentários dos clientes.
+                        <div className="space-y-4 pt-4 border-t border-white/5">
+                            <h4 className="text-[10px] font-mono text-[#8A8A8A] uppercase tracking-widest mb-1 flex items-center gap-2">
+                                <span>{wrap(GLYPHS.INFO)}</span> BIZ_CONTEXT_MAPPING
+                            </h4>
+                            <p className="text-[10px] text-[#4A4A4A] leading-tight mb-4 uppercase italic">
+                                Parâmetros injetados na IA para otimização de respostas.
                             </p>
 
-                            <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
-                                {/* Tipo de negócio */}
-                                <div>
-                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
-                                        <Briefcase className="h-3 w-3" />
-                                        Tipo de negócio
-                                    </label>
-                                    <Input
-                                        value={businessInfo.businessType ?? ''}
-                                        onChange={(e) => updateField('businessType', e.target.value)}
-                                        placeholder="Ex: Restaurante, Loja de roupas, Clínica..."
-                                        className="h-8 text-sm"
-                                    />
-                                </div>
-
-                                {/* Endereço */}
-                                <div>
-                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
-                                        <MapPin className="h-3 w-3" />
-                                        Endereço
-                                    </label>
-                                    <Input
-                                        value={businessInfo.address ?? ''}
-                                        onChange={(e) => updateField('address', e.target.value)}
-                                        placeholder="Ex: Rua das Flores, 123 – São Paulo, SP"
-                                        className="h-8 text-sm"
-                                    />
-                                </div>
-
-                                {/* Telefone */}
-                                <div>
-                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
-                                        <Phone className="h-3 w-3" />
-                                        Telefone / WhatsApp
-                                    </label>
-                                    <Input
-                                        value={businessInfo.phone ?? ''}
-                                        onChange={(e) => updateField('phone', e.target.value)}
-                                        placeholder="Ex: (11) 99999-9999"
-                                        className="h-8 text-sm"
-                                    />
-                                </div>
-
-                                {/* Horário */}
-                                <div>
-                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
-                                        <Clock className="h-3 w-3" />
-                                        Horário de funcionamento
-                                    </label>
+                            <div className="space-y-4">
+                                <Input
+                                    label="Project_Category"
+                                    value={businessInfo.businessType ?? ''}
+                                    onChange={(e) => updateField('businessType', e.target.value)}
+                                    placeholder="Ex: RESTAURANTE_GRASTRONOMIA"
+                                    size="sm"
+                                />
+                                <Input
+                                    label="Geographic_Link"
+                                    value={businessInfo.address ?? ''}
+                                    onChange={(e) => updateField('address', e.target.value)}
+                                    placeholder="PHYSICAL_LOCATION_DATA"
+                                    size="sm"
+                                />
+                                <Input
+                                    label="Telecom_Channel"
+                                    value={businessInfo.phone ?? ''}
+                                    onChange={(e) => updateField('phone', e.target.value)}
+                                    placeholder="+55_00_00000_0000"
+                                    size="sm"
+                                    isMono
+                                />
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-mono text-[#8A8A8A] uppercase tracking-widest">TEMPORAL_WINDOW</label>
                                     <textarea
                                         value={businessInfo.hours ?? ''}
                                         onChange={(e) => updateField('hours', e.target.value)}
-                                        placeholder="Ex: Seg-Sex das 12h às 22h&#10;Sáb das 12h às 23h&#10;Dom fechado"
+                                        placeholder="SEG-SEX_09:00-18:00"
                                         rows={2}
-                                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                        className="w-full rounded border border-white/10 bg-[#050505] px-3 py-2 font-mono text-[11px] text-[#F5F5F5] focus:outline-none focus:border-[#A3E635]/50 resize-none"
                                     />
                                 </div>
-
-                                {/* Site / Cardápio */}
-                                <div>
-                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
-                                        <Globe className="h-3 w-3" />
-                                        Site / Cardápio / Link
-                                    </label>
-                                    <Input
-                                        value={businessInfo.website ?? ''}
-                                        onChange={(e) => updateField('website', e.target.value)}
-                                        placeholder="Ex: https://cardapio.minhaempresa.com"
-                                        className="h-8 text-sm"
-                                    />
-                                </div>
-
-                                {/* Observações */}
-                                <div>
-                                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1">
-                                        <Info className="h-3 w-3" />
-                                        Observações extras
-                                    </label>
+                                <Input
+                                    label="Digital_Bridge"
+                                    value={businessInfo.website ?? ''}
+                                    onChange={(e) => updateField('website', e.target.value)}
+                                    placeholder="https://FACTORY_LINK.IO"
+                                    size="sm"
+                                />
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-mono text-[#8A8A8A] uppercase tracking-widest">METADATA_EXTRAS</label>
                                     <textarea
                                         value={businessInfo.extras ?? ''}
                                         onChange={(e) => updateField('extras', e.target.value)}
-                                        placeholder="Ex: Aceitamos reservas pelo WhatsApp, temos estacionamento, somos pet-friendly..."
+                                        placeholder="SESSÃO_HANDSHAKE_EXTRA_INFO..."
                                         rows={3}
-                                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                        className="w-full rounded border border-white/10 bg-[#050505] px-3 py-2 font-mono text-[11px] text-[#F5F5F5] focus:outline-none focus:border-[#A3E635]/50 resize-none"
                                     />
                                 </div>
                             </div>
@@ -385,13 +342,16 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
 
                         {/* Automation Status */}
                         {isEditing && (
-                            <div className="pt-4 border-t border-border">
-                                <label className="text-sm font-medium block mb-2">Automação (Playwright)</label>
-                                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`h-2 w-2 rounded-full ${account.isAutomationConnected ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
-                                        <span className="text-xs font-medium">
-                                            {account.isAutomationConnected ? 'Sessão Conectada' : 'Aguardando Login'}
+                            <div className="pt-4 border-t border-white/5">
+                                <label className="text-[10px] font-mono uppercase tracking-widest text-[#4A4A4A] mb-3 block text-center">Automation_Relay_Sync</label>
+                                <div className="flex items-center justify-between p-4 rounded bg-[#050505] border border-white/5">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn(
+                                            "h-1.5 w-1.5 rounded-full shadow-[0_0_8px]",
+                                            account.isAutomationConnected ? "bg-[#A3E635] shadow-[#A3E635]/40 animate-pulse" : "bg-[#FBBF24] shadow-[#FBBF24]/40"
+                                        )} />
+                                        <span className="text-[11px] font-mono uppercase tracking-widest text-[#F5F5F5]">
+                                            {account.isAutomationConnected ? 'SYNC_ACTIVE' : 'READY_FOR_HOOK'}
                                         </span>
                                     </div>
                                     <Button
@@ -399,33 +359,32 @@ export function AccountFormDialog({ open, onOpenChange, account }: AccountFormDi
                                         variant="outline"
                                         size="sm"
                                         onClick={async () => {
-                                            toast.info('Abrindo janela de login... Siga as instruções no terminal que irá aparecer.');
+                                            toast.info('Abrindo janela de login... Siga as instruções no terminal.');
                                             const ok = await connectAutomation(account.id);
                                             if (!ok) toast.error('Falha ao abrir janela de login.');
                                         }}
-                                        className="h-7 text-[10px] px-2"
+                                        className="h-7 text-[9px] px-3 border-white/10 font-mono"
                                     >
-                                        {account.isAutomationConnected ? 'Reconectar' : 'Conectar Agora'}
+                                        RE_CONNECT_0x
                                     </Button>
                                 </div>
-                                <p className="text-[10px] text-muted-foreground mt-2 italic px-1">
-                                    Necessário para responder comentários e postar automaticamente.
-                                </p>
                             </div>
                         )}
 
                         {/* Actions */}
-                        <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                            <Button type="submit" className="w-full">
-                                <Save className="mr-2 h-4 w-4" />
-                                Salvar Conta
+                        <div className="flex flex-col gap-3 pt-4 pb-8">
+                            <Button type="submit" variant="solid" className="w-full font-mono text-[10px] tracking-widest uppercase py-6">
+                                INITIALIZE_SAVE_SEQUENCE
                             </Button>
 
                             {isEditing && (
-                                <Button type="button" variant="destructive" onClick={handleDelete} className="w-full">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Excluir
-                                </Button>
+                                <button 
+                                    type="button" 
+                                    onClick={handleDelete}
+                                    className="text-[10px] text-[#EF4444]/60 hover:text-[#EF4444] transition-colors font-mono uppercase tracking-widest py-2"
+                                >
+                                    [ WIPE_IDENTITY_NODE ]
+                                </button>
                             )}
                         </div>
                     </form>

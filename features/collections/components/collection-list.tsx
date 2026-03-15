@@ -3,13 +3,22 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import * as Icons from 'lucide-react';
 import { useCollectionStore, useContentStore } from '@/stores';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Button } from '@/design-system/atoms/Button';
+import { cn } from '@/design-system/utils/cn';
 import { CollectionFormDialog } from './collection-form-dialog';
 import type { Collection } from '@/types/collection';
+
+// V2 Common Styles
+const CARD_STYLE = {
+    backgroundColor: '#0A0A0A',
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: '8px',
+};
+
+const SECTION_HEADER_STYLE = "font-mono text-[10px] uppercase tracking-[0.12em] text-[#4A4A4A] select-none flex items-center gap-2 mb-6";
+
+const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
 
 export function CollectionList() {
     const { collections } = useCollectionStore();
@@ -30,93 +39,79 @@ export function CollectionList() {
     };
 
     return (
-        <>
-            <div className="flex items-center justify-between mb-6">
+        <div className="space-y-6">
+            <div className="flex items-center justify-between mb-8 pb-6 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Coleções</h2>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                        Agrupe seus conteúdos em categorias ou campanhas temáticas.
-                    </p>
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-[#A3E635] text-[10px] tracking-widest">[COLL_SYS_V2]</span>
+                        <h2 className="text-[1.75rem] font-bold tracking-tight text-[#F5F5F5]">Content Collections</h2>
+                    </div>
+                    <p className="text-[13px] text-[#4A4A4A]">Clusters de conteúdo e campanhas temáticas indexadas.</p>
                 </div>
-                <Button onClick={handleAddNew} className="instagram-gradient text-white border-0 hover:opacity-90">
-                    <Icons.Plus className="mr-2 h-4 w-4" />
-                    Nova Coleção
+                <Button onClick={handleAddNew} variant="solid" className="font-mono text-[10px] tracking-widest uppercase">
+                    NEW_COLLECTION {wrap('↗')}
                 </Button>
             </div>
 
             {collections.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-20">
-                    <Icons.FolderPlus className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                    <h3 className="text-lg font-medium">Nenhuma coleção encontrada</h3>
-                    <p className="text-muted-foreground text-sm mt-1 text-center max-w-sm mb-6">
-                        Crie sua primeira coleção para começar a organizar melhor suas campanhas.
-                    </p>
-                    <Button onClick={handleAddNew}>Criar Coleção</Button>
+                <div className="flex flex-col items-center justify-center py-20 border border-dashed rounded-lg bg-[#0A0A0A]/50" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <span className="font-mono text-[#4A4A4A] text-4xl mb-4">{wrap('∅')}</span>
+                    <h3 className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#8A8A8A]">No Index Found</h3>
+                    <p className="text-[12px] text-[#4A4A4A] mt-2 mb-6 max-w-sm text-center">Inicie uma nova coleção para organizar o fluxo de produção.</p>
+                    <Button onClick={handleAddNew} variant="outline" size="sm">INITIALIZE_COLL</Button>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {collections.map((collection) => {
-                        const Icon = (Icons as any)[collection.icon || 'Folder'] || Icons.Folder;
                         const contentCount = contents.filter(c => c.collectionIds.includes(collection.id)).length;
 
                         return (
-                            <Link key={collection.id} href={`/dashboard/collections/${collection.id}`}>
-                                <Card className="group relative overflow-hidden flex flex-col h-full border-border/50 hover:border-border transition-all hover:shadow-md cursor-pointer">
-                                    {/* Color accent line */}
-                                    <div
-                                        className="absolute top-0 left-0 right-0 h-1.5"
-                                        style={{ backgroundColor: collection.color }}
-                                    />
+                            <Link key={collection.id} href={`/dashboard/collections/${collection.id}`} className="group relative">
+                                <div 
+                                    className="p-6 transition-all duration-150 border active:scale-[0.98] h-full flex flex-col"
+                                    style={{ 
+                                        ...CARD_STYLE,
+                                        borderLeft: `2px solid ${collection.color || 'rgba(163,230,53,0.3)'}`
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0A0A0A'}
+                                >
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-mono text-[10px] opacity-40">{wrap('◆')}</span>
+                                            <h3 className="text-[14px] font-bold text-[#F5F5F5] uppercase tracking-tight">{collection.name}</h3>
+                                        </div>
+                                        <button
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-[#A3E635]"
+                                            onClick={(e) => handleEdit(collection, e)}
+                                        >
+                                            <span className="font-mono text-[10px]">{wrap('◎')} EDIT_0x</span>
+                                        </button>
+                                    </div>
 
-                                    <div className="p-5 flex-1 flex flex-col">
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div
-                                                className="p-3 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
-                                                style={{ backgroundColor: `${collection.color}15`, color: collection.color }}
-                                            >
-                                                <Icon className="h-6 w-6" />
-                                            </div>
+                                    {collection.description && (
+                                        <p className="text-[12px] text-[#8A8A8A] line-clamp-2 leading-relaxed mb-6 flex-1">
+                                            {collection.description}
+                                        </p>
+                                    )}
 
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                onClick={(e) => handleEdit(collection, e)}
-                                            >
-                                                <Icons.Edit3 className="h-4 w-4 text-muted-foreground" />
-                                            </Button>
+                                    <div className="mt-auto pt-4 flex items-center justify-between border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                                        <div className="font-mono text-[10px] text-[#4A4A4A]">
+                                            {collection.startDate ? (
+                                                <span className="flex items-center gap-1.5">
+                                                    {wrap('◎')} {format(parseISO(collection.startDate), "dd/MM")}
+                                                    {collection.endDate && ` - ${format(parseISO(collection.endDate), "dd/MM")}`}
+                                                </span>
+                                            ) : (
+                                                'NO_PERIOD'
+                                            )}
                                         </div>
 
-                                        <h3 className="text-lg font-semibold line-clamp-1">{collection.name}</h3>
-
-                                        {collection.description && (
-                                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                                {collection.description}
-                                            </p>
-                                        )}
-
-                                        <div className="mt-auto pt-5 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-                                            <div>
-                                                {collection.startDate ? (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Icons.Calendar className="h-3.5 w-3.5" />
-                                                        <span>
-                                                            {format(parseISO(collection.startDate), "dd/MM")}
-                                                            {collection.endDate && ` - ${format(parseISO(collection.endDate), "dd/MM")}`}
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs opacity-50">Sem período</span>
-                                                )}
-                                            </div>
-
-                                            <div className="flex items-center justify-end gap-1.5 font-medium" style={{ color: collection.color }}>
-                                                <Icons.LayoutGrid className="h-3.5 w-3.5" />
-                                                <span>{contentCount} {contentCount === 1 ? 'post' : 'posts'}</span>
-                                            </div>
+                                        <div className="font-mono text-[10px] px-2 py-0.5 rounded bg-white/5 text-[#A3E635] tracking-widest">
+                                            {contentCount.toString().padStart(2, '0')} {wrap('⊞')} FILES
                                         </div>
                                     </div>
-                                </Card>
+                                </div>
                             </Link>
                         );
                     })}
@@ -128,6 +123,6 @@ export function CollectionList() {
                 onOpenChange={setEditorOpen}
                 collection={editingCollection}
             />
-        </>
+        </div>
     );
 }

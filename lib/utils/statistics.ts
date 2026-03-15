@@ -325,13 +325,24 @@ export function pearsonCorrelation(x: number[], y: number[]): number {
  * @param post - Metricas do post (likes, comments, views?, saves?, shares?)
  * @returns Score de 0 a 100
  */
-export function engagementScore(post: {
-  likes: number;
-  comments: number;
-  views?: number;
-  saves?: number;
-  shares?: number;
-}): number {
+export function engagementScore(
+  post: {
+    likes: number;
+    comments: number;
+    views?: number;
+    saves?: number;
+    shares?: number;
+  },
+  options?: {
+    /**
+     * Histórico de scores ponderados da conta para calcular midpoint dinâmico.
+     * Se ausente, usa midpoint fixo = 4 (comportamento legado).
+     *
+     * US-50: midpoint dinâmico evita distorção entre contas pequenas e grandes.
+     */
+    accountHistory?: number[];
+  }
+): number {
   const likes = Math.max(0, post.likes || 0);
   const comments = Math.max(0, post.comments || 0);
   const views = Math.max(0, post.views || 0);
@@ -364,7 +375,17 @@ export function engagementScore(post: {
   // Sigmoid para mapear ao range 0-100
   // k calibrado para que um post "medio" fique ~50
   const k = 0.5;
-  const score = 100 / (1 + Math.exp(-k * (weighted - 4)));
+
+  // US-50: midpoint dinâmico baseado na mediana da conta.
+  // Garante que contas pequenas (weighted ~1) e grandes (weighted ~8)
+  // tenham scores relativos, não absolutos.
+  // Fallback: 4 (valor legado compatível com comportamento anterior).
+  const hist = options?.accountHistory;
+  const midpoint = (hist && hist.length >= 3)
+    ? sorted(hist)[Math.floor(hist.length / 2)]
+    : 4;
+
+  const score = 100 / (1 + Math.exp(-k * (weighted - midpoint)));
 
   return Math.round(clamp(score, 0, 100) * 100) / 100;
 }
@@ -932,7 +953,16 @@ export function captionSegmentAnalysis(
  * so porque os intervalos variam um pouco.
  */
 export function postingConsistencyIndex(
-  posts: { timestamp: string }[]
+  posts: { timestamp: string }[],
+  options?: {
+    /**
+     * Meta de posts por semana para calcular freqScore.
+     * US-52: configurável por nicho — B2B=1, geral=3, entretenimento=7.
+     * Default: 3 (meta equilibrada para a maioria das contas).
+     * Antes hardcoded: postsPerWeek * 20 (equivalente a target=5).
+     */
+    targetPostsPerWeek?: number;
+  }
 ): {
   cv: number;
   avgIntervalDays: number;
@@ -959,8 +989,11 @@ export function postingConsistencyIndex(
   const spanDays = Math.max((timestamps[timestamps.length - 1] - timestamps[0]) / (1000 * 60 * 60 * 24), 1);
   const postsPerWeek = (timestamps.length / spanDays) * 7;
 
-  // Score de frequencia (0-100): 1 post/semana = 40pts, 3/semana = 70pts, 5+/semana = 100pts
-  const freqScore = clamp(postsPerWeek * 20, 0, 100);
+  // US-52: freqScore configurável por targetPostsPerWeek.
+  // (postsPerWeek / target) * 100 — atingir a meta = 100 pontos.
+  // Antes hardcoded: postsPerWeek * 20 → implicava target=5 (5*20=100).
+  const target = Math.max(1, options?.targetPostsPerWeek ?? 3);
+  const freqScore = clamp((postsPerWeek / target) * 100, 0, 100);
 
   // Score de regularidade (0-100): CV 0 = 100pts (perfeito), CV 1+ = 0pts
   const regScore = clamp((1 - stats.cv) * 100, 0, 100);
@@ -1846,4 +1879,179 @@ export function shannonEntropy(categories: Record<string, number>): {
     dominantCategory: dominant,
     categoryShares: shares,
   };
+}
+
+// =============================================================================
+// 35. Tendência ponderada por recência — WLS (US-71)
+// =============================================================================
+
+/**
+ * Regressão linear ponderada (WLS) com decaimento exponencial por recência.
+ *
+ * w_t = e^(-λ(T-t)) onde λ = ln(2) / halflife
+ * → Pontos mais recentes têm mais peso. Ontem importa mais que 30 dias atrás.
+ *
+ * Retorna mesma interface de `linearTrend()` para compatibilidade.
+ *
+ * US-71: substitui `linearTrend()` nos KPI cards — trend mais preciso em séries
+ * com shift recente (ex: campanha que piorou nos últimos 5 dias mas veio de um bom mês).
+ *
+ * @param values - Série temporal (índice 0 = mais antigo)
+ * @param halflife - Meia-vida em dias (default 14)
+ */
+export function weightedRecentTrend(
+  values: number[],
+  halflife: number = 14
+): {
+  slope: number;
+  direction: 'rising' | 'falling' | 'stable';
+  r2: number;
+  predicted: number[];
+} {
+  if (values.length === 0) return { slope: 0, direction: 'stable', r2: 0, predicted: [] };
+  if (values.length === 1) return { slope: 0, direction: 'stable', r2: 1, predicted: [values[0]] };
+
+  const n = values.length;
+  const T = n - 1; // índice do ponto mais recente
+
+  // λ = ln(2) / halflife — decaimento exponencial
+  const lambda = Math.LN2 / Math.max(halflife, 1);
+
+  // Pesos: w_t = e^(-λ(T-t)), normalizados para soma = 1
+  const w: number[] = new Array(n);
+  let wSum = 0;
+  for (let t = 0; t < n; t++) {
+    w[t] = Math.exp(-lambda * (T - t));
+    wSum += w[t];
+  }
+  for (let t = 0; t < n; t++) w[t] /= wSum;
+
+  // Médias ponderadas
+  let xWMean = 0;
+  let yWMean = 0;
+  for (let t = 0; t < n; t++) {
+    xWMean += w[t] * t;
+    yWMean += w[t] * values[t];
+  }
+
+  // WLS: β = Σ(w_i(x_i - x̄_w)(y_i - ȳ_w)) / Σ(w_i(x_i - x̄_w)²)
+  let ssWXY = 0;
+  let ssWXX = 0;
+  for (let t = 0; t < n; t++) {
+    const dx = t - xWMean;
+    ssWXY += w[t] * dx * (values[t] - yWMean);
+    ssWXX += w[t] * dx * dx;
+  }
+
+  if (ssWXX === 0) return { slope: 0, direction: 'stable', r2: 0, predicted: values.slice() };
+
+  const slope = ssWXY / ssWXX;
+  const intercept = yWMean - slope * xWMean;
+
+  // Predicted values
+  const predicted = values.map((_, t) => intercept + slope * t);
+
+  // R² ponderado
+  let ssTot = 0;
+  let ssRes = 0;
+  for (let t = 0; t < n; t++) {
+    ssTot += w[t] * (values[t] - yWMean) ** 2;
+    ssRes += w[t] * (values[t] - predicted[t]) ** 2;
+  }
+  const r2 = ssTot > 0 ? Math.max(0, 1 - ssRes / ssTot) : 0;
+
+  // Classificação: stable se |slope| < 5% da média ponderada
+  const threshold = Math.abs(yWMean) * 0.05;
+  const direction: 'rising' | 'falling' | 'stable' =
+    Math.abs(slope) < threshold ? 'stable' : slope > 0 ? 'rising' : 'falling';
+
+  return {
+    slope: Math.round(slope * 1000000) / 1000000,
+    direction,
+    r2: Math.round(r2 * 10000) / 10000,
+    predicted: predicted.map(v => Math.round(v * 10000) / 10000),
+  };
+}
+
+// =============================================================================
+// 36. Viral Potential Index (US-55)
+// =============================================================================
+
+/**
+ * Índice de potencial viral baseado em sinais de engajamento qualificado.
+ *
+ * Para campanhas de Ads, usa proxy via engagement rate (totalEngagements / impressions),
+ * shares e saves quando disponíveis. A hierarquia de valor segue estudos de viralidade:
+ *   shares(45%) > saves(35%) > comments qualificados(20%)
+ *
+ * Quando apenas engagementRate disponível (caso típico de Ads), usa ponderação única.
+ *
+ * US-55: exibido no ads-kpi-cards.tsx como KPI de destaque.
+ *
+ * @param data - Métricas de engajamento normalizadas por impressão
+ * @returns Score 0-100 e classificação VIRAL/ALTO/MODERADO/BAIXO
+ */
+export function viralPotentialIndex(data: {
+  /** Engajamentos totais / impressões (obrigatório) */
+  engagementRate: number;
+  /** Shares / impressões (opcional — peso 45% se presente) */
+  shareRate?: number;
+  /** Saves / impressões (opcional — peso 35% se presente) */
+  saveRate?: number;
+  /** Comments / impressões (opcional — peso 20% se presente) */
+  commentRate?: number;
+  /** CTR como sinal auxiliar de relevância (opcional) */
+  ctr?: number;
+}): {
+  score: number;
+  classification: 'VIRAL' | 'ALTO' | 'MODERADO' | 'BAIXO';
+  drivers: string[];
+} {
+  const { engagementRate, shareRate, saveRate, commentRate, ctr } = data;
+
+  // Log-normalização para comprimir escalas (mesma técnica de engagementScore)
+  const logEngage = Math.log1p(engagementRate * 10000); // amplifica para escala útil
+
+  let score: number;
+  const drivers: string[] = [];
+
+  if (shareRate !== undefined || saveRate !== undefined || commentRate !== undefined) {
+    // Modo rico: ponderação explícita shares/saves/comments
+    const s = shareRate ?? 0;
+    const sv = saveRate ?? 0;
+    const c = commentRate ?? 0;
+
+    const logShares   = Math.log1p(s * 10000);
+    const logSaves    = Math.log1p(sv * 10000);
+    const logComments = Math.log1p(c * 10000);
+
+    // k calibrado para engagement rate ~0.05 (5%) = midpoint
+    const weighted = logShares * 0.45 + logSaves * 0.35 + logComments * 0.20;
+    const k = 0.4;
+    const midpoint = Math.log1p(500); // ~5% engagement = 50 pts
+    score = 100 / (1 + Math.exp(-k * (weighted - midpoint)));
+
+    if (s > 0.01) drivers.push(`shares ${(s * 100).toFixed(2)}%`);
+    if (sv > 0.005) drivers.push(`saves ${(sv * 100).toFixed(2)}%`);
+    if (c > 0.002) drivers.push(`comments ${(c * 100).toFixed(2)}%`);
+  } else {
+    // Modo proxy: apenas engagementRate + CTR opcional
+    const ctrBoost = ctr !== undefined ? Math.log1p(ctr * 1000) * 0.2 : 0;
+    const k = 0.35;
+    const midpoint = Math.log1p(300); // ~3% engagement = 50 pts
+    score = 100 / (1 + Math.exp(-k * (logEngage - midpoint))) + ctrBoost;
+    score = clamp(score, 0, 100);
+
+    if (engagementRate > 0.03) drivers.push(`engajamento ${(engagementRate * 100).toFixed(1)}%`);
+    if (ctr !== undefined && ctr > 0.02) drivers.push(`CTR ${(ctr * 100).toFixed(2)}%`);
+  }
+
+  score = Math.round(clamp(score, 0, 100) * 10) / 10;
+
+  const classification: 'VIRAL' | 'ALTO' | 'MODERADO' | 'BAIXO' =
+    score >= 75 ? 'VIRAL' :
+    score >= 50 ? 'ALTO' :
+    score >= 25 ? 'MODERADO' : 'BAIXO';
+
+  return { score, classification, drivers };
 }

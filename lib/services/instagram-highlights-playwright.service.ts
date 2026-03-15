@@ -67,7 +67,6 @@ export async function scrapeInstagramHighlights(username: string): Promise<Highl
     // Verificar se existe sessão salva do login
     const hasSession = fs.existsSync(sessionFile);
     if (!hasSession) {
-        console.log(`[IGHighlights] No session found for @${handle} at ${sessionFile}`);
         return {
             success: false,
             highlights: [],
@@ -80,7 +79,6 @@ export async function scrapeInstagramHighlights(username: string): Promise<Highl
 
     let browser;
     try {
-        console.log(`[IGHighlights] Launching Chrome for @${handle} (session: ${sessionFile})...`);
 
         // Usar chromium.launch + storageState (mesmo padrão do playwright-login.js)
         browser = await chromium.launch({
@@ -135,7 +133,6 @@ export async function scrapeInstagramHighlights(username: string): Promise<Highl
         // ─── Screenshot de debug do perfil ─────────────────────────────────
         const debugPath = path.join(SCREENSHOTS_DIR, `${handle}-profile-debug.png`);
         await page.screenshot({ path: debugPath, fullPage: false });
-        console.log(`[IGHighlights] Debug screenshot: /ig-highlights/${handle}-profile-debug.png`);
 
         // ─── Extrair highlights do DOM ──────────────────────────────────────
         const highlights: InstagramHighlight[] = await page.evaluate((profileHandle) => {
@@ -144,7 +141,6 @@ export async function scrapeInstagramHighlights(username: string): Promise<Highl
 
             // Estratégia 1: Links para /stories/highlights/
             const highlightLinks = document.querySelectorAll('a[href*="/stories/highlights/"]');
-            console.log(`[IGHighlights] Found ${highlightLinks.length} highlight links`);
 
             highlightLinks.forEach(link => {
                 const imgs = link.querySelectorAll('img');
@@ -253,7 +249,6 @@ export async function scrapeInstagramHighlights(username: string): Promise<Highl
         // Se DOM não achou highlights, usar screenshot da seção
         let screenshotUrl: string | undefined;
         if (savedHighlights.length === 0) {
-            console.log('[IGHighlights] DOM extraction found 0, saving screenshot of highlights area...');
             try {
                 const screenshotPath = path.join(SCREENSHOTS_DIR, `${handle}-highlights.png`);
                 await page.screenshot({
@@ -261,13 +256,11 @@ export async function scrapeInstagramHighlights(username: string): Promise<Highl
                     clip: { x: 0, y: 350, width: 412, height: 130 },
                 });
                 screenshotUrl = `/ig-highlights/${handle}-highlights.png`;
-                console.log(`[IGHighlights] Screenshot fallback: ${screenshotUrl}`);
             } catch (ssErr) {
                 console.warn('[IGHighlights] Screenshot fallback failed:', ssErr);
             }
         }
 
-        console.log(`[IGHighlights] Found ${savedHighlights.length} highlights for @${handle}`);
 
         // ─── Extrair ordem REAL do grid (shortcodes na ordem de exibição) ──
         // Scrollar para garantir que o grid está carregado
@@ -313,7 +306,6 @@ export async function scrapeInstagramHighlights(username: string): Promise<Highl
             }
         }
 
-        console.log(`[IGHighlights] Grid: ${gridOrder.length} posts, ${Object.keys(gridThumbnails).length} thumbnails for @${handle}`);
 
         // Detectar posts fixados: posts que aparecem no topo do grid mas são mais antigos
         // que posts posteriores. Instagram permite no máximo 3 pins.
@@ -345,14 +337,13 @@ export async function scrapeInstagramHighlights(username: string): Promise<Highl
             return [...new Set(pinned)];
         });
 
-        console.log(`[IGHighlights] Pinned (aria-label): ${pinnedShortcodes.length}, Grid order: ${gridOrder.length} posts`);
 
         const result: HighlightsResult = { success: true, highlights: savedHighlights, pinnedShortcodes, gridOrder, gridThumbnails, screenshotUrl };
         saveCacheHighlights(handle, result);
         return result;
-    } catch (err: any) {
-        console.error('[IGHighlights] Error:', err.message);
-        return { success: false, highlights: [], pinnedShortcodes: [], gridOrder: [], gridThumbnails: {}, error: err.message };
+    } catch (err: unknown) {
+        console.error('[IGHighlights] Error:', err instanceof Error ? err.message : String(err));
+        return { success: false, highlights: [], pinnedShortcodes: [], gridOrder: [], gridThumbnails: {}, error: err instanceof Error ? err.message : String(err) };
     } finally {
         if (browser) {
             try { await browser.close(); } catch { /* ignore */ }

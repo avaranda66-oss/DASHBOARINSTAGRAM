@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useContentStore } from '@/stores';
+import { TYPE_HEX_COLORS } from '@/lib/constants';
 import { useCalendarStore } from '@/stores/calendar-slice';
 import {
     useCalendar,
@@ -10,33 +10,32 @@ import {
     isSameMonth,
     isToday,
     format,
-    parseISO,
 } from '../hooks/use-calendar';
 import { useFilteredContents } from '@/hooks/use-filtered-contents';
-import { TYPE_BADGE_COLORS } from '@/lib/constants';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/design-system/atoms/Button';
+import { Badge } from '@/design-system/atoms/Badge';
 import { ContentEditorDialog } from '@/features/content/components/content-editor-dialog';
 import type { Content } from '@/types/content';
-import { Image, Circle, Film, Layers, Megaphone } from 'lucide-react';
+import { cn } from '@/design-system/utils/cn';
 
-const WEEKDAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const WEEKDAY_NAMES = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
-const TYPE_ICONS: Record<string, React.ElementType> = {
-    post: Image,
-    story: Circle,
-    reel: Film,
-    carousel: Layers,
-    campaign: Megaphone,
+const TYPE_GLYPHS: Record<string, string> = {
+    post: '◆',
+    story: '◎',
+    reel: '▶',
+    carousel: '◫',
+    campaign: '▲',
 };
 
-const STATUS_CHIP_COLORS: Record<string, string> = {
-    idea: 'bg-slate-500/20 text-slate-300',
-    draft: 'bg-amber-500/20 text-amber-300',
-    approved: 'bg-emerald-500/20 text-emerald-300',
-    scheduled: 'bg-blue-500/20 text-blue-300',
-    published: 'bg-violet-500/20 text-violet-300',
-};
+const STATUS_MAP = {
+    idea: { intent: 'info', variant: 'subtle' },
+    draft: { intent: 'default', variant: 'subtle' },
+    approved: { intent: 'success', variant: 'subtle' },
+    scheduled: { intent: 'warning', variant: 'subtle' },
+    published: { intent: 'success', variant: 'solid' },
+    failed: { intent: 'error', variant: 'subtle' },
+} as const;
 
 export function MonthView() {
     const { isLoaded, loadContents } = useContentStore();
@@ -66,32 +65,25 @@ export function MonthView() {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => navigateMonth('next')}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <h3 className="text-lg font-semibold capitalize">{monthLabel}</h3>
+            <div className="flex items-center justify-between pb-4 border-b border-white/5">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center bg-[#0A0A0A] border border-white/10 rounded overflow-hidden">
+                        <button onClick={() => navigateMonth('prev')} className="px-3 py-1.5 hover:bg-white/5 border-r border-white/10 text-[#4A4A4A] transition-colors font-mono text-xs">‹</button>
+                        <button onClick={() => navigateMonth('next')} className="px-3 py-1.5 hover:bg-white/5 text-[#4A4A4A] transition-colors font-mono text-xs">›</button>
+                    </div>
+                    <h3 className="text-[14px] font-bold text-[#F5F5F5] uppercase tracking-[0.1em]">{monthLabel}</h3>
                 </div>
-                <Button variant="outline" size="sm" onClick={goToToday}>
-                    Hoje
-                </Button>
+                <Button variant="outline" size="sm" onClick={goToToday} className="font-mono text-[10px] tracking-widest uppercase">TODAY_SYNC</Button>
             </div>
 
             {/* Calendar grid */}
-            <div className="rounded-xl border border-border overflow-hidden">
+            <div className="border border-white/10 rounded-lg overflow-hidden bg-[#0A0A0A]/30">
                 {/* Weekday headers */}
-                <div className="grid grid-cols-7 bg-muted/50">
+                <div className="grid grid-cols-7 border-b border-white/10 bg-[#0A0A0A]/50">
                     {WEEKDAY_NAMES.map((name) => (
-                        <div
-                            key={name}
-                            className="px-2 py-2 text-xs font-medium text-muted-foreground text-center border-b border-border"
-                        >
+                        <div key={name} className="px-2 py-3 text-[9px] font-mono tracking-[0.2em] text-[#4A4A4A] text-center uppercase">
                             {name}
                         </div>
                     ))}
@@ -110,53 +102,57 @@ export function MonthView() {
                             <div
                                 key={i}
                                 onClick={() => handleDayClick(day)}
-                                className={`min-h-[100px] border-b border-r border-border p-1.5 cursor-pointer transition-colors hover:bg-accent/20 ${!inMonth ? 'opacity-40' : ''
-                                    }`}
+                                className={cn(
+                                    "min-h-[120px] border-b border-r last:border-r-0 border-white/5 p-2 cursor-pointer transition-all duration-150 relative group",
+                                    !inMonth ? "opacity-20" : "opacity-100",
+                                    "hover:bg-white/[0.02]"
+                                )}
                             >
                                 {/* Day number */}
-                                <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center justify-between mb-2">
                                     <span
-                                        className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${today
-                                            ? 'instagram-gradient text-white'
-                                            : 'text-foreground'
-                                            }`}
+                                        className={cn(
+                                            "font-mono text-[11px] w-6 h-6 flex items-center justify-center rounded",
+                                            today ? "bg-[#A3E635] text-black font-bold" : "text-[#8A8A8A]"
+                                        )}
                                     >
-                                        {format(day, 'd')}
+                                        {format(day, 'd').padStart(2, '0')}
                                     </span>
                                     {dayContents.length > 0 && (
-                                        <span className="text-[10px] text-muted-foreground">{dayContents.length}</span>
+                                        <span className="font-mono text-[9px] text-[#4A4A4A] tracking-tighter">[{dayContents.length.toString().padStart(2, '0')}]</span>
                                     )}
                                 </div>
 
                                 {/* Content chips */}
-                                <div className="space-y-0.5">
+                                <div className="space-y-1">
                                     {visibleContents.map((content) => {
-                                        const TypeIcon = TYPE_ICONS[content.type] ?? Image;
-                                        const chipColor = TYPE_BADGE_COLORS[content.type] ?? STATUS_CHIP_COLORS[content.status] ?? '';
+                                        const statusCfg = STATUS_MAP[content.status as keyof typeof STATUS_MAP] || STATUS_MAP.draft;
                                         return (
                                             <div
                                                 key={content.id}
                                                 onClick={(e) => handleContentClick(content, e)}
-                                                className={`flex items-center gap-1 rounded px-1 py-0.5 text-[10px] truncate cursor-pointer hover:opacity-80 transition-opacity ${chipColor}`}
+                                                className="flex items-center gap-1.5 px-1.5 py-1 rounded bg-white/5 border border-white/5 hover:border-[#A3E635]/30 transition-all group/chip"
                                             >
-                                                <TypeIcon className="h-2.5 w-2.5 shrink-0" />
-                                                <span className="truncate">{content.title}</span>
+                                                <span className="font-mono text-[10px]" style={{ color: TYPE_HEX_COLORS[content.type] ?? '#8A8A8A' }}>{TYPE_GLYPHS[content.type] || '◆'}</span>
+                                                <span className="truncate text-[9px] text-[#F5F5F5] uppercase tracking-tight opacity-70 group-hover/chip:opacity-100">{content.title}</span>
                                             </div>
                                         );
                                     })}
                                     {extraCount > 0 && (
-                                        <div className="text-[10px] text-muted-foreground px-1">
-                                            +{extraCount} mais
+                                        <div className="font-mono text-[8px] text-[#4A4A4A] px-1 pt-1 tracking-widest">
+                                            +{extraCount} MORE_RECORDS
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Add overlay on hover */}
+                                <div className="absolute inset-0 border border-[#A3E635]/0 group-hover:border-[#A3E635]/10 pointer-events-none transition-colors" />
                             </div>
                         );
                     })}
                 </div>
             </div>
 
-            {/* Editor dialog */}
             <ContentEditorDialog
                 open={editorOpen}
                 onOpenChange={setEditorOpen}

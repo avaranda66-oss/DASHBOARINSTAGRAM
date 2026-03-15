@@ -9,7 +9,7 @@ export async function getCompetitorsAction(): Promise<CompetitorProfile[]> {
         orderBy: { createdAt: 'desc' }
     });
 
-    return competitors.map((c: any) => ({
+    return competitors.map((c) => ({
         id: c.id,
         handle: c.handle,
         name: c.name,
@@ -50,7 +50,7 @@ export async function deleteCompetitorAction(id: string): Promise<void> {
     revalidatePath('/dashboard/analytics');
 }
 
-export async function updateCompetitorMetricsAction(handle: string, metrics: any): Promise<void> {
+export async function updateCompetitorMetricsAction(handle: string, metrics: Record<string, unknown>): Promise<void> {
     await prisma.competitor.update({
         where: { handle },
         data: {
@@ -65,15 +65,12 @@ export async function refreshCompetitorAvatarAction(handle: string): Promise<str
         if (!handle) throw new Error("Handle não fornecido.");
 
         const cleanHandle = handle.replace(/^@/, '').toLowerCase().trim();
-        console.log(`[Action] 🟢 Iniciando refresh para: [${handle}] -> [${cleanHandle}]`);
 
         const { InstagramService } = await import('@/lib/services/instagram.service');
 
-        console.log(`[Action] 🤖 Chamando fetchProfileAvatar...`);
         const avatarUrl = await InstagramService.fetchProfileAvatar(cleanHandle);
 
         if (avatarUrl) {
-            console.log(`[Action] ✨ Avatar capturado: ${avatarUrl.slice(0, 40)}...`);
 
             // Tenta atualizar na tabela de Concorrentes
             const comp = await prisma.competitor.findUnique({ where: { handle: cleanHandle } });
@@ -82,9 +79,7 @@ export async function refreshCompetitorAvatarAction(handle: string): Promise<str
                     where: { handle: cleanHandle },
                     data: { avatarUrl }
                 });
-                console.log(`[Action] ✅ Tabela Competitor atualizada.`);
             } else {
-                console.log(`[Action] ℹ️ Não é concorrente. Tentando tabela Account...`);
                 // Se não é concorrente, tenta atualizar na tabela de Contas
                 const acc = await prisma.account.findUnique({ where: { providerAccountId: cleanHandle } });
                 if (acc) {
@@ -92,7 +87,6 @@ export async function refreshCompetitorAvatarAction(handle: string): Promise<str
                         where: { providerAccountId: cleanHandle },
                         data: { picture: avatarUrl }
                     });
-                    console.log(`[Action] ✅ Tabela Account atualizada.`);
                 } else {
                     console.warn(`[Action] ⚠️ Handle [${cleanHandle}] não encontrado em nenhuma tabela de destino.`);
                 }

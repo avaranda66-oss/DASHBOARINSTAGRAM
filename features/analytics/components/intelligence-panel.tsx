@@ -2,10 +2,7 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import {
-    Brain, DollarSign, Users, Shield, Palette, BarChart3,
-    Zap, Eye, Target, RefreshCw, Sparkles, TrendingUp,
-} from 'lucide-react';
+// Lucide icons removed for ASCII HUD alignment
 import type { InstagramPostMetrics, MetaPostMetrics } from '@/types/analytics';
 import {
     reciprocityIndex, socialProofScore, brandEquityScore,
@@ -44,10 +41,10 @@ function ScoreGauge({ score, label, color }: { score: number; label: string; col
     );
 }
 
-function CategoryHeader({ icon: Icon, title, expert, color, tip }: { icon: React.ElementType; title: string; expert: string; color: string; tip?: string }) {
+function CategoryHeader({ title, expert, color, tip, glyph = '◎' }: { title: string; expert: string; color: string; tip?: string; glyph?: string }) {
     return (
         <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/[0.04]">
-            <Icon className="h-3.5 w-3.5" style={{ color }} />
+            <span className="font-mono text-xs" style={{ color }}>{glyph}</span>
             <span className="text-xs font-semibold text-zinc-200">{title}</span>
             {tip && <InfoTooltip text={tip} />}
             <span className="text-[9px] px-1.5 py-0.5 rounded-full ml-auto" style={{ background: color + '15', color }}>{expert}</span>
@@ -193,7 +190,7 @@ export function IntelligencePanel({ posts, isMeta = false }: IntelligencePanelPr
             className="rounded-2xl border border-white/[0.06] bg-zinc-900/60 backdrop-blur-md p-5"
         >
             <div className="flex items-center gap-2 mb-5">
-                <Brain className="h-4 w-4 text-violet-400" />
+                <span className="font-mono text-xs text-violet-400">◎</span>
                 <h3 className="text-sm font-semibold text-zinc-200">Painel de Inteligência</h3>
                 <span className="text-[9px] text-zinc-600 ml-auto">6 frameworks · {posts.length} posts</span>
             </div>
@@ -213,7 +210,7 @@ export function IntelligencePanel({ posts, isMeta = false }: IntelligencePanelPr
 
                 {/* 1. Performance de Valor (Hormozi) */}
                 <div className="p-3 rounded-xl border border-white/[0.04] bg-zinc-800/20">
-                    <CategoryHeader icon={DollarSign} title="Performance de Valor" expert="Hormozi" color="#10b981" tip="Equação de Valor de Alex Hormozi: Valor = (Resultado × Probabilidade) ÷ (Tempo × Esforço). Mede se seu conteúdo entrega valor percebido alto com eficiência." />
+                    <CategoryHeader glyph="◎" title="Performance de Valor" expert="Hormozi" color="#10b981" tip="Equação de Valor de Alex Hormozi: Valor = (Resultado × Probabilidade) ÷ (Tempo × Esforço). Mede se seu conteúdo entrega valor percebido alto com eficiência." />
                     <MetricItem label="Content ROI Score" value={analysis.contentROI.score} sub={`Melhor ROI: ${analysis.contentROI.bestROIType}`} color="#10b981"
                         tip="Mede o retorno de engajamento vs esforço estimado de produção. Image=1, Carrossel=2, Video=3. Score alto = muito engajamento com pouco esforço. Para melhorar: foque no tipo com maior ROI." />
                     <MetricItem label="Buying Intent" value={`${analysis.buyingIntent.intentCount}`} sub={`${analysis.buyingIntent.intentRate}% dos comentários`}
@@ -234,7 +231,7 @@ export function IntelligencePanel({ posts, isMeta = false }: IntelligencePanelPr
 
                 {/* 2. Influência & Persuasão (Cialdini) */}
                 <div className="p-3 rounded-xl border border-white/[0.04] bg-zinc-800/20">
-                    <CategoryHeader icon={Users} title="Influência & Persuasão" expert="Cialdini" color="#3b82f6" tip="6 Princípios de Robert Cialdini: Reciprocidade, Compromisso, Prova Social, Autoridade, Escassez e Afinidade. Mede como seu conteúdo aplica técnicas de influência." />
+                    <CategoryHeader glyph="◎" title="Influência & Persuasão" expert="Cialdini" color="#3b82f6" tip="6 Princípios de Robert Cialdini: Reciprocidade, Compromisso, Prova Social, Autoridade, Escassez e Afinidade. Mede como seu conteúdo aplica técnicas de influência." />
                     <MetricItem
                         label="Reciprocidade"
                         value={`${analysis.reciprocity.ratio}%`}
@@ -254,7 +251,7 @@ export function IntelligencePanel({ posts, isMeta = false }: IntelligencePanelPr
 
                 {/* 3. Hook & Retenção (Nir Eyal) */}
                 <div className="p-3 rounded-xl border border-white/[0.04] bg-zinc-800/20">
-                    <CategoryHeader icon={RefreshCw} title="Hook & Retenção" expert="Nir Eyal" color="#06b6d4" tip="Modelo Hook de Nir Eyal: Gatilho → Ação → Recompensa Variável → Investimento. Mede se seu público está 'viciado' no seu conteúdo e se volta regularmente." />
+                    <CategoryHeader glyph="↻" title="Hook & Retenção" expert="Nir Eyal" color="#06b6d4" tip="Modelo Hook de Nir Eyal: Gatilho → Ação → Recompensa Variável → Investimento. Mede se seu público está 'viciado' no seu conteúdo e se volta regularmente." />
                     <MetricItem
                         label="Recompensa Variável"
                         value={analysis.variableReward.score}
@@ -277,7 +274,7 @@ export function IntelligencePanel({ posts, isMeta = false }: IntelligencePanelPr
 
                 {/* 4. Awareness & Copy (Schwartz) */}
                 <div className="p-3 rounded-xl border border-white/[0.04] bg-zinc-800/20">
-                    <CategoryHeader icon={Sparkles} title="Awareness & Copy" expert="Schwartz" color="#f59e0b" tip="5 Níveis de Consciência de Eugene Schwartz: do desconhecido ao mais consciente. Analisa a qualidade das suas legendas e hooks para capturar atenção em cada nível." />
+                    <CategoryHeader glyph="◎" title="Awareness & Copy" expert="Schwartz" color="#f59e0b" tip="5 Níveis de Consciência de Eugene Schwartz: do desconhecido ao mais consciente. Analisa a qualidade das suas legendas e hooks para capturar atenção em cada nível." />
                     <MetricItem
                         label="Hook Quality"
                         value={analysis.hookQuality.score}
@@ -300,7 +297,7 @@ export function IntelligencePanel({ posts, isMeta = false }: IntelligencePanelPr
 
                 {/* 5. Marca & Identidade (Lindstrom) */}
                 <div className="p-3 rounded-xl border border-white/[0.04] bg-zinc-800/20">
-                    <CategoryHeader icon={Shield} title="Marca & Identidade" expert="Lindstrom" color="#8b5cf6" tip="SMASH de Martin Lindstrom: marcas fortes ativam os 5 sentidos e têm identidade consistente. Mede a força da sua marca independente de hashtags e tendências." />
+                    <CategoryHeader glyph="◎" title="Marca & Identidade" expert="Lindstrom" color="#8b5cf6" tip="SMASH de Martin Lindstrom: marcas fortes ativam os 5 sentidos e têm identidade consistente. Mede a força da sua marca independente de hashtags e tendências." />
                     <MetricItem
                         label="Brand Equity"
                         value={`${analysis.brandEquity.ratio}x`}
@@ -323,7 +320,7 @@ export function IntelligencePanel({ posts, isMeta = false }: IntelligencePanelPr
 
                 {/* 6. Momentum & Crescimento (Brunson) */}
                 <div className="p-3 rounded-xl border border-white/[0.04] bg-zinc-800/20">
-                    <CategoryHeader icon={TrendingUp} title="Momentum & Crescimento" expert="Brunson" color="#ef4444" tip="Hook-Story-Offer de Russell Brunson + Escada de Valor. Mede se seu conteúdo tem momentum (frequência + qualidade) e se a tendência é de crescimento." />
+                    <CategoryHeader glyph="↗" title="Momentum & Crescimento" expert="Brunson" color="#ef4444" tip="Hook-Story-Offer de Russell Brunson + Escada de Valor. Mede se seu conteúdo tem momentum (frequência + qualidade) e se a tendência é de crescimento." />
                     <MetricItem
                         label="Content Velocity"
                         value={analysis.velocity.score}
