@@ -640,6 +640,34 @@ export function AdsIntelligencePanelV2({ token, accountId, daily, campaigns }: P
         }
     }, [token, accountId, intelligenceMetrics, fetchIntelligence]);
 
+    // ── Compute actionable insights for summary HUD ──────────────────────────
+    const actionableInsights = useMemo((): ActionableInsight[] => {
+        if (!daily || daily.length < 4) return [];
+        const engine = new InsightEngine(CONFIG_CONSERVATIVE);
+        const window = daily.slice(-90);
+        const kpiIds: (keyof typeof window[0])[] = ['ctr', 'roas', 'cpc', 'spend', 'conversions'];
+        for (const kpiId of kpiIds) {
+            const series = window.map(d => (d[kpiId] as number) ?? 0);
+            const madPoint = kpiPointFromMAD(String(kpiId), series);
+            if (madPoint) engine.processPoint(madPoint, 'ANOMALY');
+            if (series.length >= 14) {
+                const lastValue = series[series.length - 1];
+                const history = series.slice(0, -1);
+                const fcPoint = kpiPointFromForecast(String(kpiId), history, lastValue);
+                if (fcPoint) engine.processPoint(fcPoint, 'FORECAST_MISS');
+                const cusumPoint = kpiPointFromSTLCUSUM(String(kpiId), series, 7);
+                if (cusumPoint) engine.processPoint(cusumPoint, 'ANOMALY');
+            }
+        }
+        return engine.getTopN(20).filter(
+            (i): i is ActionableInsight => 'problem' in i && 'urgency' in i
+        );
+    }, [daily]);
+
+    const fatigueCount    = actionableInsights.filter(i => i.type === 'CREATIVE_FATIGUE').length;
+    const saturationCount = intelligenceMetrics?.saturationIndexes
+        ?.filter(s => s.level === 'saturated').length ?? 0;
+
     if (isLoadingIntelligence) {
         return (
             <div className="space-y-10">
@@ -712,34 +740,6 @@ export function AdsIntelligencePanelV2({ token, accountId, daily, campaigns }: P
             </div>
         );
     }
-
-    // ── Compute actionable insights for summary HUD ──────────────────────────
-    const actionableInsights = useMemo((): ActionableInsight[] => {
-        if (!daily || daily.length < 4) return [];
-        const engine = new InsightEngine(CONFIG_CONSERVATIVE);
-        const window = daily.slice(-90);
-        const kpiIds: (keyof typeof window[0])[] = ['ctr', 'roas', 'cpc', 'spend', 'conversions'];
-        for (const kpiId of kpiIds) {
-            const series = window.map(d => (d[kpiId] as number) ?? 0);
-            const madPoint = kpiPointFromMAD(String(kpiId), series);
-            if (madPoint) engine.processPoint(madPoint, 'ANOMALY');
-            if (series.length >= 14) {
-                const lastValue = series[series.length - 1];
-                const history = series.slice(0, -1);
-                const fcPoint = kpiPointFromForecast(String(kpiId), history, lastValue);
-                if (fcPoint) engine.processPoint(fcPoint, 'FORECAST_MISS');
-                const cusumPoint = kpiPointFromSTLCUSUM(String(kpiId), series, 7);
-                if (cusumPoint) engine.processPoint(cusumPoint, 'ANOMALY');
-            }
-        }
-        return engine.getTopN(20).filter(
-            (i): i is ActionableInsight => 'problem' in i && 'urgency' in i
-        );
-    }, [daily]);
-
-    const fatigueCount    = actionableInsights.filter(i => i.type === 'CREATIVE_FATIGUE').length;
-    const saturationCount = intelligenceMetrics.saturationIndexes
-        ?.filter(s => s.level === 'saturated').length ?? 0;
 
     return (
         <div className="space-y-12 pb-20">
