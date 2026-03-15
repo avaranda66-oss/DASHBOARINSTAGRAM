@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 /* [ZERO_LUCIDE_PURGE] */
 
 import { Button } from '@/design-system/atoms/Button';
@@ -14,7 +14,16 @@ import type {
     AccountHealthScore,
 } from '@/types/ads';
 import { cn } from '@/design-system/utils/cn';
+import {
+    InsightEngine,
+    CONFIG_CONSERVATIVE,
+    kpiPointFromMAD,
+    kpiPointFromForecast,
+    kpiPointFromSTLCUSUM,
+} from '@/lib/utils/insight-engine';
+import type { ActionableInsight } from '@/lib/utils/insight-engine';
 import { AdsInsightsFeed } from './ads-insights-feed';
+import { AdsIntelligenceSummary } from './ads-intelligence-summary';
 import { AdsAnomalyMultivariate } from './ads-anomaly-multivariate';
 import { AdsAttributionSection } from './ads-attribution-section';
 import { AdsVideoMetricsSection } from './ads-video-metrics-section';
@@ -657,8 +666,43 @@ export function AdsIntelligencePanelV2({ token, accountId, daily, campaigns }: P
         );
     }
 
+    // ── Compute actionable insights for summary HUD ──────────────────────────
+    const actionableInsights = useMemo((): ActionableInsight[] => {
+        if (!daily || daily.length < 4) return [];
+        const engine = new InsightEngine(CONFIG_CONSERVATIVE);
+        const window = daily.slice(-90);
+        const kpiIds: (keyof typeof window[0])[] = ['ctr', 'roas', 'cpc', 'spend', 'conversions'];
+        for (const kpiId of kpiIds) {
+            const series = window.map(d => (d[kpiId] as number) ?? 0);
+            const madPoint = kpiPointFromMAD(String(kpiId), series);
+            if (madPoint) engine.processPoint(madPoint, 'ANOMALY');
+            if (series.length >= 14) {
+                const lastValue = series[series.length - 1];
+                const history = series.slice(0, -1);
+                const fcPoint = kpiPointFromForecast(String(kpiId), history, lastValue);
+                if (fcPoint) engine.processPoint(fcPoint, 'FORECAST_MISS');
+                const cusumPoint = kpiPointFromSTLCUSUM(String(kpiId), series, 7);
+                if (cusumPoint) engine.processPoint(cusumPoint, 'ANOMALY');
+            }
+        }
+        return engine.getTopN(20).filter(
+            (i): i is ActionableInsight => 'problem' in i && 'urgency' in i
+        );
+    }, [daily]);
+
+    const fatigueCount    = actionableInsights.filter(i => i.type === 'CREATIVE_FATIGUE').length;
+    const saturationCount = intelligenceMetrics.saturationIndexes
+        ?.filter(s => s.level === 'saturated').length ?? 0;
+
     return (
         <div className="space-y-12 pb-20">
+            {actionableInsights.length > 0 && (
+                <AdsIntelligenceSummary
+                    insights={actionableInsights}
+                    fatigueCount={fatigueCount}
+                    saturationCount={saturationCount}
+                />
+            )}
             {daily && daily.length >= 4 && <AdsInsightsFeed daily={daily} />}
             {daily && daily.length >= 7 && <AdsAnomalyMultivariate daily={daily} />}
             {campaigns && campaigns.length >= 2 && <AdsAttributionSection campaigns={campaigns} />}
