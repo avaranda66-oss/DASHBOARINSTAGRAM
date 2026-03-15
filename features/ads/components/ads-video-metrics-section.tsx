@@ -20,12 +20,21 @@ function extractVideoMetric(stats: AdActionStat[] | undefined): number {
     return parseFloat(item?.value || '0');
 }
 
+// 3s views: actions[video_view] = 3-second video views (Meta nao expoe campo dedicado no insights)
+function extract3sViews(insights: AdInsight): number {
+    if (insights.video_3_sec_watched_actions) {
+        return extractVideoMetric(insights.video_3_sec_watched_actions);
+    }
+    const fromActions = insights.actions?.filter(a => a.action_type === 'video_view');
+    return fromActions && fromActions.length > 0 ? extractVideoMetric(fromActions) : 0;
+}
+
 function hasVideoData(insights: AdInsight | undefined): boolean {
     if (!insights) return false;
     return (
         extractVideoMetric(insights.video_thruplay_watched_actions) > 0 ||
         extractVideoMetric(insights.video_p25_watched_actions) > 0 ||
-        extractVideoMetric(insights.video_3_sec_watched_actions) > 0
+        extract3sViews(insights) > 0
     );
 }
 
@@ -130,7 +139,7 @@ interface VideoFunnelCardProps {
 
 function VideoFunnelCard({ name, insights }: VideoFunnelCardProps) {
     const impressions = parseInt(insights.impressions || '0');
-    const views3s  = extractVideoMetric(insights.video_3_sec_watched_actions);
+    const views3s  = extract3sViews(insights);
     const p25      = extractVideoMetric(insights.video_p25_watched_actions);
     const p50      = extractVideoMetric(insights.video_p50_watched_actions);
     const p75      = extractVideoMetric(insights.video_p75_watched_actions);
@@ -337,7 +346,7 @@ function VideoSummaryHUD({ campaigns }: SummaryHUDProps) {
     for (const c of validCampaigns) {
         const ins = c.insights!;
         const imp = parseInt(ins.impressions || '0');
-        const v3s = extractVideoMetric(ins.video_3_sec_watched_actions);
+        const v3s = extract3sViews(ins);
         const p25 = extractVideoMetric(ins.video_p25_watched_actions);
         const thru = extractVideoMetric(ins.video_thruplay_watched_actions);
 

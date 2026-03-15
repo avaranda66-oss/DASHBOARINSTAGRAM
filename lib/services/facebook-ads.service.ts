@@ -258,12 +258,12 @@ const INSIGHTS_FIELDS = [
     'outbound_clicks', 'outbound_clicks_ctr',
     'actions', 'cost_per_action_type', 'purchase_roas',
     // Video metrics — disponíveis para campanhas VIDEO_VIEWS, OUTCOME_AWARENESS, REACH
+    // NOTA: video_3_sec e video_15_sec NÃO são campos válidos no endpoint insights.
+    // 3s views = actions com action_type=video_view (já incluso em actions acima)
     'video_avg_time_watched_actions',
-    'video_3_sec_watched_actions',   // Thumb Stop Rate = 3s / impressions
-    'video_15_sec_watched_actions',  // Hold Rate alternativo = thruplay / 3s
     'video_p25_watched_actions', 'video_p50_watched_actions',
     'video_p75_watched_actions', 'video_p95_watched_actions',
-    'video_p100_watched_actions',    // Completion Rate estrito
+    'video_p100_watched_actions',    // Completion Rate estrito (100%)
     'video_thruplay_watched_actions',
     // Ad Quality Rankings — UNKNOWN | BELOW_AVERAGE_10/20/35 | AVERAGE | ABOVE_AVERAGE
     'quality_ranking', 'engagement_rate_ranking', 'conversion_rate_ranking',
