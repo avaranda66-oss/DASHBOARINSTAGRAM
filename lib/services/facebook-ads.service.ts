@@ -793,7 +793,14 @@ export function detectABTests(
 
         const disclaimers: Record<string, string> = {
             inconclusive: 'Dados insuficientes. Aguarde mais impressões antes de tomar decisão.',
-            trending: `Tendência detectada, mas ainda não significativa. Faltam ~${Math.max(0, MIN_SAMPLE - minImpressions)} impressões por variante.`,
+            trending: (() => {
+                const faltam = Math.max(0, MIN_SAMPLE - minImpressions);
+                const totalConversions = variants.reduce((s, v) => s + (v.conversions ?? 0), 0);
+                if (faltam === 0 && totalConversions === 0) {
+                    return 'Impressões suficientes, mas sem conversões para calcular vencedor. Ative o pixel de conversão.';
+                }
+                return `Tendência detectada, mas ainda não significativa. Faltam ~${faltam} impressões por variante.`;
+            })(),
             significant: 'Resultado estatisticamente significativo com 95%+ de confiança.',
         };
 
@@ -883,9 +890,12 @@ export function computeAccountHealthScore(
 
     const level: HealthLevel = score > 80 ? 'excellent' : score > 60 ? 'good' : score > 40 ? 'attention' : 'critical';
 
+    const awarenessMode = kpi.roas === 0 && roasScore === 0;
+
     return {
         score: Math.min(100, Math.max(0, score)),
         level,
+        awarenessMode,
         subScores: {
             fatigueMean: Math.round(fatigueMean),
             roasScore: Math.round(roasScore),

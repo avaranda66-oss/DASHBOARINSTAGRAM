@@ -311,6 +311,7 @@ export interface ABTestResult {
 export interface AccountHealthScore {
     score: number; // 0-100
     level: HealthLevel;
+    awarenessMode?: boolean; // true when roas=0 (no pixel/conversions) — not a crisis
     subScores: {
         fatigueMean: number;
         roasScore: number;

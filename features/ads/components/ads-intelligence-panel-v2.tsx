@@ -123,8 +123,8 @@ function MiniSparkline({ data, color = '#3b82f6' }: { data: number[]; color?: st
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function CircularGauge({ score, level }: { score: number; level: string }) {
-    const color = healthColors[level] || '#4A4A4A';
+function CircularGauge({ score, level, awarenessMode }: { score: number; level: string; awarenessMode?: boolean }) {
+    const color = awarenessMode ? '#FBBF24' : (healthColors[level] || '#4A4A4A');
     const radius = 50;
     const circumference = 2 * Math.PI * radius;
     const progress = (score / 100) * circumference;
@@ -182,12 +182,17 @@ function CircularGauge({ score, level }: { score: number; level: string }) {
                 <span className="text-4xl font-black tracking-tighter" style={{ color }}>
                     {score}
                 </span>
-                <div 
+                <div
                     className="px-2 py-0.5 mt-1 border text-[8px] font-black uppercase tracking-[0.2em]"
                     style={{ color, borderColor: `${color}40`, backgroundColor: `${color}10` }}
                 >
-                    {level}
+                    {awarenessMode ? 'AWARENESS' : level}
                 </div>
+                {awarenessMode && (
+                    <span className="text-[7px] text-[#FBBF24] opacity-70 mt-1 text-center leading-tight px-1">
+                        Conta sem pixel ativo — score baseado em engajamento
+                    </span>
+                )}
             </div>
         </div>
     );
@@ -307,7 +312,7 @@ function AccountHealthSection({ health }: { health: AccountHealthScore }) {
                 <div className="p-10 relative z-10">
                     <div className="flex flex-col lg:flex-row items-center gap-16">
                         <div className="pt-2">
-                            <CircularGauge score={health.score} level={health.level} />
+                            <CircularGauge score={health.score} level={health.level} awarenessMode={health.awarenessMode} />
                         </div>
                         
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8 w-full border-l border-white/5 pl-12">
