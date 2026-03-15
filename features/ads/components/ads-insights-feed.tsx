@@ -175,6 +175,13 @@ function InsightRow({ insight }: { insight: Insight }) {
                     </span>
                 </div>
 
+                {/* Causal pattern badge (US-88) */}
+                {actionable.causalPattern && actionable.causalPattern !== 'UNKNOWN' && (actionable.causalConfidence ?? 0) >= 0.70 && (
+                    <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 border border-white/20 bg-white/5 text-[#8A8A8A] self-start">
+                        ◎ {actionable.causalPattern.replace(/_/g, ' ')} · {((actionable.causalConfidence ?? 0) * 100).toFixed(0)}%
+                    </span>
+                )}
+
                 {/* Problem — título principal */}
                 <p className="text-[11px] font-bold text-[#F5F5F5] leading-relaxed">
                     {actionable.problem}

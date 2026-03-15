@@ -9,6 +9,8 @@
 import { madScore, stlCusum } from './anomaly-detection';
 import { holtWintersWithPI } from './hw-optimizer';
 import { bayesianAB } from './bayesian-ab';
+import { detectCausalChain } from './causal-chain-detector';
+import type { MetricSnapshot, CausalPattern } from './causal-chain-detector';
 
 // =============================================================================
 // Tipos Públicos
@@ -73,6 +75,10 @@ export interface ActionableInsight extends Insight {
   urgency: 'critical' | 'warning' | 'info' | 'opportunity';
   /** Score composto de priorização S = I × U × P */
   priorityScore: number;
+  // US-88: causal enrichment fields (optional, backward compat)
+  causalPattern?: CausalPattern;
+  causalConfidence?: number;
+  causalSignals?: string[];
 }
 
 /** Configuração do InsightEngine */
@@ -526,6 +532,10 @@ export class InsightEngine {
   /**
    * Constrói um ActionableInsight enriquecido com Problema → Diagnóstico → Ação.
    * Pode ser chamado externamente para enriquecer insights já existentes.
+   *
+   * @param metrics - Snapshot multi-dimensional opcional (US-88). Quando fornecido
+   *   e detectCausalChain retorna confiança >= 0.70, enriquece diagnosis e action
+   *   com o padrão causal identificado.
    */
   buildActionableInsight(
     point: KpiPoint,
@@ -533,7 +543,8 @@ export class InsightEngine {
     direction: 'UP' | 'DOWN',
     z: number,
     score: number,
-    baseInsight: Insight
+    baseInsight: Insight,
+    metrics?: MetricSnapshot
   ): ActionableInsight {
     const kpiLabel = KPI_LABELS[point.kpiId] ?? point.kpiId.toUpperCase();
     const entity = point.entityId ? ` (${point.entityId})` : '';
@@ -544,7 +555,22 @@ export class InsightEngine {
     const template = this.buildTemplate(point, type, direction, z, pct, kpiLabel, entity);
     const priorityScore = this.calcPriorityScore(z, template.urgency, score);
 
-    return { ...baseInsight, ...template, priorityScore };
+    const insight: ActionableInsight = { ...baseInsight, ...template, priorityScore };
+
+    if (metrics) {
+      const causal = detectCausalChain(metrics);
+      if (causal.confidence >= 0.70) {
+        insight.diagnosis = `[${causal.pattern}] ${causal.signals.slice(0, 2).join(' · ')} — ${insight.diagnosis}`;
+        if (causal.pattern !== 'UNKNOWN') {
+          insight.action = causal.recommendation;
+        }
+        insight.causalPattern = causal.pattern;
+        insight.causalConfidence = causal.confidence;
+        insight.causalSignals = causal.signals;
+      }
+    }
+
+    return insight;
   }
 
   private buildTemplate(

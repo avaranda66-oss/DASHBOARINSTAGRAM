@@ -10,7 +10,9 @@ import {
   CONFIG_SENSITIVE,
   type Insight,
   type KpiPoint,
+  type ActionableInsight,
 } from '@/lib/utils/insight-engine';
+import type { MetricSnapshot } from '@/lib/utils/causal-chain-detector';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -356,6 +358,79 @@ describe('InsightEngine', () => {
     const insights = engine.getTopN(1);
     expect(insights[0].direction).toBe('DOWN');
     expect(insights[0].zScore).toBeCloseTo(-4, 2);
+  });
+});
+
+// ─── buildActionableInsight — causal enrichment (US-88) ──────────────────────
+
+describe('buildActionableInsight — causal enrichment (US-88)', () => {
+  const engine = new InsightEngine(CONFIG_SENSITIVE);
+  const point = makeKpiPoint({ kpiId: 'ctr', value: 1, expected: 3, stdDev: 0.5 });
+  const baseInsight: Insight = {
+    id: 'test:1',
+    key: 'ctr|global|ANOMALY|DOWN',
+    type: 'ANOMALY',
+    kpiId: 'ctr',
+    timestamp: Date.now(),
+    severity: 'WARN',
+    score: 0.5,
+    direction: 'DOWN',
+    zScore: -4,
+    message: 'Test',
+  };
+
+  // CREATIVE_FATIGUE: freq > 3.0, ctrDelta < -15, |cpmDelta| < 20 → confidence 0.80 (+0.10 with CR secondary)
+  const creativeFatigueMetrics: MetricSnapshot = {
+    ctr: 0.012, ctrDelta: -22,
+    cpm: 18, cpmDelta: 5,
+    frequency: 4.2, frequencyDelta: 40,
+    conversionRate: 0.03, conversionRateDelta: -12,
+    reach: 8000, reachDelta: -5,
+  };
+
+  // UNKNOWN: no threshold met → confidence 0.0
+  const unknownMetrics: MetricSnapshot = {
+    ctr: 0.02, ctrDelta: 1,
+    cpm: 18, cpmDelta: 1,
+    frequency: 1.0, frequencyDelta: 1,
+    conversionRate: 0.03, conversionRateDelta: 1,
+    reach: 8000, reachDelta: 1,
+  };
+
+  it('sem metrics — behavior idêntico ao atual (sem campos causal)', () => {
+    const insight = engine.buildActionableInsight(point, 'ANOMALY', 'DOWN', -4, 0.5, baseInsight);
+    expect(insight.causalPattern).toBeUndefined();
+    expect(insight.causalConfidence).toBeUndefined();
+    expect(insight.causalSignals).toBeUndefined();
+  });
+
+  it('com metrics CREATIVE_FATIGUE (confidence 0.85) — diagnosis enriquecida com [CREATIVE_FATIGUE]', () => {
+    const insight = engine.buildActionableInsight(
+      point, 'ANOMALY', 'DOWN', -4, 0.5, baseInsight, creativeFatigueMetrics
+    ) as ActionableInsight;
+    expect(insight.diagnosis).toContain('[CREATIVE_FATIGUE]');
+    expect(insight.causalPattern).toBe('CREATIVE_FATIGUE');
+    expect(insight.causalConfidence).toBeGreaterThanOrEqual(0.70);
+    expect(Array.isArray(insight.causalSignals)).toBe(true);
+    expect(insight.action).toBeTruthy();
+  });
+
+  it('com metrics confidence < 0.70 (UNKNOWN, 0.0) — diagnosis NÃO alterada', () => {
+    const original = engine.buildActionableInsight(point, 'ANOMALY', 'DOWN', -4, 0.5, baseInsight);
+    const enriched = engine.buildActionableInsight(
+      point, 'ANOMALY', 'DOWN', -4, 0.5, baseInsight, unknownMetrics
+    );
+    expect(enriched.diagnosis).toBe(original.diagnosis);
+    expect(enriched.causalPattern).toBeUndefined();
+    expect(enriched.causalConfidence).toBeUndefined();
+  });
+
+  it('com metrics UNKNOWN — diagnosis NÃO alterada e causalPattern ausente', () => {
+    const insight = engine.buildActionableInsight(
+      point, 'ANOMALY', 'DOWN', -4, 0.5, baseInsight, unknownMetrics
+    );
+    expect(insight.causalPattern).toBeUndefined();
+    expect(insight.diagnosis).not.toMatch(/^\[/);
   });
 });
 
