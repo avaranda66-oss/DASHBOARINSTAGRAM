@@ -29,6 +29,7 @@ import { AdsAttributionSection } from './ads-attribution-section';
 import { AdsVideoMetricsSection } from './ads-video-metrics-section';
 import { AdsQualityRankingsSection } from './ads-quality-rankings-section';
 import { AdsEfficiencyPanel } from './ads-efficiency-panel';
+import { AdsAiDiagnosis } from './ads-ai-diagnosis';
 import type { DailyAdInsight, AdCampaign } from '@/types/ads';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -754,6 +755,9 @@ export function AdsIntelligencePanelV2({ token, accountId, daily, campaigns }: P
                     fatigueCount={fatigueCount}
                     saturationCount={saturationCount}
                 />
+            )}
+            {campaigns && campaigns.length > 0 && (
+                <AdsAiDiagnosis campaigns={campaigns} />
             )}
             {daily && daily.length >= 4 && <AdsInsightsFeed daily={daily} />}
             {daily && daily.length >= 7 && <AdsAnomalyMultivariate daily={daily} />}
