@@ -265,6 +265,9 @@ const INSIGHTS_FIELDS = [
     'video_p75_watched_actions', 'video_p95_watched_actions',
     'video_p100_watched_actions',    // Completion Rate estrito (100%)
     'video_thruplay_watched_actions',
+    'video_play_curve_actions',
+    'video_play_retention_0_to_15s_actions',
+    'video_play_retention_20_to_60s_actions',
     // Ad Quality Rankings — UNKNOWN | BELOW_AVERAGE_10/20/35 | AVERAGE | ABOVE_AVERAGE
     'quality_ranking', 'engagement_rate_ranking', 'conversion_rate_ranking',
     'date_start', 'date_stop', 'objective', 'account_currency',

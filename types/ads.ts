@@ -54,6 +54,9 @@ export interface AdInsight {
     video_p95_watched_actions?: AdActionStat[];
     video_p100_watched_actions?: AdActionStat[];    // completion estrito (100% da duração)
     video_thruplay_watched_actions?: AdActionStat[];
+    video_play_curve_actions?: AdActionStat[];
+    video_play_retention_0_to_15s_actions?: AdActionStat[];
+    video_play_retention_20_to_60s_actions?: AdActionStat[];
     // Ad quality rankings: UNKNOWN | BELOW_AVERAGE_10 | BELOW_AVERAGE_20 | BELOW_AVERAGE_35 | AVERAGE | ABOVE_AVERAGE
     quality_ranking?: string;
     engagement_rate_ranking?: string;

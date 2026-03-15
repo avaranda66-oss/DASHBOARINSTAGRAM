@@ -2,6 +2,8 @@
 
 import type { AdCampaign, AdInsight, AdActionStat } from '@/types/ads';
 import { cn } from '@/design-system/utils/cn';
+import { AdsAwarenessScore } from './ads-awareness-score';
+import { AdsRetentionCurve } from './ads-retention-curve';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -60,13 +62,56 @@ function calcCompletionRate(views3s: number, p100: number): number {
 }
 
 /**
- * Fatigue Score baseado na fórmula Madgicx (pesquisa Perplexity Prompt 3):
- * Score = (currentCtr / peakCtr) × (1 / frequency) × (14 / daysActive)
- * > 0.8: saudável | 0.6–0.8: monitorar | < 0.6: provável fadiga
+ * Fatigue Score v2 — modelo ponderado multi-sinal
+ * F = 0.40 * ctrDecay + 0.30 * cpaDrift + 0.20 * freqPenalty + 0.10 * qrPenalty
+ * F < 0.2: HEALTHY | 0.2–0.5: MONITOR | >= 0.5: FATIGUED
+ * Se cpa0 não disponível, o peso de cpaDrift (0.30) migra para ctrDecay (total 0.70).
  */
-function calcFatigueScore(currentCtr: number, peakCtr: number, frequency: number, daysActive: number): number {
-    if (peakCtr <= 0 || frequency <= 0 || daysActive <= 0) return 1;
-    return (currentCtr / peakCtr) * (1 / frequency) * (14 / Math.max(daysActive, 1));
+function calcFatigueScore(
+    currentCtr: number,
+    peakCtr: number,
+    frequency: number,
+    cpa0?: number,
+    cpaCurrent?: number,
+    qualityRanking?: string,
+): number {
+    const ctrDecay = peakCtr > 0 ? Math.max(0, (peakCtr - currentCtr) / peakCtr) : 0;
+
+    const cpaDrift = (cpa0 != null && cpa0 > 0 && cpaCurrent != null)
+        ? Math.min(1, Math.max(0, (cpaCurrent - cpa0) / cpa0))
+        : null;
+
+    const freqPenalty = Math.min(1, Math.max(0, (frequency - 2.0) / 3.0));
+
+    const qrPenalty =
+        qualityRanking === 'BELOW_AVERAGE_35' ? 1 :
+        qualityRanking === 'BELOW_AVERAGE_20' ? 0.7 :
+        qualityRanking === 'BELOW_AVERAGE_10' ? 0.4 : 0;
+
+    if (cpaDrift === null) {
+        return 0.70 * ctrDecay + 0.20 * freqPenalty + 0.10 * qrPenalty;
+    }
+
+    return 0.40 * ctrDecay + 0.30 * cpaDrift + 0.20 * freqPenalty + 0.10 * qrPenalty;
+}
+
+/**
+ * Estima dias até o CTR cair abaixo de 70% do valor inicial via regressão linear simples.
+ * Retorna null se a tendência for estável/melhorando, ou se a exaustão estiver a mais de 60 dias.
+ */
+function estimateDaysUntilExhaustion(ctrHistory: number[]): number | null {
+    const n = ctrHistory.length;
+    if (n < 2) return null;
+
+    const slope = (ctrHistory[n - 1] - ctrHistory[0]) / n;
+    if (slope >= 0) return null;
+
+    const currentCtr = ctrHistory[n - 1];
+    const threshold = 0.70 * ctrHistory[0];
+    if (currentCtr <= threshold) return null;
+
+    const daysLeft = Math.round((currentCtr - threshold) / Math.abs(slope));
+    return daysLeft > 60 ? null : daysLeft;
 }
 
 type BenchmarkLevel = 'weak' | 'solid' | 'strong';
@@ -162,10 +207,11 @@ function VideoFunnelCard({ name, insights }: VideoFunnelCardProps) {
     const thruplayRate = impressions > 0 ? (thruplay / impressions) * 100 : 0;
     const thruplayLevel = getThruplayLevel(thruplayRate);
 
-    // Fatigue Score (heurístico — assume CTR atual como peak sem histórico)
-    const fatigueScore = calcFatigueScore(ctr, Math.max(ctr, 1.25), frequency, 14);
-    const fatigueColor = fatigueScore >= 0.8 ? '#A3E635' : fatigueScore >= 0.6 ? '#FBBF24' : '#EF4444';
-    const fatigueLabel = fatigueScore >= 0.8 ? 'HEALTHY' : fatigueScore >= 0.6 ? 'MONITOR' : 'FATIGUED';
+    // Fatigue Score v2 (heurístico — sem histórico de CPA/QR, usa apenas CTR decay + freq)
+    const fatigueScore = calcFatigueScore(ctr, Math.max(ctr, 1.25), frequency);
+    const fatigueColor = fatigueScore < 0.2 ? '#A3E635' : fatigueScore < 0.5 ? '#FBBF24' : '#EF4444';
+    const fatigueLabel = fatigueScore < 0.2 ? 'HEALTHY' : fatigueScore < 0.5 ? 'MONITOR' : 'FATIGUED';
+    const daysLeft = estimateDaysUntilExhaustion([ctr]);
 
     // Funil de retenção: baseRef = views3s se disponível, senão impressões
     const baseRef = views3s > 0 ? views3s : impressions;
@@ -233,6 +279,14 @@ function VideoFunnelCard({ name, insights }: VideoFunnelCardProps) {
                             </span>
                         </div>
                         <span className="text-[8px] text-[#4A4A4A]">score 0–100</span>
+                        {fatigueScore >= 0.2 && daysLeft !== null && (
+                            <span
+                                className="text-[8px] font-bold mt-0.5"
+                                style={{ color: daysLeft <= 14 ? '#EF4444' : '#FBBF24' }}
+                            >
+                                ⚠ exaustão em ~{daysLeft} dias
+                            </span>
+                        )}
                     </div>
                 )}
             </div>
@@ -457,8 +511,14 @@ export function AdsVideoMetricsSection({ campaigns }: Props) {
                 <span className="h-px flex-1 bg-white/5" />
             </div>
 
+            {/* Awareness Score Composite */}
+            <AdsAwarenessScore campaigns={videoCampaigns} />
+
             {/* Summary HUD */}
             <VideoSummaryHUD campaigns={videoCampaigns} />
+
+            {/* Retention Curve */}
+            <AdsRetentionCurve campaigns={videoCampaigns} />
 
             {/* Cards grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
