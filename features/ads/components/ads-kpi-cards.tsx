@@ -74,6 +74,44 @@ export function AdsKpiCards({ kpi, delta }: Props) {
         : '#EF4444'
         : '#4A4A4A';
 
+    // ─── Frequency Badge ──────────────────────────────────────────────────────────
+
+type FrequencyLevel = 'UNDEREXPOSED' | 'OPTIMAL' | 'WARNING' | 'SATURATED';
+
+function getFrequencyLevel(freq: number): FrequencyLevel {
+    if (freq < 2.0) return 'UNDEREXPOSED';
+    if (freq <= 3.5) return 'OPTIMAL';
+    if (freq <= 5.0) return 'WARNING';
+    return 'SATURATED';
+}
+
+const FREQ_LEVEL_COLOR: Record<FrequencyLevel, string> = {
+    UNDEREXPOSED: '#6B7280',
+    OPTIMAL:      '#A3E635',
+    WARNING:      '#EAB308',
+    SATURATED:    '#EF4444',
+};
+
+const FREQ_LEVEL_DESC: Record<FrequencyLevel, string> = {
+    UNDEREXPOSED: 'Pouca exposição — amplie o alcance',
+    OPTIMAL:      'Audiência bem trabalhada',
+    WARNING:      'Risco de saturação — monitore',
+    SATURATED:    'Saturação — pause ou renove criativos',
+};
+
+function FrequencyBadge({ frequency }: { frequency: number }) {
+    const level = getFrequencyLevel(frequency);
+    const color = FREQ_LEVEL_COLOR[level];
+    return (
+        <span
+            className="inline-flex items-center px-1.5 py-0.5 rounded border font-mono text-[8px] font-black uppercase tracking-widest"
+            style={{ color, borderColor: `${color}40`, backgroundColor: `${color}10` }}
+        >
+            {level}
+        </span>
+    );
+}
+
     const cards = [
         {
             label: 'Total_Spend',
@@ -167,6 +205,34 @@ export function AdsKpiCards({ kpi, delta }: Props) {
                     </div>
                 </div>
             ))}
+
+            {/* Frequency Alert card */}
+            {kpi.avgFrequency > 0 && (() => {
+                const freqLevel = getFrequencyLevel(kpi.avgFrequency);
+                const freqColor = FREQ_LEVEL_COLOR[freqLevel];
+                return (
+                    <div className="p-5 bg-[#0A0A0A] border border-white/10 rounded-lg flex flex-col justify-between group hover:border-white/20 transition-all">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-[9px] text-[#4A4A4A] font-bold uppercase tracking-[0.2em]">Avg_Frequency</span>
+                            <span className="text-xs opacity-40 group-hover:opacity-100 transition-opacity font-mono" style={{ color: freqColor }}>
+                                {wrap('∿')}
+                            </span>
+                        </div>
+                        <div className="min-w-0 space-y-2">
+                            <div className="flex items-end gap-2">
+                                <p className="text-[1.5rem] font-bold tracking-tighter leading-none" style={{ color: freqColor }}>
+                                    {kpi.avgFrequency.toFixed(2)}x
+                                </p>
+                                <FrequencyBadge frequency={kpi.avgFrequency} />
+                            </div>
+                            <div className="h-0.5 w-8 bg-white/5 group-hover:bg-[#A3E635]/20 transition-colors" />
+                            <p className="text-[8px] uppercase tracking-[0.15em]" style={{ color: `${freqColor}90` }}>
+                                {FREQ_LEVEL_DESC[freqLevel]}
+                            </p>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* US-55 — Viral Potential Index card */}
             {viral && (
