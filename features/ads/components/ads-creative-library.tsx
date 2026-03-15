@@ -29,6 +29,200 @@ interface Props {
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'PAUSED';
 
+const MAX_COMPARE = 4;
+
+// ─── Comparison Winner Score ──────────────────────────────────────────────────
+// Weights: CTR 50% + ROAS 30% + freq_inv 20% (hook/hold não disponíveis em AdCreative)
+
+function calcWinnerScore(m: AdCreative['metrics']): number {
+    const ctrNorm  = Math.min(100, (m.ctr / 2.5) * 100);           // 2.5% = score 100
+    const roasNorm = m.roas != null ? Math.min(100, (m.roas / 4) * 100) : 50; // 4x = score 100
+    const freqNorm = Math.max(0, Math.min(100, ((3.5 - m.frequency) / 2.0) * 100));
+    return ctrNorm * 0.5 + roasNorm * 0.3 + freqNorm * 0.2;
+}
+
+// ─── Comparison Drawer ────────────────────────────────────────────────────────
+
+interface ComparisonDrawerProps {
+    items: AdCreative[];
+    currency: string;
+    onClose: () => void;
+}
+
+function ComparisonDrawer({ items, currency, onClose }: ComparisonDrawerProps) {
+    const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(v);
+
+    type MetricRow = {
+        key: string;
+        label: string;
+        values: (string | number)[];
+        rawValues: number[];
+        higherIsBetter: boolean;
+    };
+
+    const rows: MetricRow[] = [
+        {
+            key: 'ctr',
+            label: 'CTR',
+            values: items.map(i => `${i.metrics.ctr.toFixed(2)}%`),
+            rawValues: items.map(i => i.metrics.ctr),
+            higherIsBetter: true,
+        },
+        {
+            key: 'cpc',
+            label: 'CPC',
+            values: items.map(i => fmt(i.metrics.cpc)),
+            rawValues: items.map(i => i.metrics.cpc),
+            higherIsBetter: false,
+        },
+        {
+            key: 'spend',
+            label: 'SPEND',
+            values: items.map(i => fmt(i.metrics.spend)),
+            rawValues: items.map(i => i.metrics.spend),
+            higherIsBetter: false,
+        },
+        {
+            key: 'frequency',
+            label: 'FREQ',
+            values: items.map(i => `${i.metrics.frequency.toFixed(2)}x`),
+            rawValues: items.map(i => i.metrics.frequency),
+            higherIsBetter: false,
+        },
+        {
+            key: 'roas',
+            label: 'ROAS',
+            values: items.map(i => i.metrics.roas != null ? `${i.metrics.roas.toFixed(2)}x` : '—'),
+            rawValues: items.map(i => i.metrics.roas ?? -1),
+            higherIsBetter: true,
+        },
+        {
+            key: 'hook',
+            label: 'HOOK_RATE',
+            values: items.map(() => '—'),
+            rawValues: items.map(() => -1),
+            higherIsBetter: true,
+        },
+        {
+            key: 'hold',
+            label: 'HOLD_RATE',
+            values: items.map(() => '—'),
+            rawValues: items.map(() => -1),
+            higherIsBetter: true,
+        },
+    ];
+
+    const scores = items.map(i => calcWinnerScore(i.metrics));
+    const winnerIdx = scores.indexOf(Math.max(...scores));
+
+    const getBestIdx = (row: MetricRow): number => {
+        const valid = row.rawValues.map((v, i) => ({ v, i })).filter(x => x.v >= 0);
+        if (valid.length === 0) return -1;
+        return row.higherIsBetter
+            ? valid.reduce((a, b) => b.v > a.v ? b : a).i
+            : valid.reduce((a, b) => b.v < a.v ? b : a).i;
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-stretch justify-end font-mono">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+
+            {/* Drawer */}
+            <div className="relative z-10 w-full max-w-3xl bg-[#080808] border-l border-white/10 flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between flex-shrink-0">
+                    <div className="flex items-center gap-3">
+                        <span className="text-[#A3E635] text-[10px]">◫</span>
+                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-[#F5F5F5]">
+                            Creative_Comparison
+                        </span>
+                        <span className="text-[9px] text-[#4A4A4A]">[{items.length}_ITEMS]</span>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="text-[#4A4A4A] hover:text-[#F5F5F5] transition-colors text-lg font-mono leading-none"
+                        aria-label="Fechar"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                {/* Table */}
+                <div className="flex-1 overflow-auto p-6">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-white/8">
+                                <th className="pb-3 pr-4 text-[8px] text-[#4A4A4A] uppercase tracking-[0.2em] font-bold w-28">
+                                    MÉTRICA
+                                </th>
+                                {items.map(item => (
+                                    <th key={item.adId} className="pb-3 px-2 text-[8px] uppercase tracking-tight font-bold text-[#8A8A8A] max-w-[140px]">
+                                        <span className="block truncate" title={item.adName}>
+                                            {item.adName.length > 22 ? `${item.adName.slice(0, 22)}…` : item.adName}
+                                        </span>
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map(row => {
+                                const bestIdx = getBestIdx(row);
+                                return (
+                                    <tr key={row.key} className="border-b border-white/[0.04] hover:bg-white/[0.015] transition-colors">
+                                        <td className="py-3 pr-4 text-[9px] text-[#4A4A4A] uppercase tracking-[0.15em] font-bold">
+                                            {row.label}
+                                        </td>
+                                        {row.values.map((val, idx) => {
+                                            const isBest = idx === bestIdx && val !== '—';
+                                            return (
+                                                <td key={idx} className="py-3 px-2 text-[10px]">
+                                                    <span
+                                                        className={isBest ? 'font-black' : 'text-[#6A6A6A]'}
+                                                        style={isBest ? { color: '#A3E635' } : undefined}
+                                                    >
+                                                        {String(val)}
+                                                    </span>
+                                                    {isBest && (
+                                                        <span className="ml-1 text-[8px] text-[#A3E635]/50">▲</span>
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+
+                    {/* Winner */}
+                    <div className="mt-6 p-4 border border-[#A3E635]/20 bg-[#A3E635]/5 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[#A3E635] text-[9px]">◆</span>
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#A3E635]">
+                                VENCEDOR_SUGERIDO
+                            </span>
+                            <span className="text-[8px] text-[#A3E635]/40 ml-1">
+                                [CTR×50% + ROAS×30% + FREQ×20%]
+                            </span>
+                        </div>
+                        <p className="text-[11px] font-black text-[#F5F5F5] uppercase tracking-tight truncate">
+                            {items[winnerIdx]?.adName}
+                        </p>
+                        <p className="text-[8px] text-[#A3E635]/60 mt-1 uppercase tracking-widest">
+                            SCORE: {scores[winnerIdx]?.toFixed(1)} / 100
+                        </p>
+                    </div>
+
+                    <p className="mt-4 text-[8px] text-[#3A3A3A] uppercase tracking-[0.2em]">
+                        Hook Rate e Hold Rate requerem dados de vídeo — não disponíveis a nível de criativo
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(value: number, currency = 'BRL'): string {
@@ -83,10 +277,16 @@ function CreativeCard({
     creative,
     currency,
     onAnalyze,
+    selected,
+    onToggleSelect,
+    compareDisabled,
 }: {
     creative: AdCreative;
     currency: string;
     onAnalyze: () => void;
+    selected: boolean;
+    onToggleSelect: () => void;
+    compareDisabled: boolean;
 }) {
     const imageUrl = creative.creative.imageUrl || creative.creative.thumbnailUrl;
     const { ctr, cpc, spend } = creative.metrics;
@@ -113,6 +313,23 @@ function CreativeCard({
                     {statusBadge(creative.effectiveStatus)}
                     {classificationBadge(creative.classification)}
                 </div>
+
+                {/* Checkbox overlay */}
+                <button
+                    onClick={e => { e.stopPropagation(); onToggleSelect(); }}
+                    disabled={compareDisabled && !selected}
+                    title={compareDisabled && !selected ? `Máximo ${MAX_COMPARE} criativos` : selected ? 'Remover da comparação' : 'Adicionar à comparação'}
+                    className={cn(
+                        'absolute top-2 right-2 w-5 h-5 rounded border transition-all flex items-center justify-center text-[10px] font-black',
+                        selected
+                            ? 'bg-[#A3E635] border-[#A3E635] text-black'
+                            : compareDisabled
+                                ? 'bg-white/5 border-white/10 text-[#3A3A3A] cursor-not-allowed'
+                                : 'bg-black/60 border-white/20 text-transparent hover:border-[#A3E635]/60 hover:text-[#A3E635]/60'
+                    )}
+                >
+                    {selected ? '✓' : ''}
+                </button>
             </div>
 
             {/* Info */}
@@ -162,6 +379,16 @@ export function AdsCreativeLibrary({ token, accountId, campaignId }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
     const [selectedCreative, setSelectedCreative] = useState<AdCreative | null>(null);
+    const [compareIds, setCompareIds] = useState<string[]>([]);
+    const [showComparison, setShowComparison] = useState(false);
+
+    const toggleCompare = useCallback((id: string) => {
+        setCompareIds(prev =>
+            prev.includes(id)
+                ? prev.filter(x => x !== id)
+                : prev.length < MAX_COMPARE ? [...prev, id] : prev
+        );
+    }, []);
 
     const fetchCreatives = useCallback(async () => {
         setIsLoading(true);
@@ -268,6 +495,24 @@ export function AdsCreativeLibrary({ token, accountId, campaignId }: Props) {
                         />
                     </div>
 
+                    {/* Compare button */}
+                    {compareIds.length >= 2 && (
+                        <button
+                            onClick={() => setShowComparison(true)}
+                            className="h-8 px-4 rounded border border-[#A3E635]/40 bg-[#A3E635]/10 text-[#A3E635] text-[9px] font-black uppercase tracking-widest hover:bg-[#A3E635]/20 transition-all"
+                        >
+                            ◫ COMPARAR ({compareIds.length})
+                        </button>
+                    )}
+                    {compareIds.length > 0 && (
+                        <button
+                            onClick={() => setCompareIds([])}
+                            className="h-8 px-3 rounded border border-white/10 text-[#4A4A4A] text-[9px] font-bold uppercase tracking-widest hover:text-[#F5F5F5] transition-all"
+                        >
+                            ✕ LIMPAR
+                        </button>
+                    )}
+
                     {/* Status Filter */}
                     <div className="flex border border-white/10 rounded overflow-hidden">
                         {(['ALL', 'ACTIVE', 'PAUSED'] as StatusFilter[]).map(s => (
@@ -306,6 +551,9 @@ export function AdsCreativeLibrary({ token, accountId, campaignId }: Props) {
                             creative={c}
                             currency="BRL"
                             onAnalyze={() => setSelectedCreative(c)}
+                            selected={compareIds.includes(c.adId)}
+                            onToggleSelect={() => toggleCompare(c.adId)}
+                            compareDisabled={compareIds.length >= MAX_COMPARE}
                         />
                     ))}
                 </div>
@@ -319,6 +567,18 @@ export function AdsCreativeLibrary({ token, accountId, campaignId }: Props) {
                     onClose={() => setSelectedCreative(null)}
                 />
             )}
+
+            {/* ─── Comparison Drawer ───────────────────────────────────────── */}
+            {showComparison && compareIds.length >= 2 && (() => {
+                const compareItems = creatives.filter(c => compareIds.includes(c.adId));
+                return (
+                    <ComparisonDrawer
+                        items={compareItems}
+                        currency="BRL"
+                        onClose={() => setShowComparison(false)}
+                    />
+                );
+            })()}
         </div>
     );
 }
