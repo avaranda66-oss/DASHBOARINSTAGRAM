@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '4mb',
     },
   },
+  serverExternalPackages: ['puppeteer-core'],
 };
 
 export default nextConfig;

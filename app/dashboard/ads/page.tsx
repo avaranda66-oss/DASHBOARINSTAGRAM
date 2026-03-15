@@ -81,6 +81,7 @@ export default function AdsDashboardPage() {
     const [customUntil, setCustomUntil] = useState('');
     const [isCustomRangeActive, setIsCustomRangeActive] = useState(false);
     const [selectedCampaignFilter, setSelectedCampaignFilter] = useState<string>('all');
+    const [exportingPdf, setExportingPdf] = useState(false);
 
     useEffect(() => {
         if (!accountStore.isLoaded) accountStore.loadAccounts();
@@ -269,30 +270,36 @@ export default function AdsDashboardPage() {
 
     const currency = account?.currency || kpiSummary?.currency || 'BRL';
 
-    // US-59 — PDF Report Generator
+    // US-59b — PDF Real via Puppeteer
     const handleExportPDF = useCallback(async () => {
-        if (!filteredKpiSummary) return;
-        const periodLabel = filters.customRange
-            ? `${filters.customRange.since} → ${filters.customRange.until}`
-            : DATE_PRESETS.find(p => p.value === filters.datePreset)?.label ?? filters.datePreset;
-        const res = await fetch('/api/ads-report', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                accountName,
+        if (!adsToken || !adsAccountId) return;
+        setExportingPdf(true);
+        try {
+            const params = new URLSearchParams({
+                token: adsToken,
                 accountId: adsAccountId,
-                period: periodLabel,
-                kpiSummary: filteredKpiSummary,
-                campaigns: filteredCampaigns,
-                dailyInsights,
-                currency,
-            }),
-        });
-        if (!res.ok) { toast.error('Erro ao gerar relatório'); return; }
-        const html = await res.text();
-        const win = window.open('', '_blank');
-        if (win) { win.document.open(); win.document.write(html); win.document.close(); } // eslint-disable-line deprecation/deprecation
-    }, [filteredKpiSummary, filters, accountName, adsAccountId, filteredCampaigns, dailyInsights, currency]);
+                datePreset: filters.datePreset,
+                accountName,
+            });
+            const res = await fetch(`/api/ads-report/pdf?${params}`);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ error: 'Erro ao gerar PDF' }));
+                throw new Error(err.error || `HTTP ${res.status}`);
+            }
+            const blob = await res.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `ads-report-${filters.datePreset}-${Date.now()}.pdf`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+            toast.success('PDF exportado com sucesso');
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Erro ao exportar PDF';
+            toast.error(message);
+        } finally {
+            setExportingPdf(false);
+        }
+    }, [adsToken, adsAccountId, filters.datePreset, accountName]);
 
     const dataFreshness = useMemo(() => {
         if (!lastFetchedAt) return null;
@@ -412,7 +419,13 @@ export default function AdsDashboardPage() {
                     )}
                     <Button onClick={() => handleRefresh(true)} isLoading={isLoading} size="sm" variant="subtle" className="font-mono tracking-widest text-[9px]">REFRESH_SYNC</Button>
                     {filteredKpiSummary && (
-                        <Button onClick={handleExportPDF} size="sm" variant="outline" className="font-mono tracking-widest text-[9px]">↓ PDF</Button>
+                        <button
+                            onClick={handleExportPDF}
+                            disabled={exportingPdf}
+                            className="px-3 py-1.5 rounded font-mono text-[9px] uppercase tracking-widest border border-white/10 text-[#4A4A4A] hover:border-[#A3E635] hover:text-[#A3E635] transition-all disabled:opacity-40"
+                        >
+                            {exportingPdf ? '◎ GERANDO...' : '◈ EXPORTAR_PDF'}
+                        </button>
                     )}
                 </div>
             </motion.div>
