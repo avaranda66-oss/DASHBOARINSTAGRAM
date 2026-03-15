@@ -61,6 +61,20 @@ export interface Insight {
   message: string;
 }
 
+/** Insight enriquecido com diagnóstico acionável (Problema → Diagnóstico → Ação) */
+export interface ActionableInsight extends Insight {
+  /** O que aconteceu — métrica + valor + janela + desvio */
+  problem: string;
+  /** Por que aconteceu — padrão multi-métrico identificado */
+  diagnosis: string;
+  /** O que fazer — 1-2 ações concretas */
+  action: string;
+  /** Nível de urgência */
+  urgency: 'critical' | 'warning' | 'info' | 'opportunity';
+  /** Score composto de priorização S = I × U × P */
+  priorityScore: number;
+}
+
 /** Configuração do InsightEngine */
 export interface EngineConfig {
   /** Z-score mínimo para emitir insight (2.0 ≈ 95%; 2.6 ≈ 99%) */
@@ -239,6 +253,23 @@ export function kpiPointFromSTLCUSUM(
 }
 
 // =============================================================================
+// KPI Labels — mapeamento para nomes legíveis
+// =============================================================================
+
+const KPI_LABELS: Record<string, string> = {
+  ctr:             'CTR',
+  roas:            'ROAS',
+  cpm:             'CPM',
+  cpc:             'CPC',
+  conversion_rate: 'Taxa de Conversão',
+  spend:           'Gasto',
+  impressions:     'Impressões',
+  frequency:       'Frequência',
+  reach:           'Alcance',
+  clicks:          'Cliques',
+};
+
+// =============================================================================
 // InsightQueue — Binary Max-Heap
 // =============================================================================
 
@@ -388,7 +419,7 @@ export class InsightEngine {
       if (withinCooldown && scoreNotDoubled) return;
     }
 
-    const insight: Insight = {
+    const baseInsight: Insight = {
       id: `${key}:${ts}`,
       key,
       type,
@@ -402,7 +433,7 @@ export class InsightEngine {
       message: this.buildMessage(point, z, type, direction),
     };
 
-    this.queue.push(insight);
+    this.queue.push(this.buildActionableInsight(point, type, direction, z, score, baseInsight));
     this.dedupeMap.set(key, { lastShownAt: ts, lastScore: score });
   }
 
@@ -490,6 +521,120 @@ export class InsightEngine {
           `(z=${z.toFixed(2)}, ${Math.abs(((p.value - p.expected) / p.expected) * 100).toFixed(1)}% abaixo do esperado).`
         );
     }
+  }
+
+  /**
+   * Constrói um ActionableInsight enriquecido com Problema → Diagnóstico → Ação.
+   * Pode ser chamado externamente para enriquecer insights já existentes.
+   */
+  buildActionableInsight(
+    point: KpiPoint,
+    type: InsightType,
+    direction: 'UP' | 'DOWN',
+    z: number,
+    score: number,
+    baseInsight: Insight
+  ): ActionableInsight {
+    const kpiLabel = KPI_LABELS[point.kpiId] ?? point.kpiId.toUpperCase();
+    const entity = point.entityId ? ` (${point.entityId})` : '';
+    const pct = point.expected !== 0
+      ? ((point.value - point.expected) / Math.abs(point.expected)) * 100
+      : 0;
+
+    const template = this.buildTemplate(point, type, direction, z, pct, kpiLabel, entity);
+    const priorityScore = this.calcPriorityScore(z, template.urgency, score);
+
+    return { ...baseInsight, ...template, priorityScore };
+  }
+
+  private buildTemplate(
+    point: KpiPoint,
+    type: InsightType,
+    direction: 'UP' | 'DOWN',
+    z: number,
+    pct: number,
+    kpiLabel: string,
+    entity: string
+  ): { problem: string; diagnosis: string; action: string; urgency: ActionableInsight['urgency'] } {
+    const zAbs = Math.abs(z);
+
+    if (type === 'ANOMALY' && direction === 'DOWN' && point.kpiId === 'ctr') {
+      return {
+        problem:   `${kpiLabel} caiu ${Math.abs(pct).toFixed(0)}% abaixo do normal${entity} nos últimos dias`,
+        diagnosis: 'Padrão típico de fadiga criativa: CTR em queda com frequência alta e CPM estável',
+        action:    'Pause este criativo e lance uma variação mantendo o mesmo ângulo de oferta, mas com novo hook visual. Verifique a frequência: se >3.5, a audiência já saturou.',
+        urgency:   zAbs > 3 ? 'critical' : 'warning',
+      };
+    }
+
+    if (type === 'ANOMALY' && direction === 'DOWN' && point.kpiId === 'roas') {
+      return {
+        problem:   `ROAS${entity} caiu para ${point.value.toFixed(2)}, ${Math.abs(pct).toFixed(0)}% abaixo do esperado (${point.expected.toFixed(2)})`,
+        diagnosis: 'Pode ser fadiga criativa, saturação de audiência ou leilão mais caro. Verifique CTR e frequência para confirmar.',
+        action:    'Pause adsets com CPA acima do break-even. Se ROAS caiu sem mudança de criativo, expanda a audiência. Monitore CTR e CPM para identificar a causa raiz.',
+        urgency:   zAbs > 2.5 ? 'critical' : 'warning',
+      };
+    }
+
+    if (type === 'ANOMALY' && direction === 'UP' && point.kpiId === 'cpm') {
+      return {
+        problem:   `CPM${entity} subiu ${pct.toFixed(0)}% acima do normal, encarecendo o inventário`,
+        diagnosis: 'Leilão mais caro — pode ser aumento de concorrência, fim de período ou público saturado',
+        action:    'Revise placements (exclua Audience Network se CPM estiver alto). Considere expandir a audiência ou redistribuir budget para campanhas com CPM mais baixo.',
+        urgency:   'warning',
+      };
+    }
+
+    if (type === 'ANOMALY' && direction === 'UP' && point.kpiId === 'ctr') {
+      return {
+        problem:   `CTR${entity} subiu ${pct.toFixed(0)}% acima do normal — criativo com performance acima da média`,
+        diagnosis: 'Sinal de oportunidade de escala: este criativo ou audiência está performando acima do esperado',
+        action:    'Aumente o orçamento desta campanha/adset em 20-30% para aproveitar o momentum. Documente o ângulo criativo para futuras referências.',
+        urgency:   'opportunity',
+      };
+    }
+
+    if (type === 'FORECAST_MISS' && direction === 'DOWN') {
+      return {
+        problem:   `${kpiLabel}${entity} ficou ${Math.abs(pct).toFixed(0)}% abaixo da previsão Holt-Winters`,
+        diagnosis: 'Tendência de queda acelerou além do modelo de previsão — deterioração mais rápida que o esperado',
+        action:    'Monitore as próximas 24h. Se a queda persistir por 3+ dias, acione regra de pausa automática e considere refresh de criativo.',
+        urgency:   'warning',
+      };
+    }
+
+    if (type === 'AB_WINNER_DETECTED') {
+      return {
+        problem:   `Teste A/B${entity} tem vencedor detectado em ${kpiLabel} com alta confiança estatística`,
+        diagnosis: 'Variante B supera A com significância bayesiana — diferença consistente confirmada',
+        action:    'Pause a variante perdedora. Escale a vencedora. Documente o elemento vencedor (hook, visual, copy) para informar próximos criativos.',
+        urgency:   'opportunity',
+      };
+    }
+
+    if (type === 'CREATIVE_FATIGUE') {
+      return {
+        problem:   `Fadiga criativa${entity}: ${kpiLabel} caiu ${Math.abs(pct).toFixed(0)}% — queda anômala e consistente`,
+        diagnosis: `Padrão z=${zAbs.toFixed(1)}σ confirma declínio não-aleatório: o criativo passou do plateau para a fase de queda`,
+        action:    'Mantenha o ângulo vencedor mas renove o hook e o thumbnail. Teste nova variação em 48h. Sugestões de hooks: prova social em 3s, oferta limitada, antes/depois.',
+        urgency:   zAbs > 2.5 ? 'critical' : 'warning',
+      };
+    }
+
+    // Default
+    return {
+      problem:   `${kpiLabel}${entity} está ${Math.abs(pct).toFixed(0)}% ${direction === 'DOWN' ? 'abaixo' : 'acima'} do esperado`,
+      diagnosis: `Desvio estatístico de ${zAbs.toFixed(1)}σ detectado — fora da banda normal`,
+      action:    'Monitore as próximas 24h. Se persistir, investigue mudanças recentes em configurações de campanha.',
+      urgency:   zAbs > 3 ? 'warning' : 'info',
+    };
+  }
+
+  private calcPriorityScore(z: number, urgency: ActionableInsight['urgency'], score: number): number {
+    const impact = Math.min(score, 1);
+    const urgencyWeight = urgency === 'critical' ? 1.0 : urgency === 'warning' ? 0.7 : urgency === 'opportunity' ? 0.8 : 0.3;
+    const confidence = Math.min(Math.abs(z) / 4, 1);
+    return impact * urgencyWeight * confidence;
   }
 }
 

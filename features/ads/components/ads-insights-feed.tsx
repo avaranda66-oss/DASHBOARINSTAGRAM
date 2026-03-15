@@ -19,7 +19,7 @@ import {
     kpiPointFromForecast,
     kpiPointFromSTLCUSUM,
 } from '@/lib/utils/insight-engine';
-import type { Insight, InsightSeverity } from '@/lib/utils/insight-engine';
+import type { Insight, InsightSeverity, ActionableInsight } from '@/lib/utils/insight-engine';
 import type { DailyAdInsight } from '@/types/ads';
 import { cn } from '@/design-system/utils/cn';
 
@@ -71,6 +71,31 @@ const TYPE_ICON: Record<string, string> = {
     CREATIVE_FATIGUE:   '◎',
 };
 
+const URGENCY_COLOR: Record<ActionableInsight['urgency'], string> = {
+    critical:    '#EF4444',
+    warning:     '#FBBF24',
+    opportunity: '#A3E635',
+    info:        'rgba(255,255,255,0.3)',
+};
+
+const URGENCY_BG: Record<ActionableInsight['urgency'], string> = {
+    critical:    'bg-[#EF4444]/10 border-[#EF4444]/20',
+    warning:     'bg-[#FBBF24]/10 border-[#FBBF24]/20',
+    opportunity: 'bg-[#A3E635]/10 border-[#A3E635]/20',
+    info:        'bg-white/3 border-white/5',
+};
+
+const URGENCY_TAG: Record<ActionableInsight['urgency'], string> = {
+    critical:    'bg-[#EF4444]/15 text-[#EF4444] border-[#EF4444]/30',
+    warning:     'bg-[#FBBF24]/15 text-[#FBBF24] border-[#FBBF24]/30',
+    opportunity: 'bg-[#A3E635]/15 text-[#A3E635] border-[#A3E635]/30',
+    info:        'bg-white/5 text-white/30 border-white/10',
+};
+
+function isActionable(insight: Insight): insight is ActionableInsight {
+    return 'problem' in insight && 'diagnosis' in insight && 'action' in insight;
+}
+
 const wrap = (g: string) => <span className="font-mono text-[10px]">{g}</span>;
 
 // ─── Hook: compute insights ───────────────────────────────────────────────────
@@ -121,10 +146,69 @@ function useInsights(daily: DailyAdInsight[], maxInsights: number): Insight[] {
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function InsightRow({ insight }: { insight: Insight }) {
-    const color = SEVERITY_COLOR[insight.severity];
-    const kpiMeta = KPI_MAP.find(k => k.id === insight.kpiId);
-    const typeIcon = TYPE_ICON[insight.type] ?? '◆';
+    const actionable = isActionable(insight) ? insight : null;
+    const kpiMeta   = KPI_MAP.find(k => k.id === insight.kpiId);
+    const typeIcon  = TYPE_ICON[insight.type] ?? '◆';
 
+    // ── Actionable layout ────────────────────────────────────────────────────
+    if (actionable) {
+        const color = URGENCY_COLOR[actionable.urgency];
+        return (
+            <div className={cn(
+                'flex flex-col gap-3 p-4 rounded-lg border transition-all hover:border-white/15 font-mono',
+                URGENCY_BG[actionable.urgency],
+            )}>
+                {/* Header: icon + kpi label + urgency badge + type */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span style={{ color }} className="text-[13px] leading-none">{typeIcon}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest" style={{ color }}>
+                        {kpiMeta?.label ?? insight.kpiId}
+                    </span>
+                    <span className={cn(
+                        'text-[8px] px-1.5 py-0.5 rounded border uppercase font-black tracking-widest',
+                        URGENCY_TAG[actionable.urgency],
+                    )}>
+                        {actionable.urgency.toUpperCase()}
+                    </span>
+                    <span className="text-[8px] text-[#4A4A4A] uppercase tracking-wider ml-auto">
+                        {insight.type.replace(/_/g, ' ')}
+                    </span>
+                </div>
+
+                {/* Problem — título principal */}
+                <p className="text-[11px] font-bold text-[#F5F5F5] leading-relaxed">
+                    {actionable.problem}
+                </p>
+
+                {/* Diagnosis */}
+                <p className="text-[9px] text-[#8A8A8A] leading-relaxed">
+                    <span className="text-[#4A4A4A] uppercase tracking-widest mr-1">DIAGNÓSTICO:</span>
+                    {actionable.diagnosis}
+                </p>
+
+                {/* Action — borda esquerda colorida */}
+                <div className="pl-3 border-l-2" style={{ borderColor: color }}>
+                    <span className="text-[8px] uppercase tracking-widest font-black mr-1" style={{ color }}>
+                        AÇÃO:
+                    </span>
+                    <span className="text-[9px] text-[#D4D4D4] leading-relaxed">
+                        {actionable.action}
+                    </span>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center gap-4 text-[8px] text-[#4A4A4A] uppercase tracking-widest">
+                    <span>Z={insight.zScore.toFixed(2)}</span>
+                    <span>SCORE={insight.score.toFixed(3)}</span>
+                    <span>PRIORITY={actionable.priorityScore.toFixed(3)}</span>
+                    {insight.entityId && <span>ENTITY: {insight.entityId}</span>}
+                </div>
+            </div>
+        );
+    }
+
+    // ── Fallback: layout original (backward compat) ───────────────────────────
+    const color = SEVERITY_COLOR[insight.severity];
     return (
         <div className={cn(
             'flex items-start gap-4 p-4 rounded-lg border transition-all hover:border-white/15 font-mono',
@@ -133,12 +217,10 @@ function InsightRow({ insight }: { insight: Insight }) {
             {/* Icon + Severity */}
             <div className="flex flex-col items-center gap-1.5 pt-0.5 shrink-0">
                 <span style={{ color }} className="text-[13px] leading-none">{typeIcon}</span>
-                <span
-                    className={cn(
-                        'text-[7px] px-1.5 py-0.5 rounded border uppercase font-black tracking-widest',
-                        SEVERITY_TAG[insight.severity],
-                    )}
-                >
+                <span className={cn(
+                    'text-[7px] px-1.5 py-0.5 rounded border uppercase font-black tracking-widest',
+                    SEVERITY_TAG[insight.severity],
+                )}>
                     {insight.severity}
                 </span>
             </div>
@@ -149,25 +231,19 @@ function InsightRow({ insight }: { insight: Insight }) {
                     <span className="text-[10px] font-black uppercase tracking-widest" style={{ color }}>
                         {kpiMeta?.label ?? insight.kpiId}
                     </span>
-                    <span
-                        className={cn(
-                            'text-[8px] px-1.5 py-0.5 rounded border uppercase font-bold tracking-widest',
-                            insight.direction === 'UP'
-                                ? 'bg-[#A3E635]/10 text-[#A3E635] border-[#A3E635]/20'
-                                : 'bg-[#EF4444]/10 text-[#EF4444] border-[#EF4444]/20',
-                        )}
-                    >
+                    <span className={cn(
+                        'text-[8px] px-1.5 py-0.5 rounded border uppercase font-bold tracking-widest',
+                        insight.direction === 'UP'
+                            ? 'bg-[#A3E635]/10 text-[#A3E635] border-[#A3E635]/20'
+                            : 'bg-[#EF4444]/10 text-[#EF4444] border-[#EF4444]/20',
+                    )}>
                         {insight.direction === 'UP' ? '↗ ACIMA' : '↘ ABAIXO'}
                     </span>
                     <span className="text-[8px] text-[#4A4A4A] uppercase tracking-wider">
                         {insight.type.replace(/_/g, ' ')}
                     </span>
                 </div>
-
-                <p className="text-[10px] text-[#8A8A8A] leading-relaxed">
-                    {insight.message}
-                </p>
-
+                <p className="text-[10px] text-[#8A8A8A] leading-relaxed">{insight.message}</p>
                 <div className="flex items-center gap-4 text-[8px] text-[#4A4A4A] uppercase tracking-widest">
                     <span>Z={insight.zScore.toFixed(2)}</span>
                     <span>SCORE={insight.score.toFixed(3)}</span>
