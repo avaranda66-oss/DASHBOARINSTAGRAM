@@ -287,7 +287,7 @@ export class InsightQueue {
   private bubbleUp(idx: number): void {
     while (idx > 0) {
       const parent = Math.floor((idx - 1) / 2);
-      if (this.compare(this.heap[idx], this.heap[parent]) <= 0) break;
+      if (this.compare(this.heap[idx], this.heap[parent]) >= 0) break;
       [this.heap[idx], this.heap[parent]] = [this.heap[parent], this.heap[idx]];
       idx = parent;
     }
@@ -300,10 +300,10 @@ export class InsightQueue {
       const left = 2 * idx + 1;
       const right = 2 * idx + 2;
 
-      if (left < n && this.compare(this.heap[left], this.heap[largest]) > 0) {
+      if (left < n && this.compare(this.heap[left], this.heap[largest]) < 0) {
         largest = left;
       }
-      if (right < n && this.compare(this.heap[right], this.heap[largest]) > 0) {
+      if (right < n && this.compare(this.heap[right], this.heap[largest]) < 0) {
         largest = right;
       }
       if (largest === idx) break;

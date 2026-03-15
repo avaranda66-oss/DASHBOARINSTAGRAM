@@ -150,51 +150,29 @@ describe('InsightQueue', () => {
     expect(q.pop()).toBeUndefined();
   });
 
-  /**
-   * BUG DOCUMENTADO: InsightQueue.bubbleUp está invertido.
-   *
-   * compare(a,b) = b.score - a.score (intenção: max-heap)
-   * bubbleUp: compare(child, parent) <= 0 → break
-   *   → parent.score - child.score <= 0 → parent <= child → break
-   *   → NÃO sobe o child quando child > parent (deveria subir)
-   *   → Resultado: funciona como MIN-HEAP, não max-heap
-   *
-   * Função: InsightQueue.bubbleUp (insight-engine.ts:287-293)
-   * Input: push items com scores [1, 5, 3]
-   * Expected: pop() retorna 5, 3, 1 (max-heap)
-   * Actual: pop() retorna na ordem de inserção/min-heap
-   *
-   * toArray() usa .sort() independente e funciona corretamente.
-   * InsightEngine.getTopN/peekTopN usa toArray().slice() — não afetado pelo bug.
-   */
-  it('BUG: push and pop — heap ordering is inverted (min-heap instead of max-heap)', () => {
+  it('push and pop returns highest score first (max-heap)', () => {
     const q = new InsightQueue();
     q.push(makeInsight(1, 'low'));
     q.push(makeInsight(5, 'high'));
     q.push(makeInsight(3, 'mid'));
 
     expect(q.size()).toBe(3);
-    // BUG: first pop returns lowest score instead of highest
-    const first = q.pop()!.score;
-    const second = q.pop()!.score;
-    const third = q.pop()!.score;
-    // Document actual behavior — all items are returned
-    expect([first, second, third].sort((a, b) => b - a)).toEqual([5, 3, 1]);
+    expect(q.pop()!.score).toBe(5);
+    expect(q.pop()!.score).toBe(3);
+    expect(q.pop()!.score).toBe(1);
     expect(q.size()).toBe(0);
   });
 
-  it('BUG: peek returns wrong element due to inverted heap', () => {
+  it('peek returns highest without removing', () => {
     const q = new InsightQueue();
     q.push(makeInsight(10));
     q.push(makeInsight(2));
 
-    // BUG: peek should return 10 (max) but returns 2 (min) due to inverted bubbleUp
-    const peeked = q.peek()!.score;
-    expect(peeked).toBe(2); // actual behavior (min-heap)
+    expect(q.peek()!.score).toBe(10);
     expect(q.size()).toBe(2);
   });
 
-  it('toArray returns correctly sorted copy (uses independent .sort())', () => {
+  it('toArray returns sorted copy', () => {
     const q = new InsightQueue();
     q.push(makeInsight(1));
     q.push(makeInsight(5));
@@ -202,14 +180,13 @@ describe('InsightQueue', () => {
 
     const arr = q.toArray();
     expect(arr.length).toBe(3);
-    // toArray uses .sort() directly, not the buggy heap — works correctly
     expect(arr[0].score).toBe(5);
     expect(arr[1].score).toBe(3);
     expect(arr[2].score).toBe(1);
     expect(q.size()).toBe(3);
   });
 
-  it('BUG: pop does not return descending order (inverted heap)', () => {
+  it('handles many items correctly — pop returns descending order', () => {
     const q = new InsightQueue();
     const scores = [7, 2, 9, 1, 5, 8, 3, 6, 4, 10];
     scores.forEach((s, i) => q.push(makeInsight(s, `k${i}`)));
@@ -219,10 +196,11 @@ describe('InsightQueue', () => {
       popped.push(q.pop()!.score);
     }
 
-    // All items are returned
     expect(popped.length).toBe(10);
-    expect(popped.sort((a, b) => b - a)).toEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
-    // NOTE: popped order is NOT descending due to inverted bubbleUp bug
+    for (let i = 1; i < popped.length; i++) {
+      expect(popped[i - 1]).toBeGreaterThanOrEqual(popped[i]);
+    }
+    expect(popped).toEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
   });
 });
 
