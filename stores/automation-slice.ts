@@ -88,7 +88,6 @@ export const useAutomationStore = create<AutomationState>()((set, get) => ({
             // Pega o handle real da conta selecionada
             const handle = account?.handle ? account.handle.replace('@', '') : "default";
 
-            console.log(`[Automation] Enviando request para publicar. Handle resolvido: ${handle}`);
             const result = await publishInstagramPostAction(nextItem.contentId, handle);
 
             if (result.success) {

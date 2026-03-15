@@ -137,7 +137,6 @@ export async function GET(req: NextRequest) {
         const pdfBuffer = await generatePdf({ html });
 
         const elapsed = Date.now() - startTime;
-        console.log(`[ads-report/pdf] PDF gerado em ${elapsed}ms. Browser: ${getDetectedBrowser()}`);
 
         const filename = `ads-report-${datePreset}-${Date.now()}.pdf`;
 

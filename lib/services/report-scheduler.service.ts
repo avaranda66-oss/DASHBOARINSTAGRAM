@@ -226,7 +226,6 @@ export async function checkAndSendScheduledReports(): Promise<void> {
         return;
     }
 
-    console.log(`[report-scheduler] Hora de enviar relatório agendado para ${schedule.email}`);
 
     try {
         const preset = schedule.datePreset || datePresetForFrequency(schedule.frequency);
@@ -248,7 +247,6 @@ export async function checkAndSendScheduledReports(): Promise<void> {
             // Atualizar nextSendAt
             schedule.nextSendAt = calculateNextSendAt(schedule.frequency);
             await saveSchedule(schedule);
-            console.log(`[report-scheduler] Relatório enviado. Próximo: ${schedule.nextSendAt}`);
         } else {
             console.error('[report-scheduler] Falha ao enviar relatório agendado.');
         }

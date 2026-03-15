@@ -145,7 +145,6 @@ export async function POST(req: NextRequest) {
             }),
         ]);
 
-        console.log(`[ads-insights] preset=${datePreset}, usedPreset=${usedPreset ?? 'same'}, daily=${dailyData.length}, insights=${insights.length}`);
 
         // Passa [] para campanhas nas funções de delta — contagem ativo/pausado não é necessária lá
         const kpiSummary = computeKpiSummary(insights, []);

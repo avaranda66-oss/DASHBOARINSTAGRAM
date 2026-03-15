@@ -135,7 +135,6 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
                     }
                 }
                 if (Object.keys(thumbs).length > 0) {
-                    console.log(`[FeedPreview] Loaded ${Object.keys(thumbs).length} thumbnails from Apify cache`);
                     setApifyThumbnails(thumbs);
                 }
             }).catch(() => {});

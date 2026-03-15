@@ -53,6 +53,9 @@ interface AdsSlice {
     fetchInsights: (token: string, accountId: string) => Promise<void>;
     fetchCreatives: (token: string, accountId: string) => Promise<void>;
     fetchIntelligence: (token: string, accountId: string) => Promise<void>;
+    // TODO: Call setCreativeScores after /api/ads/creative-scores returns data
+    // (feature: visual score analysis — composition, contrast, textRatio, hierarchy)
+    setCreativeScores: (scores: Record<string, import('@/types/ads').CreativeScore>) => void;
     setFilters: (filters: Partial<AdsFilters>) => void;
     setSelectedCampaign: (id: string | null) => void;
     setExpandedCampaign: (id: string | null) => void;
@@ -154,9 +157,10 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                 lastFetchedAt: new Date().toISOString(),
                 isLoading: false,
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('[AdsStore] fetchAll erro:', e);
-            set({ error: e.message || 'Erro ao buscar campanhas.', isLoading: false });
+            const msg = e instanceof Error ? e.message : 'Erro ao buscar campanhas.';
+            set({ error: msg, isLoading: false });
         }
     },
 
@@ -187,7 +191,7 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
                 kpiSummary: res.kpiSummary || null,
                 kpiDelta: res.kpiDelta || null,
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('[AdsStore] fetchInsights erro:', e);
         }
     },
@@ -251,6 +255,8 @@ export const useAdsStore = create<AdsSlice>((set, get) => ({
             set({ intelligenceError: message, isLoadingIntelligence: false });
         }
     },
+
+    setCreativeScores: (scores) => set({ creativeScores: scores }),
 
     setFilters: (partial) => {
         const { filters } = get();

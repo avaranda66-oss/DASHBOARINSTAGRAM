@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
                                 expires_at: now + refreshed.expires_in
                             }
                         });
-                        console.log(`[Meta Token] Token renovado com sucesso para a conta ${account.username}`);
                     }
                 }
             }

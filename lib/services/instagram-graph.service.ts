@@ -640,7 +640,7 @@ export async function fetchBusinessDiscovery(token: string, userId: string, targ
             profilePictureUrl: bd.profile_picture_url,
             posts: bd.media?.data || []
         };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[Meta API Business Discovery] Erro:', err);
         throw err; // propaga para o route handler mostrar o erro real
     }
@@ -664,8 +664,8 @@ export async function replyToComment(token: string, commentId: string, message: 
         }
 
         return { success: true, id: data.id };
-    } catch (err: any) {
-        return { success: false, error: err.message };
+    } catch (err: unknown) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
 
@@ -676,8 +676,8 @@ export async function hideComment(token: string, commentId: string): Promise<{ s
         const data = await res.json();
         if (data.error) return { success: false, error: data.error.message };
         return { success: true };
-    } catch (err: any) {
-        return { success: false, error: err.message };
+    } catch (err: unknown) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
 
@@ -688,8 +688,8 @@ export async function deleteComment(token: string, commentId: string): Promise<{
         const data = await res.json();
         if (data.error) return { success: false, error: data.error.message };
         return { success: true };
-    } catch (err: any) {
-        return { success: false, error: err.message };
+    } catch (err: unknown) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
 
@@ -723,7 +723,6 @@ export async function publishImage(token: string, userId: string, imageUrl: stri
         if (!containerId) return { success: false, error: 'Container não criado.' };
 
         // 2. Aguardar processamento (Status Check)
-        console.log(`[Meta API Publish] Aguardando processamento do container ${containerId}...`);
         let ready = false;
         let attempts = 0;
         while (!ready && attempts < 10) {
@@ -749,8 +748,8 @@ export async function publishImage(token: string, userId: string, imageUrl: stri
         }
 
         return { success: true, id: pubData.id };
-    } catch (err: any) {
-        return { success: false, error: err.message };
+    } catch (err: unknown) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
 
@@ -766,7 +765,6 @@ export async function publishVideo(
 ): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
         const mediaType = isReel ? 'REELS' : 'VIDEO';
-        console.log(`[Meta API Video] Criando container para ${mediaType}: ${videoUrl}...`);
         
         const createUrl = `${GRAPH_BASE}/${GRAPH_VERSION}/${userId}/media?video_url=${encodeURIComponent(videoUrl)}&media_type=${mediaType}&caption=${encodeURIComponent(caption)}`;
         const createRes = await fetch(createUrl, { method: 'POST', headers: metaHeaders(token) });
@@ -781,7 +779,6 @@ export async function publishVideo(
         if (!containerId) return { success: false, error: 'Container não criado.' };
 
         // 2. Aguardar processamento (Polling obrigatório para vídeos - costumam demorar)
-        console.log(`[Meta API Video] Aguardando processamento do vídeo ${containerId}...`);
         let ready = false;
         let attempts = 0;
         const maxAttempts = 20; // Vídeos demoram mais (até 1 minuto aqui)
@@ -793,7 +790,6 @@ export async function publishVideo(
             const statusRes = await fetch(`${GRAPH_BASE}/${GRAPH_VERSION}/${containerId}?fields=status_code,error_message`, { headers: metaHeaders(token) });
             const statusData = await statusRes.json();
 
-            console.log(`[Meta API Video] Status tentativa ${attempts}: ${statusData.status_code}`);
 
             if (statusData.status_code === 'FINISHED') {
                 ready = true;
@@ -825,8 +821,8 @@ export async function publishVideo(
         }
 
         return { success: true, id: pubData.id };
-    } catch (err: any) {
-        return { success: false, error: err.message };
+    } catch (err: unknown) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
 
@@ -845,7 +841,6 @@ export async function publishStory(
     mediaUrl: string
 ): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-        console.log(`[Meta API Story] Criando container para STORY: ${mediaUrl}...`);
         
         const isVideo = mediaUrl.toLowerCase().match(/\.(mp4|mov|avi|wmv|m4v)$/i);
         const createParam = isVideo ? `video_url=${encodeURIComponent(mediaUrl)}` : `image_url=${encodeURIComponent(mediaUrl)}`;
@@ -863,7 +858,6 @@ export async function publishStory(
         if (!containerId) return { success: false, error: 'Container não criado.' };
 
         // 2. Aguardar processamento (Stories podem ser vídeo ou imagem)
-        console.log(`[Meta API Story] Aguardando processamento do container ${containerId}...`);
         let ready = false;
         let attempts = 0;
         const maxAttempts = isVideo ? 20 : 10;
@@ -875,7 +869,6 @@ export async function publishStory(
             const statusRes = await fetch(`${GRAPH_BASE}/${GRAPH_VERSION}/${containerId}?fields=status_code,error_message`, { headers: metaHeaders(token) });
             const statusData = await statusRes.json();
 
-            console.log(`[Meta API Story] Status tentativa ${attempts}: ${statusData.status_code}`);
 
             if (statusData.status_code === 'FINISHED') {
                 ready = true;
@@ -904,8 +897,8 @@ export async function publishStory(
         }
 
         return { success: true, id: pubData.id };
-    } catch (err: any) {
-        return { success: false, error: err.message };
+    } catch (err: unknown) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
 
@@ -920,7 +913,6 @@ export async function publishCarousel(
     caption: string
 ): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-        console.log(`[Meta API Carousel] Iniciando criação de container para ${imageUrls.length} imagens...`);
         
         // 1. Criar containers individuais para cada item do carousel
         const itemIds: string[] = [];
@@ -958,7 +950,6 @@ export async function publishCarousel(
         const creationId = carouselData.id;
 
         // 4. Aguardar processamento do carrossel (Status Check)
-        console.log(`[Meta API Carousel] Aguardando processamento do container pai ${creationId}...`);
         let ready = false;
         let attempts = 0;
         while (!ready && attempts < 10) {
@@ -969,7 +960,6 @@ export async function publishCarousel(
             
             if (statusData.status_code === 'FINISHED') {
                 ready = true;
-                console.log(`[Meta API Carousel] Container pronto após ${attempts} tentativa(s).`);
             } else if (statusData.status_code === 'ERROR') {
                 const errorMsg = statusData.error_message || 'Erro de processamento desconhecido no carrossel.';
                 return { success: false, error: `Erro no carrossel: ${errorMsg}` };
@@ -987,9 +977,9 @@ export async function publishCarousel(
         }
 
         return { success: true, id: pubData.id };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[Meta API Carousel Catch]', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
 

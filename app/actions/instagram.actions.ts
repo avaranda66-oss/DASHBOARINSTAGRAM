@@ -74,7 +74,6 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
         const useMetaApi = (reqBody as any)?.useMetaApi === true;
 
         if (useMetaApi) {
-            console.log(`[Action] Postando via Meta API para ${contentId}...`);
             // Tentar buscar por ID (CUID), ID numérico do provedor ou pelo handle diretamente
             let account = await prisma.account.findFirst({
                 where: {
@@ -104,7 +103,6 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
             const tunnelSetting = await prisma.setting.findUnique({ where: { key: 'tunnel_url' } });
             const tunnelUrl = tunnelSetting?.value ? JSON.parse(tunnelSetting.value) : null;
             
-            console.log(`[Action] Tunnel URL: ${tunnelUrl}`);
 
             let finalImageUrls = imageUrls;
             if (tunnelUrl) {
@@ -112,7 +110,6 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
                     // Mapear tanto /uploads/ quanto /creatives/ para a URL do túnel
                     if (url.startsWith('/uploads/') || url.startsWith('/creatives/')) {
                         const mapped = `${tunnelUrl.replace(/\/$/, '')}${url}`;
-                        console.log(`[Action] Mapeando ${url} -> ${mapped}`);
                         return mapped;
                     }
                     return url;
@@ -163,7 +160,6 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
                                 .toFile(optimizedAbsPath);
                             const newSize = fsMod.statSync(optimizedAbsPath).size;
                             finalImageUrls[i] = `${tunnelUrl.replace(/\/$/, '')}${optimizedRelPath}`;
-                            console.log(`[Action] Imagem ${i} otimizada: ${(stats.size / 1024 / 1024).toFixed(1)}MB → ${(newSize / 1024 / 1024).toFixed(1)}MB`);
                         }
                     } catch (optErr: any) {
                         console.warn(`[Action] Falha ao otimizar imagem ${i}: ${optErr.message}`);
@@ -172,7 +168,6 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
             }
 
             if (normalizedType === 'story') {
-                console.log(`[Action] Postando STORY via Meta API: ${finalImageUrls[0]}`);
                 const res = await publishStory(token, userId, finalImageUrls[0]);
                 success = res.success;
                 if (!success) throw new Error(`Meta API Story: ${res.error}`);
@@ -185,7 +180,6 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
                 const isVideo = url.toLowerCase().match(/\.(mp4|mov|avi|wmv|m4v)$/i);
                 
                 if (isVideo) {
-                    console.log(`[Action] Detectado VIDEO/REEL para Meta API: ${url}`);
                     const res = await publishReel(token, userId, url, caption);
                     success = res.success;
                     if (!success) throw new Error(`Meta API Reel/Video: ${res.error}`);
@@ -193,7 +187,6 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
                     if (normalizedType === 'reel') {
                         throw new Error("A Meta API exige arquivos de vídeo (.mp4, .mov) para postagens do tipo Reel. Para imagens, use o tipo 'Post'.");
                     }
-                    console.log(`[Action] Detectado IMAGE para Meta API: ${url}`);
                     const res = await publishImage(token, userId, url, caption);
                     success = res.success;
                     if (!success) throw new Error(`Meta API Image: ${res.error}`);
@@ -201,13 +194,10 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
             }
         } else {
             if (normalizedType === 'story') {
-                console.log(`[Action] Detectado tipo STORY para ${contentId}. Chamando publishStory...`);
                 success = await InstagramService.publishStory(targetHandle, imageUrls[0]);
             } else if (normalizedType === 'reel') {
-                console.log(`[Action] Detectado tipo REEL para ${contentId}. Chamando publishReel...`);
                 success = await InstagramService.publishReel(targetHandle, imageUrls[0], caption);
             } else {
-                console.log(`[Action] Detectado tipo ${content.type} para ${contentId}. Chamando publishPost...`);
                 success = await InstagramService.publishPost(targetHandle, imageUrls, caption);
             }
         }

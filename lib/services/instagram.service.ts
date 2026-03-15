@@ -1,4 +1,4 @@
-import { chromium, type BrowserContext } from 'playwright';
+import { chromium, type Browser, type BrowserContext, type BrowserContextOptions } from 'playwright';
 import path from 'path';
 import fs from 'fs';
 import db from '@/lib/db';
@@ -17,7 +17,7 @@ export class InstagramService {
     /**
      * Inicia o navegador com a sessão salva de um usuário específico.
      */
-    private static async getContext(username?: string, headless: boolean = true, isDesktop: boolean = false): Promise<{ browser: any, context: BrowserContext }> {
+    private static async getContext(username?: string, headless: boolean = true, isDesktop: boolean = false): Promise<{ browser: Browser, context: BrowserContext }> {
         if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 
         const browser = await chromium.launch({
@@ -26,7 +26,7 @@ export class InstagramService {
             args: ['--disable-blink-features=AutomationControlled', '--disable-infobars', '--no-sandbox']
         });
 
-        const contextOptions: any = isDesktop ? {
+        const contextOptions: BrowserContextOptions = isDesktop ? {
             viewport: { width: 1280, height: 800 },
             userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         } : {
@@ -100,7 +100,6 @@ export class InstagramService {
                 const avatarUrl = await avatarImg.getAttribute('src');
 
                 if (avatarUrl && avatarUrl.startsWith('http')) {
-                    console.log(`[InstagramService] Avatar detectado para @${targetUsername}: ${avatarUrl.slice(0, 40)}...`);
                     await db.account.update({
                         where: { providerAccountId: targetUsername.replace('@', '').toLowerCase() },
                         data: { picture: avatarUrl }
@@ -119,11 +118,9 @@ export class InstagramService {
                     }
                 }
             }
-        } catch (e: any) {
-            console.log(`[InstagramService] Não foi possível atualizar o avatar agora (opcional): ${e instanceof Error ? e.message : String(e)}`);
+        } catch (e: unknown) {
         }
 
-        console.log(`Instagram Service: Verificação de segurança OK para @${targetUsername} (Logado: ${currentHandle || 'nenhum'})`);
     }
 
     static async checkLoginStatus(targetUsername?: string): Promise<boolean> {
@@ -192,17 +189,14 @@ export class InstagramService {
 
     private static async attemptAutoLogin(handle: string, headless: boolean = true): Promise<boolean> {
         try {
-            console.log(`Instagram Service: Tentando auto-login para @${handle}`);
             const account = await db.account.findUnique({
                 where: { providerAccountId: handle.replace('@', '').toLowerCase() }
             }) as any;
 
             if (!account || !account.password) {
-                console.log(`Instagram Service: Erro no Auto-Login. Conta encontrada? ${!!account}. Senha preenchida? ${!!account?.password}`);
                 return false;
             }
 
-            console.log(`Instagram Service: Senha para @${handle} recuperada com sucesso do banco de dados (tamanho: ${account.password.length} chars).`);
 
             return new Promise((resolve) => {
                 const { exec } = require('child_process');
@@ -210,7 +204,6 @@ export class InstagramService {
                 // Passa a senha como argumento para o script
                 const command = `node scripts/playwright-login.js ${handle.replace('@', '')} "${account.password}" ${headless}`;
 
-                console.log(`Instagram Service: Executando script de auto-login em background...`);
                 exec(command, { cwd }, async (error: any, stdout: string) => {
                     // Tentar extrair avatar do stdout se houver
                     const avatarMatch = stdout?.match(/AVATAR_URL\|(.*)/);
@@ -226,12 +219,11 @@ export class InstagramService {
                         console.error("Auto-login script error:", error);
                         resolve(false);
                     } else {
-                        console.log(`Instagram Service: Auto-login concluído com aparente sucesso.`);
                         resolve(true);
                     }
                 });
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error("Erro na rotina de attemptAutoLogin:", e);
             return false;
         }
@@ -250,19 +242,16 @@ export class InstagramService {
 
         // Intercept file chooser
         page.on('filechooser', async (fileChooser) => {
-            console.log("[InstagramService] Interceptando diálogo de seleção de arquivo...");
             await fileChooser.setFiles([absoluteImagePaths[0]]);
         });
 
         try {
             await this.verifyAccountMatch(context, handle);
 
-            console.log('[InstagramService] Navegando direto para /create/select/...');
             await page.goto('https://www.instagram.com/create/select/', { waitUntil: 'networkidle' });
 
             const isLoginPage = await page.locator('input[name="username"], :text-is("Log in"), :text-is("Entrar"), :text-is("Usar outro perfil")').first().isVisible({ timeout: 3000 });
             if (isLoginPage) {
-                console.log(`Aviso: Sessão expirada para @${username}. Tentando auto-login...`);
                 await context.close();
                 await browser.close();
                 const autoLoginSuccess = await this.attemptAutoLogin(username);
@@ -281,7 +270,6 @@ export class InstagramService {
                 await fileInput.evaluate((el: HTMLInputElement) => el.multiple = true);
                 await fileInput.setInputFiles([absoluteImagePaths[0]]);
             } catch (e) {
-                console.log('[InstagramService] File input não encontrado, tentando via /create/select/');
                 await page.goto('https://www.instagram.com/create/select/', { waitUntil: 'networkidle' });
                 await page.waitForTimeout(2000);
                 const retryInput = page.locator('input[type="file"]').first();
@@ -290,7 +278,6 @@ export class InstagramService {
                 await retryInput.setInputFiles([absoluteImagePaths[0]]);
             }
             await page.waitForTimeout(3000);
-            console.log('[InstagramService] 1º Arquivo carregado. Tela de Crop ativa...');
             
             // Expandir a foto base
             try {
@@ -302,7 +289,6 @@ export class InstagramService {
 
             // Lógica CARROSSEL: Inserir as imagens adicionais se existirem
             if (absoluteImagePaths.length > 1) {
-                console.log(`[InstagramService] Carrossel detectado (${absoluteImagePaths.length} imagens). Abrindo galeria de mídia...`);
                 
                 const gallerySelectors = [
                     'button[aria-label="Open Media Gallery"]',
@@ -346,7 +332,6 @@ export class InstagramService {
                     }
 
                     if (addBtn) {
-                        console.log('[InstagramService] Clicando no botão + para adicionar mídias restantes...');
                         const [multiFileChooser] = await Promise.all([
                             page.waitForEvent('filechooser'),
                             addBtn.click({ force: true })
@@ -435,8 +420,8 @@ export class InstagramService {
             await context.storageState({ path: sessionPath });
 
             return true;
-        } catch (error: any) {
-            console.error("Instagram Bot Error:", error.message);
+        } catch (error: unknown) {
+            console.error("Instagram Bot Error:", error instanceof Error ? error.message : String(error));
             throw error;
         } finally {
             await context.close();
@@ -455,19 +440,16 @@ export class InstagramService {
 
         // Intercept file chooser requests directly for safety
         page.on('filechooser', async (fileChooser) => {
-            console.log("[InstagramService] Filechooser disparado. Injetando:", absolutePath);
             await fileChooser.setFiles(absolutePath).catch(() => {});
         });
 
         try {
             await this.verifyAccountMatch(context, handle);
 
-            console.log('[InstagramService] Navegando direto para /create/select/ no modo Desktop para Reel...');
             await page.goto('https://www.instagram.com/create/select/', { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => { });
 
             const isLoginPage = await page.locator('input[name="username"], :text-is("Log in"), :text-is("Entrar"), :text-is("Usar outro perfil")').first().isVisible({ timeout: 3000 });
             if (isLoginPage) {
-                console.log(`Aviso: Sessão expirada para @${username}. Tentando auto-login...`);
 
                 await context.close();
                 await browser.close();
@@ -483,7 +465,6 @@ export class InstagramService {
 
             await page.waitForTimeout(2000);
 
-            console.log('[InstagramService] Upload do vídeo Reel...');
             const fileInput = page.locator('input[type="file"]').first();
             try {
                 await fileInput.waitFor({ state: 'attached', timeout: 5000 });
@@ -494,7 +475,6 @@ export class InstagramService {
                 });
                 await fileInput.setInputFiles(absolutePath);
             } catch (e) {
-                console.log('[InstagramService] File input inicial não encontrado. Recarregando via /create/select/ e tentando novamente...');
                 await page.goto('https://www.instagram.com/create/select/', { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => { });
                 await page.waitForTimeout(3000);
                 
@@ -508,9 +488,7 @@ export class InstagramService {
             }
             
             await page.waitForTimeout(6000); // Vídeos grandes demoram pra bufferizar
-            console.log('[InstagramService] Arquivo(s) carregado(s). Avançando...');
 
-            console.log('[InstagramService] Avançando telas (Desktop)...');
             const nextSelectors = ['text="Next"', 'text="Próximo"', 'text="Avançar"'];
             for (let i = 0; i < 3; i++) {
                 await page.waitForTimeout(2000);
@@ -520,14 +498,12 @@ export class InstagramService {
                     if (await btn.isVisible({ timeout: 1500 })) {
                         await btn.click({ force: true });
                         clicked = true;
-                        console.log(`[InstagramService] Clicou avançar via: ${sel}`);
                         break;
                     }
                 }
                 if (!clicked && i > 0) break;
             }
 
-            console.log('[InstagramService] Escrevendo legenda...');
             await page.waitForTimeout(2000);
 
             if (caption && caption.trim() !== '') {
@@ -558,10 +534,8 @@ export class InstagramService {
                 }
 
                 await page.keyboard.type(caption, { delay: 5 });
-                console.log(`[InstagramService] Legenda inserida.`);
             }
 
-            console.log('[InstagramService] Compartilhando Reel!');
             const shareSelectors = ['text="Share"', 'text="Compartilhar"'];
             let shared = false;
             for (const sel of shareSelectors) {
@@ -569,7 +543,6 @@ export class InstagramService {
                 if (await btn.isVisible({ timeout: 2000 })) {
                     await btn.click({ force: true });
                     shared = true;
-                    console.log(`[InstagramService] Compartilhado via: ${sel}`);
                     break;
                 }
             }
@@ -583,14 +556,13 @@ export class InstagramService {
             }
 
             await page.waitForTimeout(8000);
-            console.log("[InstagramService] 🎉 Reel Publicado com sucesso!");
 
             const sessionPath = path.join(SESSIONS_DIR, `${handle}.json`);
             await context.storageState({ path: sessionPath });
 
             return true;
-        } catch (error: any) {
-            console.error("Instagram Bot Error:", error.message);
+        } catch (error: unknown) {
+            console.error("Instagram Bot Error:", error instanceof Error ? error.message : String(error));
             throw error;
         } finally {
             await context.close();
@@ -619,7 +591,6 @@ export class InstagramService {
             // Checa se está na tela de login
             const isLoginPage = await page.locator('input[name="username"], :text-is("Log in"), :text-is("Entrar"), :text-is("Usar outro perfil")').first().isVisible({ timeout: 3000 });
             if (isLoginPage) {
-                console.log(`Aviso: Sessão expirada para @${username}. Tentando auto-login...`);
 
                 await context.close();
                 await browser.close();
@@ -667,7 +638,6 @@ export class InstagramService {
             } catch (e) { }
             const fileInput = page.locator('input[type="file"]').first();
             await fileInput.setInputFiles(absolutePath);
-            console.log("Arquivo injetado. Aguardando processamento e renderização do preview (8s)...");
             await page.waitForTimeout(8000);
 
             // Tenta clicar no botão final de compartilhar
@@ -680,7 +650,6 @@ export class InstagramService {
                     shared = true;
                 } else {
                     // Fallback para clique em coordenada (centro inferior do S24 Ultra)
-                    console.log("Aviso: Botão de compartilhar não encontrado por texto. Tentando clique por coordenada...");
                     await page.mouse.click(206, 895);
                     shared = true;
                 }
@@ -692,7 +661,6 @@ export class InstagramService {
 
             // AGUARDAR O UPLOAD CONCLUIR
             // Stories demoram mais para processar que posts comuns.
-            console.log("Aguardando conclusão do upload do Story (15s)...");
             await page.waitForTimeout(15000);
 
             // Salva a sessão atualizada
@@ -700,8 +668,8 @@ export class InstagramService {
             await context.storageState({ path: sessionPath });
 
             return true;
-        } catch (error: any) {
-            console.error("Instagram Bot Error:", error.message);
+        } catch (error: unknown) {
+            console.error("Instagram Bot Error:", error instanceof Error ? error.message : String(error));
             throw error;
         } finally {
             await context.close();
@@ -758,8 +726,8 @@ export class InstagramService {
                         results.push({ commentId: reply.commentId, status: 'sent' });
                         await page.waitForTimeout(5000);
                     } else throw new Error("Botão Responder não encontrado.");
-                } catch (err: any) {
-                    results.push({ commentId: reply.commentId, status: 'error', error: err.message });
+                } catch (err: unknown) {
+                    results.push({ commentId: reply.commentId, status: 'error', error: err instanceof Error ? err.message : String(err) });
                 }
             }
             return { success: true, results };
@@ -774,7 +742,6 @@ export class InstagramService {
         const page = await context.newPage();
         const handle = this.normalizeHandle(targetHandle);
         try {
-            console.log(`[InstagramService] Buscando perfil de @${handle}...`);
             await page.goto(`https://www.instagram.com/${handle}/`, { waitUntil: 'networkidle', timeout: 30000 });
 
             // Aguardo um pouco para garantir renderização de JS
@@ -803,7 +770,6 @@ export class InstagramService {
                     if (await avatarImg.isVisible({ timeout: 3000 })) {
                         const avatarUrl = await avatarImg.getAttribute('src');
                         if (avatarUrl && avatarUrl.startsWith('http')) {
-                            console.log(`[InstagramService] Avatar capturado via seletor [${selector}]`);
                             return avatarUrl;
                         }
                     }
@@ -811,8 +777,8 @@ export class InstagramService {
             }
 
             return null;
-        } catch (e: any) {
-            console.error(`[InstagramService] Erro ao buscar avatar para @${handle}:`, e.message);
+        } catch (e: unknown) {
+            console.error(`[InstagramService] Erro ao buscar avatar para @${handle}:`, e instanceof Error ? e.message : String(e));
             return null;
         } finally {
             await context.close();

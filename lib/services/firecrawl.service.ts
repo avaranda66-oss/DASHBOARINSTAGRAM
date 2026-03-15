@@ -66,11 +66,11 @@ export async function scrapeUrl(url: string): Promise<FirecrawlScrapeResult> {
                 metadata: (result as any).metadata || {},
             },
         };
-    } catch (error: any) {
-        console.error('[Firecrawl] Scrape error:', error.message);
+    } catch (error: unknown) {
+        console.error('[Firecrawl] Scrape error:', error instanceof Error ? error.message : String(error));
         return {
             success: false,
-            error: error.message || 'Unknown Firecrawl error',
+            error: error instanceof Error ? error.message : String(error) || 'Unknown Firecrawl error',
         };
     }
 }
@@ -109,11 +109,11 @@ export async function crawlUrl(url: string, maxPages: number = 5): Promise<Firec
                 metadata: { pagesScraped: maxPages },
             },
         };
-    } catch (error: any) {
-        console.error('[Firecrawl] Crawl error:', error.message);
+    } catch (error: unknown) {
+        console.error('[Firecrawl] Crawl error:', error instanceof Error ? error.message : String(error));
         return {
             success: false,
-            error: error.message || 'Unknown Firecrawl crawl error',
+            error: error instanceof Error ? error.message : String(error) || 'Unknown Firecrawl crawl error',
         };
     }
 }

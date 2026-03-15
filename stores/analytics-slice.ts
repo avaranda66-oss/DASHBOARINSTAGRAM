@@ -177,7 +177,6 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
                 const isFresh = (Date.now() - fetchedAt) < CACHE_MAX_AGE_MS;
 
                 if (isFresh && !period && resultsLimit <= cached.posts.length) { // Só usa cache se não pediu período e já temos posts suficientes
-                    console.log(`[Cache] Usando dados recentes do banco para ${handle}`);
                     const summary = computeSummary(cached.posts, get().filterPeriod, get().customDateRange);
                     set({
                         posts: cached.posts,
@@ -195,7 +194,6 @@ export const useAnalyticsStore = create<AnalyticsSlice>()((set, get) => ({
         }
 
         // 2. Se não tiver no banco ou estiver velho, buscar na API (Incremental)
-        console.log(`[API] Buscando novos dados para ${handle}...`);
         if (period) {
             set({ filterPeriod: `${period}d` as any });
         }

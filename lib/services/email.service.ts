@@ -74,7 +74,6 @@ export async function sendReportEmail(opts: SendReportOptions): Promise<boolean>
             ],
         });
 
-        console.log(`[email.service] Relatório enviado para ${opts.to}`);
         return true;
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'Erro desconhecido';

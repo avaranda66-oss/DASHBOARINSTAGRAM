@@ -62,7 +62,6 @@ export class SchedulerService {
             return;
         }
 
-        console.log(`[Scheduler] 🤖 Agendador INTEGRADO iniciado (Check: ${this.CHECK_INTERVAL / 60000}min).`);
 
         globalScheduler.__instagramSchedulerInterval = setInterval(() => {
             this.checkAndPublish();
@@ -102,7 +101,6 @@ export class SchedulerService {
                 return;
             }
 
-            console.log(`[Scheduler] Encontrado(s) ${pendingPosts.length} post(s) para publicar.`);
 
             // Agrupar posts por conta para processamento paralelo por conta
             const postsByAccount: Record<string, typeof pendingPosts> = {};
@@ -113,7 +111,6 @@ export class SchedulerService {
             }
 
             const accountIds = Object.keys(postsByAccount);
-            console.log(`[Scheduler] Processando ${accountIds.length} conta(s) em paralelo.`);
 
             // Processar cada conta em paralelo
             await Promise.all(accountIds.map(async (accountId) => {
@@ -122,7 +119,6 @@ export class SchedulerService {
                 // Processar posts da MESMA conta sequencialmente para evitar flags do Instagram
                 for (const post of accountPosts) {
                     try {
-                        console.log(`[Scheduler] [Conta: ${accountId}] Publicando: "${post.title}"...`);
 
                         const mediaArr = post.mediaUrls ? JSON.parse(post.mediaUrls) : [];
                         if (mediaArr.length === 0) {
@@ -183,7 +179,6 @@ export class SchedulerService {
                         }
 
                         if (metaToken) {
-                            console.log(`[Scheduler] Tentando publicar via Meta API para @${handle}...`);
                             try {
                                 const { publishImage, publishCarousel, publishReel, publishStory, getInstagramUserId } = await import('@/lib/services/instagram-graph.service');
 
@@ -229,7 +224,6 @@ export class SchedulerService {
                                             const result = await optimizeImageForMeta(origUrl, tunnelUrl, w, h, `_opt${i}`);
                                             if (result) {
                                                 finalMediaUrls[i] = result.optimizedTunnelUrl;
-                                                console.log(`[Scheduler] Imagem ${i} otimizada: ${(result.originalSize / 1024 / 1024).toFixed(1)}MB → ${(result.newSize / 1024 / 1024).toFixed(1)}MB`);
                                             }
                                         }
                                     }
@@ -257,8 +251,8 @@ export class SchedulerService {
                                         }
                                     }
                                 }
-                            } catch (metaErr: any) {
-                                console.error(`[Scheduler] Meta API falhou, tentando fallback Playwright:`, metaErr.message);
+                            } catch (metaErr: unknown) {
+                                console.error(`[Scheduler] Meta API falhou, tentando fallback Playwright:`, metaErr instanceof Error ? metaErr.message : String(metaErr));
                             }
                         }
 
@@ -266,7 +260,6 @@ export class SchedulerService {
                         // Contas com token usam exclusivamente Meta API — sem Playwright
                         // para evitar conflito de sessões ou publicação duplicada.
                         if (!success && !metaToken) {
-                            console.log(`[Scheduler] Usando Playwright para @${handle} (sem token Meta)...`);
                             if (normalizedType === 'story') {
                                 success = await InstagramService.publishStory(handle, mediaArr[0], true);
                             } else if (normalizedType === 'reel') {
@@ -283,7 +276,6 @@ export class SchedulerService {
                                 where: { id: post.id },
                                 data: { status: 'published' }
                             });
-                            console.log(`[Scheduler] ✅ Post "${post.title}" (@${handle}) publicado com sucesso!`);
                         } else {
                             console.error(`[Scheduler] ❌ Falha ao publicar "${post.title}" (@${handle}).`);
                             await prisma.content.update({
@@ -291,8 +283,8 @@ export class SchedulerService {
                                 data: { status: 'failed' }
                             });
                         }
-                    } catch (err: any) {
-                        console.error(`[Scheduler] Erro no post ${post.id}:`, err.message);
+                    } catch (err: unknown) {
+                        console.error(`[Scheduler] Erro no post ${post.id}:`, err instanceof Error ? err.message : String(err));
                         await prisma.content.update({
                             where: { id: post.id },
                             data: { status: 'failed' }
@@ -305,12 +297,12 @@ export class SchedulerService {
             try {
                 const { checkAndSendScheduledReports } = await import('@/lib/services/report-scheduler.service');
                 await checkAndSendScheduledReports();
-            } catch (reportErr: any) {
-                console.error('[Scheduler] Erro ao verificar relatórios agendados:', reportErr.message);
+            } catch (reportErr: unknown) {
+                console.error('[Scheduler] Erro ao verificar relatórios agendados:', reportErr instanceof Error ? reportErr.message : String(reportErr));
             }
 
-        } catch (err: any) {
-            console.error(`[Scheduler] Erro Geral:`, err.message);
+        } catch (err: unknown) {
+            console.error(`[Scheduler] Erro Geral:`, err instanceof Error ? err.message : String(err));
         } finally {
             this.isRunning = false;
         }
