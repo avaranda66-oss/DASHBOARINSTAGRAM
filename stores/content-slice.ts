@@ -31,9 +31,12 @@ export const useContentStore = create<ContentSlice>()((set, get) => ({
         try {
             let contents = await getContentsAction();
             if (contents.length === 0) {
-                // Initialize with mock data on first load
-                await saveAllContentsAction(MOCK_CONTENTS);
-                contents = MOCK_CONTENTS;
+                // Apenas em desenvolvimento — nunca popular produção com dados fictícios
+                if (process.env.NODE_ENV === 'development') {
+                    await saveAllContentsAction(MOCK_CONTENTS);
+                    contents = MOCK_CONTENTS;
+                }
+                // Em produção: banco vazio = usuário novo, retorna [] sem seed automático
             }
             set({ contents, isLoaded: true });
         } catch (err) {

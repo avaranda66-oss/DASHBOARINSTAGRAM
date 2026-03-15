@@ -3,9 +3,10 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession, signOut } from 'next-auth/react'
 import { cn } from '@/design-system/utils/cn'
 import { AccountFilter } from '@/features/accounts/components/account-filter'
-import { useAccountStore } from '@/stores'
+import { useAccountStore, useSettingsStore } from '@/stores'
 
 interface NavItem {
   index: string
@@ -56,8 +57,14 @@ export interface DashboardShellProps {
 
 export function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname()
+  const { data: session } = useSession()
   const { isLoaded, loadAccounts } = useAccountStore()
+  const settingsStore = useSettingsStore()
   const [mobileOpen, setMobileOpen] = React.useState(false)
+
+  // Meta connection source distinction
+  const hasOAuthToken = !!session?.accessToken
+  const hasManualToken = !!settingsStore.settings?.metaAccessToken
 
   // Pre-load accounts at shell level so AccountFilter and all pages have data ready
   React.useEffect(() => {
@@ -123,9 +130,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
               {group.items.map((item) => {
                 const isActive = pathname === item.href
                 return (
-                  <Link 
+                  <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setMobileOpen(false)}
                     className={cn(
                       'group relative flex items-center gap-3 px-5 py-2.5 transition-colors'
                     )}
@@ -155,12 +163,29 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-[10px]" style={{ color: '#3A3A3A' }}>
-              OSS_v2.0 · build_stable
-            </span>
-          </div>
+        <div className="p-4 border-t space-y-3" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+          {session?.user && (
+            <div className="flex items-center gap-2 px-1">
+              <div className="w-6 h-6 rounded-full bg-[#A3E635]/20 flex items-center justify-center shrink-0">
+                <span className="font-mono text-[9px] text-[#A3E635] font-bold">
+                  {session.user.name?.[0]?.toUpperCase() ?? '?'}
+                </span>
+              </div>
+              <span className="font-mono text-[11px] text-white/50 truncate">
+                {session.user.name ?? session.user.email}
+              </span>
+            </div>
+          )}
+          <button
+            onClick={() => signOut({ redirectTo: '/login' })}
+            className="w-full flex items-center gap-2 px-2 py-1.5 font-mono text-[10px] text-white/30 hover:text-[#EF4444] hover:bg-[#EF4444]/5 transition-colors tracking-widest uppercase"
+          >
+            <span>⏻</span>
+            <span>Sair</span>
+          </button>
+          <span className="font-mono text-[10px] px-1" style={{ color: '#3A3A3A' }}>
+            OSS_v2.0 · build_stable
+          </span>
         </div>
       </aside>
 
@@ -185,7 +210,23 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </div>
 
           <div className="flex items-center gap-4">
-             <AccountFilter />
+            {hasOAuthToken ? (
+              <span className="font-mono text-[10px] uppercase tracking-widest text-[#A3E635]/70">
+                ● META OAUTH
+              </span>
+            ) : hasManualToken ? (
+              <span className="font-mono text-[10px] uppercase tracking-widest text-[#F59E0B]/70">
+                ● META TOKEN
+              </span>
+            ) : (
+              <Link
+                href="/connect"
+                className="font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 border border-[#A3E635]/30 text-[#A3E635]/70 hover:border-[#A3E635] hover:text-[#A3E635] transition-colors"
+              >
+                ⚡ Conectar Meta
+              </Link>
+            )}
+            <AccountFilter />
           </div>
         </header>
 

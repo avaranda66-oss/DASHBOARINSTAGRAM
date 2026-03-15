@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getInsightsWithBreakdown } from '@/lib/services/facebook-ads.service';
 import type { AdsDatePreset, DemographicBreakdown, PlacementBreakdown, AdActionStat } from '@/types/ads';
 
+const NO_CACHE = { headers: { 'Cache-Control': 'no-store' } };
+
 /**
  * US-69 — Age & Gender Breakdown
  * US-70 — Placement Analysis
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest) {
             };
         });
 
-        return NextResponse.json({ success: true, demographics, placements });
+        return NextResponse.json({ success: true, demographics, placements }, NO_CACHE);
     } catch (e: any) {
         console.error('[ads-demographics] Erro:', e);
         const msg: string = e.message || '';
@@ -99,12 +101,12 @@ export async function POST(req: NextRequest) {
         if (isAuthError) {
             return NextResponse.json(
                 { success: false, error: 'TOKEN_EXPIRED', errorMessage: 'Token Meta expirado.' },
-                { status: 401 },
+                { status: 401, ...NO_CACHE },
             );
         }
         return NextResponse.json(
             { success: false, error: msg || 'Erro interno.' },
-            { status: 500 },
+            { status: 500, ...NO_CACHE },
         );
     }
 }

@@ -4,11 +4,22 @@ import { create } from 'zustand';
 import type { AutomationRule, RuleExecutionLog, RuleSimulationResult, AdCampaign } from '@/types/ads';
 import { evaluateRule, simulateRule, formatConditionsSummary, formatAction } from '@/lib/utils/rules-engine';
 
-const STORAGE_KEY = 'ads-automation-rules';
 const HISTORY_KEY = 'ads-automation-history';
 
 function generateId(): string {
     return `rule_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function syncRulesToDB(rules: AutomationRule[]) {
+    try {
+        await fetch('/api/user/automation-rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rules }),
+        });
+    } catch {
+        // falha silenciosa — estado local já atualizado
+    }
 }
 
 interface AdsRulesSlice {
@@ -35,7 +46,7 @@ interface AdsRulesSlice {
     clearHistory: () => void;
 
     // Persistence
-    loadFromStorage: () => void;
+    loadFromStorage: () => Promise<void>;
 }
 
 export const useAdsRulesStore = create<AdsRulesSlice>((set, get) => ({
@@ -43,17 +54,23 @@ export const useAdsRulesStore = create<AdsRulesSlice>((set, get) => ({
     executionHistory: [],
     isEvaluating: false,
 
-    loadFromStorage: () => {
+    loadFromStorage: async () => {
+        // Carregar regras do Supabase
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            const histRaw = localStorage.getItem(HISTORY_KEY);
-            set({
-                rules: raw ? JSON.parse(raw) : [],
-                executionHistory: histRaw ? JSON.parse(histRaw) : [],
-            });
+            const res = await fetch('/api/user/automation-rules');
+            if (res.ok) {
+                const { rules } = await res.json();
+                set({ rules: rules ?? [] });
+            }
         } catch {
-            // corrupted localStorage — start fresh
-            set({ rules: [], executionHistory: [] });
+            // fallback silencioso
+        }
+        // Histórico continua no localStorage (ephemeral, não precisa persistir entre dispositivos)
+        try {
+            const histRaw = localStorage.getItem(HISTORY_KEY);
+            set({ executionHistory: histRaw ? JSON.parse(histRaw) : [] });
+        } catch {
+            set({ executionHistory: [] });
         }
     },
 
@@ -67,7 +84,7 @@ export const useAdsRulesStore = create<AdsRulesSlice>((set, get) => ({
         };
         const rules = [...get().rules, rule];
         set({ rules });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
+        syncRulesToDB(rules);
     },
 
     updateRule: (id, partial) => {
@@ -75,13 +92,13 @@ export const useAdsRulesStore = create<AdsRulesSlice>((set, get) => ({
             r.id === id ? { ...r, ...partial, updatedAt: new Date().toISOString() } : r
         );
         set({ rules });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
+        syncRulesToDB(rules);
     },
 
     deleteRule: (id) => {
         const rules = get().rules.filter(r => r.id !== id);
         set({ rules });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
+        syncRulesToDB(rules);
     },
 
     toggleRule: (id) => {
@@ -89,7 +106,7 @@ export const useAdsRulesStore = create<AdsRulesSlice>((set, get) => ({
             r.id === id ? { ...r, enabled: !r.enabled, updatedAt: new Date().toISOString() } : r
         );
         set({ rules });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
+        syncRulesToDB(rules);
     },
 
     evaluateAllRules: async (campaigns, executeAction) => {

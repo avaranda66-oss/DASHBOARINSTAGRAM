@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
 import { useAdsStore, useAccountStore, useSettingsStore } from '@/stores';
 import { CampaignsTable } from '@/features/ads/components/campaigns-table';
 import { AdsABTestCard } from '@/features/ads/components/ads-ab-test-card';
@@ -29,6 +30,7 @@ import { AdsRulesEngine } from '@/features/ads/components/ads-rules-engine';
 import { AdsCreativeLibrary } from '@/features/ads/components/ads-creative-library';
 import { AdsScheduledReports } from '@/features/ads/components/ads-scheduled-reports';
 import { AdsProfitDashboard } from '@/features/ads/components/ads-profit-dashboard';
+import { AdsExportButton } from '@/features/ads/components/ads-export-button';
 
 type ViewTab = 'overview' | 'charts' | 'intelligence' | 'creatives';
 
@@ -62,15 +64,17 @@ const item = {
 
 export default function AdsDashboardPage() {
     const [activeTab, setActiveTab] = useState<ViewTab>('overview');
+    const { data: session } = useSession();
     const accountStore = useAccountStore();
     const settingsStore = useSettingsStore();
     const adsStore = useAdsStore();
 
     const {
         campaigns, adSets, kpiSummary, kpiDelta, dailyInsights, dailyFallbackPreset, account,
-        isLoading, lastFetchedAt, filters, expandedCampaignId,
+        isLoading, error: adsError, lastFetchedAt, filters, expandedCampaignId,
         campFromCache, insightFromCache,
         creativeAds, isLoadingCreatives, creativesError,
+        availableAccounts, fetchAdAccounts,
         fetchAll, fetchCreatives, setFilters, setExpandedCampaign, updateCampaignStatus,
     } = adsStore;
 
@@ -83,7 +87,6 @@ export default function AdsDashboardPage() {
     const [customUntil, setCustomUntil] = useState('');
     const [isCustomRangeActive, setIsCustomRangeActive] = useState(false);
     const [selectedCampaignFilter, setSelectedCampaignFilter] = useState<string>('all');
-    const [exportingPdf, setExportingPdf] = useState(false);
 
     useEffect(() => {
         if (!accountStore.isLoaded) accountStore.loadAccounts();
@@ -91,6 +94,12 @@ export default function AdsDashboardPage() {
     }, []);
 
     useEffect(() => {
+        // Priority 1: OAuth session token (Story 2 — Token Migration)
+        if (session?.accessToken) {
+            setAdsToken(session.accessToken);
+            return;
+        }
+        // Priority 2: Manually configured token (legacy fallback)
         const accts = accountStore.accounts;
         const withAds = accts.find(a => a.adsToken && a.adsAccountId);
         if (withAds) {
@@ -98,7 +107,22 @@ export default function AdsDashboardPage() {
             setAdsAccountId(withAds.adsAccountId!);
             setAccountName(withAds.name || withAds.handle);
         }
-    }, [accountStore.accounts]);
+    }, [session, accountStore.accounts]);
+
+    // Quando temos token OAuth mas sem accountId: busca contas e auto-seleciona a primeira
+    useEffect(() => {
+        if (session?.accessToken && !adsAccountId) {
+            fetchAdAccounts(session.accessToken);
+        }
+    }, [session, adsAccountId]);
+
+    useEffect(() => {
+        if (session?.accessToken && !adsAccountId && availableAccounts.length > 0) {
+            const first = availableAccounts[0];
+            setAdsAccountId(first.id);
+            setAccountName(first.name);
+        }
+    }, [session, availableAccounts, adsAccountId]);
 
     useEffect(() => {
         if (adsToken && adsAccountId && !lastFetchedAt && !isLoading) {
@@ -272,37 +296,6 @@ export default function AdsDashboardPage() {
 
     const currency = account?.currency || kpiSummary?.currency || 'BRL';
 
-    // US-59b — PDF Real via Puppeteer
-    const handleExportPDF = useCallback(async () => {
-        if (!adsToken || !adsAccountId) return;
-        setExportingPdf(true);
-        try {
-            const params = new URLSearchParams({
-                token: adsToken,
-                accountId: adsAccountId,
-                datePreset: filters.datePreset,
-                accountName,
-            });
-            const res = await fetch(`/api/ads-report/pdf?${params}`);
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({ error: 'Erro ao gerar PDF' }));
-                throw new Error(err.error || `HTTP ${res.status}`);
-            }
-            const blob = await res.blob();
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `ads-report-${filters.datePreset}-${Date.now()}.pdf`;
-            link.click();
-            URL.revokeObjectURL(link.href);
-            toast.success('PDF exportado com sucesso');
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Erro ao exportar PDF';
-            toast.error(message);
-        } finally {
-            setExportingPdf(false);
-        }
-    }, [adsToken, adsAccountId, filters.datePreset, accountName]);
-
     const dataFreshness = useMemo(() => {
         if (!lastFetchedAt) return null;
         // eslint-disable-next-line react-hooks/purity
@@ -339,15 +332,70 @@ export default function AdsDashboardPage() {
 
     if (!adsToken || !adsAccountId) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center">
                 <span className="font-mono text-[40px] text-[#2A2A2A] select-none">◆</span>
-                <div className="text-center space-y-2">
-                    <h2 className="text-xl font-bold uppercase tracking-tight text-[#F5F5F5]">Configuração Requerida</h2>
-                    <p className="text-[13px] text-[#4A4A4A] max-w-sm mx-auto">
-                        Token Facebook Ads ausente ou inválido. Prossiga para as configurações de conta para estabelecer a conexão 
+                <div className="space-y-2 max-w-sm">
+                    <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: '#A3E635' }}>
+                        [SETUP_REQUIRED]
+                    </p>
+                    <h2 className="text-[15px] font-bold uppercase tracking-tight text-[#F5F5F5]">
+                        Conecte sua conta Meta
+                    </h2>
+                    <p className="font-mono text-[11px] leading-relaxed" style={{ color: '#4A4A4A' }}>
+                        Token Facebook Ads ausente. Conecte via OAuth para ver dados de campanhas.
                     </p>
                 </div>
-                <Button variant="outline" onClick={() => window.location.href = '/dashboard/accounts'} className="font-mono tracking-widest text-[10px]">FIX_CONNECTION ↗</Button>
+                <a
+                    href="/connect"
+                    className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 border transition-colors"
+                    style={{ borderColor: 'rgba(163,230,53,0.4)', color: '#A3E635' }}
+                >
+                    ⚡ Conectar Meta →
+                </a>
+            </div>
+        );
+    }
+
+    if (isLoading && !lastFetchedAt) {
+        return (
+            <div className="space-y-8 animate-pulse">
+                <div className="h-8 w-48 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="h-24 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
+                    ))}
+                </div>
+                <div className="h-64 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
+                <div className="h-40 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
+            </div>
+        );
+    }
+
+    if (adsError && !campaigns.length) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center">
+                <span className="font-mono text-[40px] select-none" style={{ color: '#EF4444' }}>✕</span>
+                <div className="space-y-2 max-w-sm">
+                    <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: '#EF4444' }}>
+                        [API_ERROR]
+                    </p>
+                    <h2 className="text-[15px] font-bold uppercase tracking-tight text-[#F5F5F5]">
+                        Falha ao buscar dados
+                    </h2>
+                    <p className="font-mono text-[11px] leading-relaxed" style={{ color: '#4A4A4A' }}>
+                        {adsError.includes('token') || adsError.includes('Token') || adsError.includes('auth')
+                            ? 'Token inválido ou expirado. Reconecte sua conta Meta.'
+                            : 'Não foi possível conectar à API Meta. Verifique sua conexão e tente novamente.'}
+                    </p>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRefresh(true)}
+                    className="font-mono tracking-widest text-[10px]"
+                >
+                    ↺ Tentar Novamente
+                </Button>
             </div>
         );
     }
@@ -420,15 +468,15 @@ export default function AdsDashboardPage() {
                         </span>
                     )}
                     <Button onClick={() => handleRefresh(true)} isLoading={isLoading} size="sm" variant="subtle" className="font-mono tracking-widest text-[9px]">REFRESH_SYNC</Button>
-                    {filteredKpiSummary && (
-                        <button
-                            onClick={handleExportPDF}
-                            disabled={exportingPdf}
-                            className="px-3 py-1.5 rounded font-mono text-[9px] uppercase tracking-widest border border-white/10 text-[#4A4A4A] hover:border-[#A3E635] hover:text-[#A3E635] transition-all disabled:opacity-40"
-                        >
-                            {exportingPdf ? '◎ GERANDO...' : '◈ EXPORTAR_PDF'}
-                        </button>
-                    )}
+                    <AdsExportButton
+                        campaigns={filteredCampaigns}
+                        dailyInsights={dailyInsights}
+                        period={filters.customRange ? `${filters.customRange.since}_${filters.customRange.until}` : filters.datePreset}
+                        kpiSummary={filteredKpiSummary}
+                        accountName={accountName}
+                        accountId={adsAccountId ?? ''}
+                        currency={currency}
+                    />
                 </div>
             </motion.div>
 

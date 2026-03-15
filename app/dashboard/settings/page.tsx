@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
+import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { z } from 'zod';
@@ -86,7 +87,10 @@ export default function SettingsPage() {
         }
     }, [settingsStore.settings]);
 
-    const metaConnected = !!settingsStore.settings?.metaAccessToken;
+    const { data: session } = useSession();
+
+    // Considera conectado via OAuth (NextAuth) OU token manual (settings)
+    const metaConnected = !!(session?.accessToken || settingsStore.settings?.metaAccessToken);
     const metaUsername = settingsStore.settings?.metaUsername;
     const metaExpiresAt = settingsStore.settings?.metaTokenExpiresAt;
     const metaExpiresDate = metaExpiresAt ? new Date(metaExpiresAt * 1000) : null;
@@ -230,6 +234,30 @@ export default function SettingsPage() {
                 <SectionCard className="p-8">
                     <h4 className={SECTION_HEADER_STYLE}><span className="text-[#A3E635]">◎</span> Meta API Bridge [02]</h4>
                     <div className="space-y-6">
+                        {/* Status da sessão OAuth NextAuth */}
+                        {session?.accessToken && (
+                            <div className="p-4 border border-[#A3E635]/20 bg-[#A3E635]/5 flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <Badge intent="success" variant="subtle" size="sm">OAUTH_ACTIVE</Badge>
+                                        <span className="font-mono text-xs text-[#F5F5F5]">Conta Meta conectada via OAuth</span>
+                                    </div>
+                                    <p className="font-mono text-[10px] text-[#4A4A4A]">Token válido por 60 dias · Renovar em /connect</p>
+                                </div>
+                                <Button variant="outline" size="sm" className="font-mono text-[9px]" onClick={() => window.location.href = '/connect'}>RENOVAR</Button>
+                            </div>
+                        )}
+
+                        {!session?.accessToken && !settingsStore.settings?.metaAccessToken && (
+                            <div className="p-4 border border-white/[0.06] bg-white/[0.02] flex items-center justify-between">
+                                <div>
+                                    <p className="font-mono text-xs text-white/60">Nenhuma conta Meta conectada.</p>
+                                    <p className="font-mono text-[10px] text-[#4A4A4A] mt-0.5">Conecte via OAuth para acessar Ads e publicar no Instagram.</p>
+                                </div>
+                                <Button variant="solid" size="sm" className="font-mono text-[9px] shrink-0" onClick={() => window.location.href = '/connect'}>⚡ CONECTAR META</Button>
+                            </div>
+                        )}
+
                         {metaConnected && (
                             <div className={cn(
                                 "p-4 border rounded flex items-center justify-between",
@@ -261,7 +289,7 @@ export default function SettingsPage() {
                             />
                             <div className="flex gap-3">
                                 <Button onClick={handleSaveMetaToken} isLoading={isSavingMeta} variant="solid" className="font-mono text-[10px] tracking-widest uppercase flex-1">UPDATE_LINK</Button>
-                                <Button variant="outline" className="font-mono text-[10px] tracking-widest uppercase flex-1" onClick={() => window.location.href = '/api/auth/instagram'}>OAUTH_FLOW ↗</Button>
+                                <Button variant="outline" className="font-mono text-[10px] tracking-widest uppercase flex-1" onClick={() => window.location.href = '/connect'}>OAUTH_META ↗</Button>
                             </div>
                         </div>
                     </div>

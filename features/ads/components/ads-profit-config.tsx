@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function AdsProfitConfig({ onClose }: Props) {
-    const { config, setConfig } = useProfitConfigStore();
+    const { config, saveConfig } = useProfitConfigStore();
     const [draft, setDraft] = useState<ProfitConfig>({ ...config });
 
     const update = (key: keyof ProfitConfig, value: number | boolean) =>
@@ -21,7 +21,7 @@ export function AdsProfitConfig({ onClose }: Props) {
     const targetDisplay = isFinite(target) ? target.toFixed(2) : '∞';
 
     const handleSave = () => {
-        setConfig({ ...draft, enabled: true });
+        saveConfig({ ...draft, enabled: true });
         onClose();
     };
 

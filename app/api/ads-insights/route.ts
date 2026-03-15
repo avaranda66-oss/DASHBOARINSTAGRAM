@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDailyInsights, getInsights, computeKpiSummary } from '@/lib/services/facebook-ads.service';
 import type { AdsDatePreset, AdsKpiDelta } from '@/types/ads';
 
+const NO_CACHE = { headers: { 'Cache-Control': 'no-store' } };
+
 const fmt = (d: Date) => d.toISOString().split('T')[0];
 const sub = (d: Date, days: number) => { const r = new Date(d); r.setDate(r.getDate() - days); return r; };
 
@@ -175,7 +177,7 @@ export async function POST(req: NextRequest) {
             insights,
             kpiSummary,
             kpiDelta,
-        });
+        }, NO_CACHE);
     } catch (e: any) {
         console.error('[ads-insights] Erro:', e);
         const msg: string = e.message || '';
@@ -192,12 +194,12 @@ export async function POST(req: NextRequest) {
                     error: 'TOKEN_EXPIRED',
                     errorMessage: 'Token Meta expirado ou inválido. Renove em business.facebook.com → Configurações → Tokens de acesso.',
                 },
-                { status: 401 },
+                { status: 401, ...NO_CACHE },
             );
         }
         return NextResponse.json(
             { success: false, error: msg || 'Erro interno.' },
-            { status: 500 },
+            { status: 500, ...NO_CACHE },
         );
     }
 }

@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
       // Meta / Facebook CDN para avatares de usuário
       { protocol: 'https', hostname: '*.fbcdn.net' },
       { protocol: 'https', hostname: 'platform-lookaside.fbsbx.com' },
+      // Meta Graph API (fotos de perfil, assets de anúncios)
+      { protocol: 'https', hostname: 'graph.facebook.com' },
+      { protocol: 'https', hostname: 'graph.instagram.com' },
     ],
   },
 };

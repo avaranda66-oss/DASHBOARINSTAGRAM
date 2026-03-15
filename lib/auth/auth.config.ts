@@ -16,12 +16,21 @@ export const authConfig: NextAuthConfig = {
         authorized({ auth, request: { nextUrl } }) {
             const isLoggedIn = !!auth?.user;
             const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
+            const isOnConnect = nextUrl.pathname === '/connect';
 
             if (isOnDashboard) {
-                return isLoggedIn;
+                if (!isLoggedIn) {
+                    return Response.redirect(new URL('/login', nextUrl));
+                }
+                return true;
             }
 
-            // Usuário logado tentando acessar /login → redireciona para dashboard
+            // /connect (Meta OAuth) requer login de email primeiro
+            if (isOnConnect && !isLoggedIn) {
+                return Response.redirect(new URL('/login', nextUrl));
+            }
+
+            // Usuário já logado tentando acessar /login → dashboard
             if (isLoggedIn && nextUrl.pathname === '/login') {
                 return Response.redirect(new URL('/dashboard', nextUrl));
             }

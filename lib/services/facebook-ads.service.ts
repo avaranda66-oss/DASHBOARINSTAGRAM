@@ -636,15 +636,17 @@ async function getReachEstimate(token: string, accountId: string, targeting: Rec
     if (cached !== null) return cached;
 
     try {
+        // B-07: /reachestimate está deprecated desde v17+ e pode ser removido em v26+.
+        // Em v25 o endpoint ainda responde, mas retorna audience_size_lower_bound /
+        // audience_size_upper_bound (não mais o campo legado `users`). O fallback para
+        // `users` cobre respostas de versões anteriores em cache.
+        // Alternativa futura: /delivery_estimate — requer ad_object_id de anúncio ativo,
+        // não aceita targeting_spec genérico. Monitorar changelog do Marketing API.
+        // NOTA: accountId já tem o formato act_XXXXXXXXX (sem prefixo duplo).
         const data = await graphGet<{
             audience_size_lower_bound?: string | number;
             audience_size_upper_bound?: string | number;
-            users?: string | number;
-        // B-07: /reachestimate foi deprecated no Meta Ads API v17+ e pode ser removido
-        // em versões futuras (v26+). Endpoint alternativo: /delivery_estimate (requer
-        // ad_object_id de um anúncio ativo, não de targeting_spec genérico).
-        // Monitorar: https://developers.facebook.com/docs/marketing-api/changelog
-        // accountId já tem o formato act_XXXXXXXXX — não adicionar prefixo duplo
+            users?: string | number; // legado — v16 e anteriores
         }>(`${accountId}/reachestimate`, token, {
             targeting_spec: targetingJson,
             optimize_for: 'IMPRESSIONS',
@@ -952,6 +954,7 @@ export async function computeIntelligenceMetrics(
         saturationIndexes,
         abTests,
         benchmarkComparison,
+        adDailyInsights,
         computedAt: new Date().toISOString(),
     };
 }

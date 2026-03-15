@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProfitConfigStore } from '@/stores/profit-config-slice';
 import {
     calcBreakevenRoas,
@@ -33,8 +33,12 @@ const STATUS_ICON: Record<RoasStatus, string> = {
 };
 
 export function AdsProfitDashboard({ kpi, campaigns = [] }: Props) {
-    const { config, setConfig } = useProfitConfigStore();
+    const { config, loadConfig } = useProfitConfigStore();
     const [showConfig, setShowConfig] = useState(false);
+
+    useEffect(() => {
+        loadConfig();
+    }, [loadConfig]);
 
     const breakeven = calcBreakevenRoas(config);
     const target = calcTargetRoas(config);

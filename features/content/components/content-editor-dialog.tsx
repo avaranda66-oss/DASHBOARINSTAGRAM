@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 // [ZERO_LUCIDE_PURGE]
 import { useContentStore, useCollectionStore, useAccountStore, useAutomationStore } from '@/stores';
+import { getSettingAction } from '@/app/actions/settings.actions';
 import { publishInstagramPostAction } from '@/app/actions/instagram.actions';
 import { contentSchema, type ContentFormData } from '../schemas/content.schema';
 import { TagInput } from './tag-input';
@@ -66,6 +67,7 @@ export function ContentEditorDialog({
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const { addToQueue, queue, isProcessing } = useAutomationStore();
+    const [hasTunnelUrl, setHasTunnelUrl] = useState(true);
     const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
@@ -89,6 +91,13 @@ export function ContentEditorDialog({
         if (!collectionsLoaded) loadCollections();
         if (!accountsLoaded) loadAccounts();
     }, [collectionsLoaded, loadCollections, accountsLoaded, loadAccounts]);
+
+    useEffect(() => {
+        if (!open) return;
+        getSettingAction('tunnel_url').then((val) => {
+            setHasTunnelUrl(!!val && val !== 'null');
+        }).catch(() => setHasTunnelUrl(false));
+    }, [open]);
 
     const {
         register,
@@ -143,6 +152,7 @@ export function ContentEditorDialog({
     const hashtags = watch('hashtags');
     const mediaUrls = watch('mediaUrls');
     const collectionIds = watch('collectionIds') || [];
+    const currentStatus = watch('status');
 
     const toggleCollection = (id: string) => {
         const newIds = collectionIds.includes(id)
@@ -152,6 +162,12 @@ export function ContentEditorDialog({
     };
 
     const onSubmit = async (data: ContentFormData) => {
+        if (data.status === 'scheduled' && (data.mediaUrls?.length ?? 0) > 0 && !hasTunnelUrl) {
+            toast.warning('⚠ Tunnel URL não configurada', {
+                description: 'Post agendado, mas sem Tunnel URL a publicação pode falhar. Configure em Configurações → Tunnel URL.',
+                duration: 8000,
+            });
+        }
         setIsSaving(true);
         try {
             const normalized = {
@@ -360,12 +376,19 @@ export function ContentEditorDialog({
                                             ))}
                                         </select>
                                     </div>
-                                    <Input
-                                        type="datetime-local"
-                                        label="AGENDAMENTO"
-                                        {...register('scheduledAt')}
-                                        isMono={true}
-                                    />
+                                    <div className="space-y-1">
+                                        <Input
+                                            type="datetime-local"
+                                            label="AGENDAMENTO"
+                                            {...register('scheduledAt')}
+                                            isMono={true}
+                                        />
+                                        {currentStatus === 'scheduled' && (mediaUrls?.length ?? 0) > 0 && !hasTunnelUrl && (
+                                            <p className="font-mono text-[10px] text-[#EF4444]/60 mt-1">
+                                                ⚠ Tunnel URL não configurada — vá em Configurações para evitar falha na publicação
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <TagInput

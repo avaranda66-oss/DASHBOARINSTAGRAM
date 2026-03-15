@@ -1,7 +1,28 @@
 import NextAuth from 'next-auth';
 import Facebook from 'next-auth/providers/facebook';
+import Credentials from 'next-auth/providers/credentials';
 import { authConfig } from './auth.config';
 import { createSupabaseServiceClient } from '@/lib/db/supabase';
+import { timingSafeEqual, scryptSync, randomBytes } from 'crypto';
+
+// ─── Password helpers (usando crypto nativo — sem dependência extra) ──────────
+
+export function hashPassword(password: string): string {
+    const salt = randomBytes(16).toString('hex');
+    const hash = scryptSync(password, salt, 64).toString('hex');
+    return `${salt}:${hash}`;
+}
+
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+    try {
+        const [salt, hash] = stored.split(':');
+        const hashBuf = Buffer.from(hash, 'hex');
+        const derivedBuf = scryptSync(password, salt, 64);
+        return timingSafeEqual(hashBuf, derivedBuf);
+    } catch {
+        return false;
+    }
+}
 
 // ─── Long-lived token exchange ────────────────────────────────────────────────
 // O token OAuth padrão do Facebook dura ~1h.
@@ -40,14 +61,45 @@ async function exchangeForLongLivedToken(shortLivedToken: string): Promise<{
 export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig,
     providers: [
+        Credentials({
+            credentials: {
+                email: { label: 'Email', type: 'email' },
+                password: { label: 'Senha', type: 'password' },
+            },
+            async authorize(credentials) {
+                if (!credentials?.email || !credentials?.password) return null;
+
+                const supabase = createSupabaseServiceClient();
+                const { data, error } = await supabase
+                    .from('allowed_users')
+                    .select('id, email, name, password_hash, active')
+                    .eq('email', credentials.email as string)
+                    .single();
+
+                if (error || !data || !data.active) return null;
+
+                const valid = await verifyPassword(
+                    credentials.password as string,
+                    data.password_hash,
+                );
+                if (!valid) return null;
+
+                return { id: data.id, email: data.email, name: data.name };
+            },
+        }),
         Facebook({
             clientId: process.env.INSTAGRAM_APP_ID!,
             clientSecret: process.env.INSTAGRAM_APP_SECRET!,
-            // Escopos necessários para Meta Ads API
-            // Nota: ads_read e ads_management requerem App Review para produção
+            // Escopos: Meta Ads API + Instagram Content Publishing
+            // Nota: ads_read, ads_management e instagram_content_publish requerem App Review para produção
             authorization: {
                 params: {
-                    scope: 'email,public_profile,ads_read,ads_management,business_management',
+                    scope: [
+                        'email', 'public_profile',
+                        'ads_read', 'ads_management', 'business_management',
+                        'pages_show_list', 'pages_read_engagement',
+                        'instagram_basic', 'instagram_content_publish',
+                    ].join(','),
                 },
             },
         }),
@@ -95,7 +147,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return session;
         },
 
-        ...authConfig.callbacks,
     },
 });
 

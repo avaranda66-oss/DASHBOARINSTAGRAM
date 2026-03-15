@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { computeIntelligenceMetrics, computeKpiSummary, getInsights, getCampaigns } from '@/lib/services/facebook-ads.service';
 import type { AdsDatePreset } from '@/types/ads';
 
+const NO_CACHE = { headers: { 'Cache-Control': 'no-store' } };
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
@@ -28,13 +30,13 @@ export async function POST(req: NextRequest) {
             token, accountId, kpi, datePreset as AdsDatePreset,
         );
 
-        return NextResponse.json({ success: true, metrics });
+        return NextResponse.json({ success: true, metrics }, NO_CACHE);
     } catch (e: unknown) {
         console.error('[ads-intelligence] Erro:', e);
         const message = e instanceof Error ? e.message : 'Erro interno.';
         return NextResponse.json(
             { success: false, error: message },
-            { status: 500 },
+            { status: 500, ...NO_CACHE },
         );
     }
 }

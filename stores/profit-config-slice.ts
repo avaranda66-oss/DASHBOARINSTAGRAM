@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 export interface ProfitConfig {
     cogsPct: number;
@@ -11,7 +10,10 @@ export interface ProfitConfig {
 
 interface ProfitConfigSlice {
     config: ProfitConfig;
+    isLoaded: boolean;
     setConfig: (c: ProfitConfig) => void;
+    loadConfig: () => Promise<void>;
+    saveConfig: (c: ProfitConfig) => Promise<void>;
 }
 
 const DEFAULT_CONFIG: ProfitConfig = {
@@ -22,12 +24,39 @@ const DEFAULT_CONFIG: ProfitConfig = {
     enabled: false,
 };
 
-export const useProfitConfigStore = create<ProfitConfigSlice>()(
-    persist(
-        (set) => ({
-            config: DEFAULT_CONFIG,
-            setConfig: (c) => set({ config: c }),
-        }),
-        { name: 'profit-config' }
-    )
-);
+export const useProfitConfigStore = create<ProfitConfigSlice>((set, get) => ({
+    config: DEFAULT_CONFIG,
+    isLoaded: false,
+
+    setConfig: (c) => set({ config: c }),
+
+    loadConfig: async () => {
+        if (get().isLoaded) return;
+        try {
+            const res = await fetch('/api/user/profit-config');
+            if (res.ok) {
+                const { config } = await res.json();
+                set({ config: config ?? DEFAULT_CONFIG, isLoaded: true });
+            } else {
+                // 401 ou outro erro: usa config default silenciosamente
+                set({ isLoaded: true });
+            }
+        } catch {
+            // falha de rede: mantém DEFAULT_CONFIG
+            set({ isLoaded: true });
+        }
+    },
+
+    saveConfig: async (c) => {
+        set({ config: c });
+        try {
+            await fetch('/api/user/profit-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(c),
+            });
+        } catch {
+            // falha silenciosa — config já atualizado no estado local
+        }
+    },
+}));

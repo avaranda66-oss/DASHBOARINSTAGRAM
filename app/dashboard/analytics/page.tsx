@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useTransition } from 'react';
+import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { nanoid } from 'nanoid';
 import { useAnalytics } from '@/features/analytics/hooks/use-analytics';
@@ -65,8 +66,10 @@ export default function AnalyticsPage() {
         customDateRange, setCustomDateRange, selectedAccountHandle,
     } = useAnalytics();
 
+    const { data: session } = useSession();
     const { accounts, isLoaded: accountsLoaded, loadAccounts } = useAccountStore();
     const settingsStore = useSettingsStore();
+    const isMetaApiActive = !!(session?.accessToken || settingsStore?.settings?.metaAccessToken);
 
     const [competitors, setCompetitors] = useState<CompetitorProfile[]>([]);
     const [showAddCompetitor, setShowAddCompetitor] = useState(false);
@@ -409,6 +412,21 @@ export default function AnalyticsPage() {
                         </button>
                     ))}
                 </div>
+            </motion.div>
+
+            {/* Data Source Banner */}
+            <motion.div variants={item}>
+                {isMetaApiActive ? (
+                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-[#A3E635]/60 border border-[#A3E635]/10 bg-[#A3E635]/5 px-3 py-2">
+                        <span>●</span>
+                        <span>FONTE: META API PRIVADA — dados reais de alcance, impressões e saves</span>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-[#F59E0B]/60 border border-[#F59E0B]/10 bg-[#F59E0B]/5 px-3 py-2">
+                        <span>◌</span>
+                        <span>FONTE: APIFY PÚBLICO — apenas likes e comentários visíveis. Conecte Meta para dados completos.</span>
+                    </div>
+                )}
             </motion.div>
 
             {/* View Content */}

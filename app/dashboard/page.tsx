@@ -5,12 +5,13 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { KpiCard } from '@/design-system/molecules/KpiCard'
 import { Button } from '@/design-system/atoms/Button'
-import { useContentStore } from '@/stores'
+import { useContentStore, useSettingsStore } from '@/stores'
 import { CONTENT_STATUSES } from '@/lib/constants'
 import { format, isAfter, parseISO, subDays, isWithinInterval } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ContentEditorDialog } from '@/features/content/components/content-editor-dialog'
 import { useAccountStore } from '@/stores'
+import { useSession } from 'next-auth/react'
 
 // ASCII glyphs — zero Lucide dependency
 const STATUS_GLYPHS: Record<string, string> = {
@@ -65,7 +66,11 @@ function SectionCard({
 export default function DashboardPage() {
   const { contents: allContents, isLoaded, loadContents } = useContentStore()
   const { selectedAccountId } = useAccountStore()
+  const settingsStore = useSettingsStore()
+  const { data: session } = useSession()
   const [isEditorOpen, setIsEditorOpen] = useState(false)
+
+  const metaConnected = !!(session?.accessToken || settingsStore.settings?.metaAccessToken)
 
   useEffect(() => {
     if (!isLoaded) loadContents()
@@ -98,12 +103,17 @@ export default function DashboardPage() {
         })
     ).length
 
-    // Sparkline: conteúdos criados por dia nos últimos 14 dias
+    // Sparkline: agendamentos por dia nos últimos 14 dias
     const sparkData: number[] = []
     for (let i = 13; i >= 0; i--) {
       const day = subDays(now, i)
       const dayStr = format(day, 'yyyy-MM-dd')
-      sparkData.push(contents.filter((c) => c.createdAt?.startsWith(dayStr)).length)
+      sparkData.push(
+        contents.filter((c) => {
+          if (!c.scheduledAt) return false
+          return c.scheduledAt.startsWith(dayStr)
+        }).length
+      )
     }
 
     // Type distribution
@@ -138,6 +148,10 @@ export default function DashboardPage() {
     .sort((a, b) => parseISO(a.scheduledAt!).getTime() - parseISO(b.scheduledAt!).getTime())
     .slice(0, 6)
 
+  const nextScheduled = contents
+    .filter((c) => c.status === 'scheduled' && c.scheduledAt)
+    .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())[0]
+
   return (
     <div className="min-h-full" style={{ background: '#050505' }}>
       <motion.div
@@ -146,6 +160,39 @@ export default function DashboardPage() {
         initial="hidden"
         animate="show"
       >
+        {/* ── Onboarding Card (sem token Meta) ── */}
+        {!metaConnected && (
+          <motion.div variants={fadeUp}>
+            <div
+              className="p-6 font-mono"
+              style={{
+                border: '1px solid rgba(163,230,53,0.2)',
+                background: 'rgba(163,230,53,0.05)',
+                borderRadius: '8px',
+              }}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase tracking-widest" style={{ color: '#A3E635' }}>
+                    [SETUP_REQUIRED]
+                  </p>
+                  <p className="text-[13px]" style={{ color: '#D4D4D4' }}>
+                    Conecte sua conta Meta para ver dados de campanhas.
+                  </p>
+                </div>
+                <Link
+                  href="/connect"
+                  className="inline-flex items-center gap-2 px-4 py-2 font-mono text-[10px] uppercase tracking-widest border transition-colors shrink-0"
+                  style={{ borderColor: '#A3E635', color: '#A3E635', background: 'transparent' }}
+                >
+                  <span>⚡</span>
+                  <span>Conectar Meta</span>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── Page Header ── */}
         <motion.div variants={fadeUp} className="flex items-end justify-between">
           <div>
@@ -481,6 +528,37 @@ export default function DashboardPage() {
                     Verifique a conexão.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Scheduler status indicator */}
+            {nextScheduled && (
+              <div
+                className="mt-3 pl-3 border-l-2"
+                style={{
+                  borderColor: new Date(nextScheduled.scheduledAt!) < now
+                    ? 'rgba(239,68,68,0.4)'
+                    : 'rgba(163,230,53,0.3)',
+                }}
+              >
+                {new Date(nextScheduled.scheduledAt!) < now ? (
+                  <p
+                    className="font-mono text-[10px]"
+                    style={{ color: 'rgba(239,68,68,0.6)' }}
+                  >
+                    ◷ PUBLICAÇÃO ATRASADA — {nextScheduled.title}
+                  </p>
+                ) : (
+                  <p
+                    className="font-mono text-[10px]"
+                    style={{ color: 'rgba(255,255,255,0.4)' }}
+                  >
+                    ◷ SCHEDULER ATIVO — próxima publicação:{' '}
+                    {format(parseISO(nextScheduled.scheduledAt!), "dd/MM/yyyy 'às' HH:mm", {
+                      locale: ptBR,
+                    })}
+                  </p>
+                )}
               </div>
             )}
           </SectionCard>

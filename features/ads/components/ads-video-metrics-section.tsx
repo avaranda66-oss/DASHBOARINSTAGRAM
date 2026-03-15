@@ -1,9 +1,11 @@
 'use client';
 
 import type { AdCampaign, AdInsight, AdActionStat } from '@/types/ads';
+import { useAdsStore } from '@/stores';
 import { cn } from '@/design-system/utils/cn';
 import { AdsAwarenessScore } from './ads-awareness-score';
 import { AdsRetentionCurve } from './ads-retention-curve';
+import { AdsCreativeSurvival } from './ads-creative-survival';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -489,6 +491,9 @@ interface Props {
 }
 
 export function AdsVideoMetricsSection({ campaigns }: Props) {
+    const { intelligenceMetrics } = useAdsStore();
+    const adDailyInsights = intelligenceMetrics?.adDailyInsights;
+
     const videoCampaigns = campaigns.filter(
         c => (VIDEO_OBJECTIVES.includes(c.objective || '') || hasVideoData(c.insights)) && hasVideoData(c.insights)
     );
@@ -526,6 +531,11 @@ export function AdsVideoMetricsSection({ campaigns }: Props) {
                     <VideoFunnelCard key={c.id} name={c.name} insights={c.insights!} />
                 ))}
             </div>
+
+            {/* Kaplan-Meier Creative Survival */}
+            {adDailyInsights && adDailyInsights.length > 0 && (
+                <AdsCreativeSurvival adDailyInsights={adDailyInsights} />
+            )}
 
             {/* Legend */}
             <div className="flex items-center gap-6 font-mono text-[8px] text-[#4A4A4A] uppercase tracking-[0.2em] pt-1 opacity-60 flex-wrap">

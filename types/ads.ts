@@ -332,6 +332,7 @@ export interface IntelligenceMetrics {
     saturationIndexes: AudienceSaturationIndex[];
     abTests: ABTestResult[];
     benchmarkComparison: BenchmarkComparison | null;
+    adDailyInsights: AdInsight[];
     computedAt: string;
 }
 
