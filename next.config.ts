@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '4mb',
     },
   },
-  serverExternalPackages: ['puppeteer-core'],
+  serverExternalPackages: ['puppeteer-core', 'nodemailer'],
 };
 
 export default nextConfig;

@@ -301,6 +301,14 @@ export class SchedulerService {
                 }
             }));
 
+            // US-60 — Check scheduled report emails
+            try {
+                const { checkAndSendScheduledReports } = await import('@/lib/services/report-scheduler.service');
+                await checkAndSendScheduledReports();
+            } catch (reportErr: any) {
+                console.error('[Scheduler] Erro ao verificar relatórios agendados:', reportErr.message);
+            }
+
         } catch (err: any) {
             console.error(`[Scheduler] Erro Geral:`, err.message);
         } finally {

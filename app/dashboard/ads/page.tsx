@@ -27,6 +27,7 @@ import { AdsMultiAccountOverview } from '@/features/ads/components/ads-multi-acc
 import { AdsBudgetPacing } from '@/features/ads/components/ads-budget-pacing';
 import { AdsRulesEngine } from '@/features/ads/components/ads-rules-engine';
 import { AdsCreativeLibrary } from '@/features/ads/components/ads-creative-library';
+import { AdsScheduledReports } from '@/features/ads/components/ads-scheduled-reports';
 
 type ViewTab = 'overview' | 'charts' | 'intelligence' | 'creatives';
 
@@ -787,6 +788,13 @@ export default function AdsDashboardPage() {
                                 campaigns={campaigns}
                                 token={adsToken}
                                 accountId={adsAccountId}
+                            />
+                            {/* US-60: Scheduled Reports */}
+                            <AdsScheduledReports
+                                token={adsToken}
+                                accountId={adsAccountId}
+                                accountName={accountName}
+                                datePreset={filters.customRange ? undefined : filters.datePreset}
                             />
                         </div>
                     )}
