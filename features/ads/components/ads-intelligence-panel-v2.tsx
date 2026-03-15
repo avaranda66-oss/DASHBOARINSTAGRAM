@@ -30,6 +30,7 @@ import { AdsVideoMetricsSection } from './ads-video-metrics-section';
 import { AdsQualityRankingsSection } from './ads-quality-rankings-section';
 import { AdsEfficiencyPanel } from './ads-efficiency-panel';
 import { AdsAiDiagnosis } from './ads-ai-diagnosis';
+import { AdsAbTestingPanel } from './ads-ab-testing-panel';
 import type { DailyAdInsight, AdCampaign } from '@/types/ads';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -759,6 +760,7 @@ export function AdsIntelligencePanelV2({ token, accountId, daily, campaigns }: P
             {campaigns && campaigns.length > 0 && (
                 <AdsAiDiagnosis campaigns={campaigns} />
             )}
+            <AdsAbTestingPanel />
             {daily && daily.length >= 4 && <AdsInsightsFeed daily={daily} />}
             {daily && daily.length >= 7 && <AdsAnomalyMultivariate daily={daily} />}
             {campaigns && campaigns.length >= 2 && <AdsAttributionSection campaigns={campaigns} />}
