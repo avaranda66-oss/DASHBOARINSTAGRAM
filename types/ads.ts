@@ -44,12 +44,15 @@ export interface AdInsight {
     actions?: AdActionStat[];
     cost_per_action_type?: AdActionStat[];
     purchase_roas?: AdActionStat[];
-    // Video metrics (campanhas VIDEO_VIEWS, OUTCOME_AWARENESS)
+    // Video metrics (campanhas VIDEO_VIEWS, OUTCOME_AWARENESS, REACH)
     video_avg_time_watched_actions?: AdActionStat[];
+    video_3_sec_watched_actions?: AdActionStat[];   // base do Thumb Stop Rate = 3s / impressions
+    video_15_sec_watched_actions?: AdActionStat[];  // base do Hold Rate = thruplay / 3s_views
     video_p25_watched_actions?: AdActionStat[];
     video_p50_watched_actions?: AdActionStat[];
     video_p75_watched_actions?: AdActionStat[];
     video_p95_watched_actions?: AdActionStat[];
+    video_p100_watched_actions?: AdActionStat[];    // completion estrito (100% da duração)
     video_thruplay_watched_actions?: AdActionStat[];
     // Ad quality rankings: UNKNOWN | BELOW_AVERAGE_10 | BELOW_AVERAGE_20 | BELOW_AVERAGE_35 | AVERAGE | ABOVE_AVERAGE
     quality_ranking?: string;
