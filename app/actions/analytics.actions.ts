@@ -62,7 +62,7 @@ export async function cleanupMetaContaminationAction(username: string): Promise<
         });
         if (!analytics) return false;
         const posts = JSON.parse(analytics.data);
-        const isContaminated = Array.isArray(posts) && posts.some((p: any) => p.source === 'meta' || p.reach !== undefined);
+        const isContaminated = Array.isArray(posts) && posts.some((p: unknown) => typeof p === 'object' && p !== null && ('source' in p || 'reach' in p));
         if (isContaminated) {
             await prisma.analytics.delete({
                 where: { targetId_type: { targetId: handle, type: 'account' } }
@@ -75,7 +75,7 @@ export async function cleanupMetaContaminationAction(username: string): Promise<
 
 // ===== Feed Visual Analysis Cache =====
 
-export async function getFeedAnalysisAction(username: string): Promise<{ analysis: any; fetchedAt: string } | null> {
+export async function getFeedAnalysisAction(username: string): Promise<{ analysis: unknown; fetchedAt: string } | null> {
     const key = `feed-analysis:${username.toLowerCase().trim()}`;
     const record = await prisma.analytics.findUnique({
         where: { targetId_type: { targetId: key, type: 'meta' } }
@@ -84,7 +84,7 @@ export async function getFeedAnalysisAction(username: string): Promise<{ analysi
     return { analysis: JSON.parse(record.data), fetchedAt: record.updatedAt.toISOString() };
 }
 
-export async function saveFeedAnalysisAction(username: string, analysis: any): Promise<void> {
+export async function saveFeedAnalysisAction(username: string, analysis: unknown): Promise<void> {
     const key = `feed-analysis:${username.toLowerCase().trim()}`;
     await prisma.analytics.upsert({
         where: { targetId_type: { targetId: key, type: 'meta' } },

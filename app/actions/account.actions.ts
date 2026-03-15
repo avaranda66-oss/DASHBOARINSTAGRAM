@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function getAccountsAction(): Promise<Account[]> {
     const dbAccounts = await db.account.findMany();
-    return dbAccounts.map((acc: any) => ({
+    return dbAccounts.map((acc) => ({
         id: acc.id,
         name: acc.username || acc.providerAccountId,
         handle: `@${acc.providerAccountId}`,
@@ -53,9 +53,10 @@ export async function saveAccountAction(account: Account) {
 
         revalidatePath('/dashboard/accounts');
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
         console.error("Erro ao salvar conta no Prisma:", e);
-        return { success: false, error: e.message };
+        return { success: false, error: msg };
     }
 }
 
@@ -64,9 +65,10 @@ export async function deleteAccountAction(id: string) {
         await db.account.delete({ where: { id } });
         revalidatePath('/dashboard/accounts');
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
         console.error("Erro ao deletar conta no Prisma:", e);
-        return { success: false, error: e.message };
+        return { success: false, error: msg };
     }
 }
 
@@ -81,7 +83,7 @@ export async function updateAccountMetaProfileAction(username: string, data: {
 }) {
     try {
         const handle = username.replace('@', '').toLowerCase();
-        const updateData: any = {};
+        const updateData: Record<string, unknown> = {};
         if (data.followersCount != null) updateData.followers_count = data.followersCount;
         if (data.name) updateData.name = data.name;
         if (data.biography != null) updateData.biography = data.biography;
@@ -96,9 +98,10 @@ export async function updateAccountMetaProfileAction(username: string, data: {
             data: updateData,
         });
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
         console.error("Erro ao atualizar perfil Meta no Prisma:", e);
-        return { success: false, error: e.message };
+        return { success: false, error: msg };
     }
 }
 

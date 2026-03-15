@@ -29,7 +29,7 @@ export async function saveSettingAction(key: string, value: string): Promise<voi
 export async function getAllSettingsAction(): Promise<Record<string, string>> {
     try {
         const settings = await prisma.setting.findMany();
-        return settings.reduce((acc: Record<string, string>, s: any) => ({ ...acc, [s.key]: s.value }), {} as Record<string, string>);
+        return settings.reduce((acc: Record<string, string>, s) => ({ ...acc, [s.key]: s.value ?? '' }), {} as Record<string, string>);
     } catch (error) {
         console.error('[Settings] Erro ao buscar todas as configurações:', error);
         return {};

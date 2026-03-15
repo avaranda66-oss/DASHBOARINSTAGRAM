@@ -161,8 +161,9 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
                             const newSize = fsMod.statSync(optimizedAbsPath).size;
                             finalImageUrls[i] = `${tunnelUrl.replace(/\/$/, '')}${optimizedRelPath}`;
                         }
-                    } catch (optErr: any) {
-                        console.warn(`[Action] Falha ao otimizar imagem ${i}: ${optErr.message}`);
+                    } catch (optErr: unknown) {
+                        const msg = optErr instanceof Error ? optErr.message : String(optErr);
+                        console.warn(`[Action] Falha ao otimizar imagem ${i}: ${msg}`);
                     }
                 }
             }
@@ -212,8 +213,9 @@ export async function publishInstagramPostAction(contentId: string, handle?: str
         }
 
         return { success: false, message: "Erro desconhecido na publicação." };
-    } catch (e: any) {
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Erro interno.";
         console.error("publishInstagramPostAction erro:", e);
-        return { success: false, message: e.message || "Erro interno." };
+        return { success: false, message: msg };
     }
 }

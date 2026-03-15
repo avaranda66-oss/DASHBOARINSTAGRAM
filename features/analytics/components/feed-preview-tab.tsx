@@ -115,7 +115,8 @@ export function FeedPreviewTab({ posts, account, avgEngagement }: Props) {
         import('@/app/actions/analytics.actions').then(({ getFeedAnalysisAction }) => {
             getFeedAnalysisAction(account.username).then(cached => {
                 if (cached?.analysis) {
-                    setAnalysisResult(cached.analysis);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    setAnalysisResult(cached.analysis as any);
                 }
             }).catch(() => {});
         }).catch(() => {});

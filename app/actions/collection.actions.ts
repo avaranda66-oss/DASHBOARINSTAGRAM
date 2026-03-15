@@ -3,7 +3,9 @@
 import prisma from '@/lib/db';
 import type { Collection } from '@/types/collection';
 
-function mapToCollection(dbCol: any): Collection {
+import type { Collection as PrismaCollection } from '@prisma/client';
+
+function mapToCollection(dbCol: PrismaCollection): Collection {
     return {
         ...dbCol,
         startDate: dbCol.startDate ? dbCol.startDate.toISOString() : null,

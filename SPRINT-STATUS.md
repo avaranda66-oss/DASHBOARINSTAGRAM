@@ -18,20 +18,6 @@
 | G | Testes — auth-crypto (11), statistics (25), export-csv (27) = 817/817 passando | ✅ |
 | H | Build Validation — 0 TypeScript errors, 0 lint errors novos, build OK 73 páginas | ✅ |
 
-### Estado de Saúde
-
-| Check | Resultado |
-|-------|-----------|
-| `npx tsc --noEmit` | ✅ ZERO erros |
-| `npm run lint` (arquivos novos/modificados) | ✅ ZERO erros |
-| `npm run build` | ✅ 73 páginas, Turbopack, 8.3s |
-
-### Dívida Técnica Documentada (pré-existente, fora de escopo)
-
-- `app/actions/*.ts` — `@typescript-eslint/no-explicit-any` (7 arquivos, não tocados nesta sprint)
-- `middleware.ts` → warning de proxy no build (tarefa futura)
-- `turbopack.root` config — warning de lockfile (tarefa futura)
-
 ---
 
 ## Sprint 2 — UX Logic Fixes ✅ ENCERRADA
@@ -47,36 +33,88 @@
 | B | B-3: Token OAuth sync → account.access_token | `lib/auth/auth.ts` | ✅ |
 | C | B-4: Tunnel URL validation na server action | `content.actions.ts` + editor | ✅ |
 
-### Bugs Corrigidos
+---
 
-- **Sparkline** agora conta `scheduledAt` (posts agendados por dia), não `createdAt`
-- **Mock data** só seed em `NODE_ENV=development`, nunca em produção
-- **Token OAuth** sincroniza automaticamente com `account.access_token` no SQLite após login Meta
-- **Agendamento com mídia local** retorna erro estruturado se `tunnel_url` não configurada
+## Sprint 3 — UX Logic + Error Tracking + Onboarding ✅ ENCERRADA
+
+**Data:** 2026-03-15 | **Branch:** v2-dashboard
+
+### Entregues
+
+| Chat | Feature | Status |
+|------|---------|--------|
+| A | Storyboard drag-to-scheduled guard + capture state antes de clear | ✅ |
+| B | Scheduler errorMessage — 4 failure points salvam razão no banco | ✅ |
+| C | Tunnel URL validation no content-editor-dialog | ✅ |
+| E | Dashboard onboarding checklist 3 etapas + scheduler indicator | ✅ |
+| F | Token hierarchy — OAuth vs manual, badge visual no DashboardShell | ✅ |
+| G+H | Testes + Build Validation — 817/817 PASS, 0 TypeScript errors | ✅ |
 
 ---
 
-## Backlog Priorizado — Próximas Sprints
+## Sprint 4 — Quick Wins + Lint Cleanup ✅ ENCERRADA
 
-### Alta Prioridade
+**Data:** 2026-03-15 | **Branch:** v2-dashboard
 
-- [ ] **Deduplicador de requests** — fetch duplo nos filtros de período (ads/page)
-- [ ] **Calendar rescheduling** — permitir arrastar/clicar para reagendar no Calendar
-- [ ] **Scheduler status** — endpoint `/api/scheduler/status` para verificar saúde do scheduler
-- [ ] **Cleanup lint actions/** — tipar `any` pré-existentes em `app/actions/`
+### Entregues
 
-### EPIC-INTELLIGENCE-V3
+| Item | Arquivo | Status |
+|------|---------|--------|
+| Scheduler status endpoint | `app/api/scheduler/status/route.ts` | ✅ |
+| Cleanup `any` em `app/actions/` | 6 arquivos tipados | ✅ |
+| SPRINT-STATUS sincronizado | este arquivo | ✅ |
+| README atualizado (estudo completo) | `README.md` | ✅ |
 
-- [ ] US-84: Anomaly Detection aprimorado
-- [ ] US-85: Bayesian A/B Testing v2
-- [ ] US-86: HW Optimizer v2
-- [ ] US-87: Causal Behavioral Engine
+---
 
-### Módulos Estatísticos Avançados
+## Estado Atual — V2 Final
 
-- [ ] US-28: Isolation Forest — detecção de outliers
-- [ ] US-29: Shapley + Markov — atribuição multi-touch
-- [ ] US-30: Fisher + normalQuantile — significância estatística
+### Epics Concluídos
+
+| Epic | Stories | Status |
+|------|---------|--------|
+| FASE 1 (Statistical Engine base) | US-50 a US-55, US-71 | ✅ |
+| FASE 2 (Infra de Ads) | US-56 a US-59, US-66 | ✅ |
+| FASE 3 (Demographics + Multi-Account + Automation) | US-60 a US-70 | ✅ |
+| EPIC-INTELLIGENCE-V3 | US-84 a US-89 | ✅ |
+| EPIC-CREATIVE-METRICS | US-90 a US-106 | ✅ |
+| SaaS Foundation (Auth + Supabase) | Sprint 1+2 | ✅ |
+
+### Módulos Estatísticos — Todos Implementados
+
+| Módulo | Arquivo | Status |
+|--------|---------|--------|
+| Isolation Forest | `lib/utils/isolation-forest.ts` | ✅ |
+| Shapley + Markov Attribution | `lib/utils/attribution.ts` | ✅ |
+| Fisher + normalQuantile | `lib/utils/math-core.ts` | ✅ |
+| Bayesian A/B + BH Correction | `lib/utils/bayesian-ab.ts` | ✅ |
+| Holt-Winters Autotuning | `lib/utils/hw-optimizer.ts` | ✅ |
+| STL Anomaly Detection + MAD | `lib/utils/anomaly-detection.ts` | ✅ |
+| Granger Causality + Fogg Model | `lib/utils/causal-behavioral.ts` | ✅ |
+| MMM + Adstock | `lib/utils/mmm.ts` | ✅ |
+| Budget Optimizer | `lib/utils/budget-optimizer.ts` | ✅ |
+| Creative Scorer + Survival | `lib/utils/creative-scorer.ts` + `creative-survival.ts` | ✅ |
+| Profit Calculator + Breakeven | `lib/utils/profit-calculator.ts` | ✅ |
+| Auction Pressure | `lib/utils/auction-pressure.ts` | ✅ |
+| Causal Chain Detector | `lib/utils/causal-chain-detector.ts` | ✅ |
+
+### Estado de Saúde
+
+| Check | Resultado |
+|-------|-----------|
+| `npx tsc --noEmit` | ✅ ZERO erros |
+| `npm run build` | ✅ 73+ páginas, Turbopack |
+| Testes (Vitest) | ✅ 740+ PASS |
+| Meta API v25.0 | ✅ Compliant |
+
+---
+
+## Backlog Futuro
+
+### Features Pendentes
+
+- [ ] **Calendar rescheduling** — drag-to-reschedule no calendário editorial (nova feature, alta complexidade)
+- [ ] **UI Automação de Comentários** — painel para gerenciar respostas automáticas (API existe: `/api/automation/respond-comments`, UI pendente)
 
 ### Infra
 
@@ -97,13 +135,13 @@
 | DB Content | SQLite | — |
 | DB Auth/Config | Supabase (PostgreSQL) | — |
 | Auth | NextAuth | v5 beta.30 |
-| State | Zustand | — |
+| State | Zustand | 11 slices |
 | Ads API | Meta Graph API | v25.0 |
 | Analytics | Apify + Meta Insights | — |
 | IA | Gemini Multimodal | — |
-| Testes | Vitest + Testing Library | — |
+| Testes | Vitest + Testing Library | 740+ testes |
 | Build | Turbopack | — |
 
 ---
 
-*Última atualização: 2026-03-15*
+*Última atualização: 2026-03-15 — V2 Final*

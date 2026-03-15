@@ -9,7 +9,7 @@ export async function getCompetitorsAction(): Promise<CompetitorProfile[]> {
         orderBy: { createdAt: 'desc' }
     });
 
-    return competitors.map((c: any) => ({
+    return competitors.map((c) => ({
         id: c.id,
         handle: c.handle,
         name: c.name,
@@ -50,7 +50,7 @@ export async function deleteCompetitorAction(id: string): Promise<void> {
     revalidatePath('/dashboard/analytics');
 }
 
-export async function updateCompetitorMetricsAction(handle: string, metrics: any): Promise<void> {
+export async function updateCompetitorMetricsAction(handle: string, metrics: Record<string, unknown>): Promise<void> {
     await prisma.competitor.update({
         where: { handle },
         data: {
