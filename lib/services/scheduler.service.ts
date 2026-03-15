@@ -127,7 +127,7 @@ export class SchedulerService {
                             console.error(`[Scheduler] Post ${post.id} sem mídia.`);
                             await prisma.content.update({
                                 where: { id: post.id },
-                                data: { status: 'failed' }
+                                data: { status: 'failed', errorMessage: 'Nenhuma mídia encontrada para publicação.' }
                             });
                             continue;
                         }
@@ -161,7 +161,7 @@ export class SchedulerService {
                             console.error(`[Scheduler] ❌ Erro: Conta inválida para o post "${post.title}".`);
                             await prisma.content.update({
                                 where: { id: post.id },
-                                data: { status: 'failed' }
+                                data: { status: 'failed', errorMessage: 'Conta Instagram inválida ou não encontrada.' }
                             });
                             continue;
                         }
@@ -282,14 +282,14 @@ export class SchedulerService {
                             console.error(`[Scheduler] ❌ Falha ao publicar "${post.title}" (@${handle}).`);
                             await prisma.content.update({
                                 where: { id: post.id },
-                                data: { status: 'failed' }
+                                data: { status: 'failed', errorMessage: 'Falha ao publicar via Meta API e Playwright.' }
                             });
                         }
                     } catch (err: unknown) {
                         console.error(`[Scheduler] Erro no post ${post.id}:`, err instanceof Error ? err.message : String(err));
                         await prisma.content.update({
                             where: { id: post.id },
-                            data: { status: 'failed' }
+                            data: { status: 'failed', errorMessage: err instanceof Error ? err.message : String(err) }
                         });
                     }
                 }

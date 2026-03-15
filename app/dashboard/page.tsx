@@ -81,6 +81,11 @@ export default function DashboardPage() {
       ? allContents
       : allContents.filter((c) => c.accountId === selectedAccountId)
 
+  // Onboarding state — derived only from stores, no localStorage
+  const hasMetaToken = metaConnected
+  const hasContents = contents.length > 0
+  const hasTunnelUrl = !!settingsStore.settings?.tunnelUrl
+
   const now = new Date()
 
   const stats = useMemo(() => {
@@ -160,34 +165,94 @@ export default function DashboardPage() {
         initial="hidden"
         animate="show"
       >
-        {/* ── Onboarding Card (sem token Meta) ── */}
-        {!metaConnected && (
+        {/* ── Onboarding Checklist (desaparece quando hasMetaToken && hasContents) ── */}
+        {!hasContents && (
           <motion.div variants={fadeUp}>
             <div
-              className="p-6 font-mono"
+              className="p-6 space-y-4 font-mono"
               style={{
-                border: '1px solid rgba(163,230,53,0.2)',
-                background: 'rgba(163,230,53,0.05)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(255,255,255,0.02)',
                 borderRadius: '8px',
               }}
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <p className="text-[10px] uppercase tracking-widest" style={{ color: '#A3E635' }}>
-                    [SETUP_REQUIRED]
-                  </p>
-                  <p className="text-[13px]" style={{ color: '#D4D4D4' }}>
-                    Conecte sua conta Meta para ver dados de campanhas.
-                  </p>
-                </div>
-                <Link
-                  href="/connect"
-                  className="inline-flex items-center gap-2 px-4 py-2 font-mono text-[10px] uppercase tracking-widest border transition-colors shrink-0"
-                  style={{ borderColor: '#A3E635', color: '#A3E635', background: 'transparent' }}
+              <span
+                className="block text-[10px] uppercase tracking-widest"
+                style={{ color: 'rgba(255,255,255,0.30)' }}
+              >
+                CONFIGURAÇÃO INICIAL
+              </span>
+
+              {/* Item 1 — Settings */}
+              <div className="flex items-start gap-3">
+                <span
+                  className="text-[11px] leading-none mt-0.5 shrink-0"
+                  style={{ color: hasTunnelUrl ? '#A3E635' : 'rgba(255,255,255,0.20)' }}
                 >
-                  <span>⚡</span>
-                  <span>Conectar Meta</span>
-                </Link>
+                  {hasTunnelUrl ? '◆' : '○'}
+                </span>
+                <div className="space-y-1">
+                  <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.60)' }}>
+                    Configure a Tunnel URL e chaves de API
+                  </p>
+                  <Link
+                    href="/dashboard/settings"
+                    className="text-[10px] transition-colors"
+                    style={{ color: 'rgba(163,230,53,0.60)' }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#A3E635')}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'rgba(163,230,53,0.60)')}
+                  >
+                    → Ir para Configurações
+                  </Link>
+                </div>
+              </div>
+
+              {/* Item 2 — Meta OAuth */}
+              <div className="flex items-start gap-3">
+                <span
+                  className="text-[11px] leading-none mt-0.5 shrink-0"
+                  style={{ color: hasMetaToken ? '#A3E635' : 'rgba(255,255,255,0.20)' }}
+                >
+                  {hasMetaToken ? '◆' : '○'}
+                </span>
+                <div className="space-y-1">
+                  <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.60)' }}>
+                    Conecte sua conta Meta via OAuth
+                  </p>
+                  <Link
+                    href="/connect"
+                    className="text-[10px] transition-colors"
+                    style={{ color: 'rgba(163,230,53,0.60)' }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#A3E635')}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'rgba(163,230,53,0.60)')}
+                  >
+                    → Conectar Meta
+                  </Link>
+                </div>
+              </div>
+
+              {/* Item 3 — Primeiro conteúdo */}
+              <div className="flex items-start gap-3">
+                <span
+                  className="text-[11px] leading-none mt-0.5 shrink-0"
+                  style={{ color: hasContents ? '#A3E635' : 'rgba(255,255,255,0.20)' }}
+                >
+                  {hasContents ? '◆' : '○'}
+                </span>
+                <div className="space-y-1">
+                  <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.60)' }}>
+                    Crie seu primeiro conteúdo
+                  </p>
+                  <Link
+                    href="/dashboard/storyboard"
+                    className="text-[10px] transition-colors"
+                    style={{ color: 'rgba(163,230,53,0.60)' }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#A3E635')}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'rgba(163,230,53,0.60)')}
+                  >
+                    → Ir para Storyboard
+                  </Link>
+                </div>
               </div>
             </div>
           </motion.div>

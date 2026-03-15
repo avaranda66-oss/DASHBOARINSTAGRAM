@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import type { DragStartEvent, DragEndEvent, DragOverEvent } from '@dnd-kit/core';
+import { toast } from 'sonner';
 import { useContentStore } from '@/stores';
 import type { Content, ContentStatus } from '@/types/content';
 
@@ -57,6 +58,7 @@ export function useBoardDnd() {
     const onDragEnd = useCallback(
         (event: DragEndEvent) => {
             const { active, over } = event;
+            const draggedCard = activeCard; // capture original card before clearing
             setActiveCard(null);
 
             if (!over) return;
@@ -81,13 +83,26 @@ export function useBoardDnd() {
                 newOrder = overCard.order;
             }
 
+            // Guard: 'scheduled' requires scheduledAt to be set
+            if (newStatus === 'scheduled') {
+                const card = contents.find((c) => c.id === activeId);
+                if (card && !card.scheduledAt) {
+                    // Revert the optimistic move performed by onDragOver
+                    if (draggedCard) {
+                        moveContent(activeId, draggedCard.status, draggedCard.order);
+                    }
+                    toast.warning('Defina uma data de agendamento antes de mover para Agendado.');
+                    return;
+                }
+            }
+
             const card = contents.find((c) => c.id === activeId);
             if (!card) return;
 
             // Persist final position (already in correct column from onDragOver)
             moveContent(activeId, newStatus, newOrder);
         },
-        [contents, moveContent],
+        [activeCard, contents, moveContent],
     );
 
     return { activeCard, onDragStart, onDragOver, onDragEnd };

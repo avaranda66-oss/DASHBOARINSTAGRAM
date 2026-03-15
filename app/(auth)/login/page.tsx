@@ -104,6 +104,11 @@ export default function LoginPage() {
                         </button>
                     </form>
 
+                    <p className="font-mono text-[10px] text-white/20 text-center mt-4 leading-relaxed">
+                        Após o login, conecte sua conta Meta em Contas para ativar
+                        publicação e análise de anúncios.
+                    </p>
+
                     <p className="font-mono text-[9px] text-white/15 leading-relaxed mt-8 text-center">
                         Acesso exclusivo · Contate o administrador para obter credenciais
                     </p>

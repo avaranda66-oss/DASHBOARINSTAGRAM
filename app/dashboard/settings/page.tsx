@@ -12,6 +12,7 @@ import { Badge } from '@/design-system/atoms/Badge';
 import { Input } from '@/design-system/atoms/Input';
 import { SectionCard } from '@/design-system/molecules/SectionCard';
 import { checkInstagramLoginAction, loginInstagramAction } from '@/app/actions/instagram.actions';
+import { getSettingAction, saveSettingAction } from '@/app/actions/settings.actions';
 import { motion } from 'framer-motion';
 import { cn } from '@/design-system/utils/cn';
 
@@ -49,6 +50,8 @@ export default function SettingsPage() {
     const [metaToken, setMetaToken] = useState('');
     const [isSavingMeta, setIsSavingMeta] = useState(false);
     const [isVerifyingMeta, setIsVerifyingMeta] = useState(false);
+    const [tunnelUrl, setTunnelUrl] = useState('');
+    const [isSavingTunnel, setIsSavingTunnel] = useState(false);
 
     useEffect(() => {
         settingsStore.loadSettings();
@@ -87,6 +90,14 @@ export default function SettingsPage() {
         }
     }, [settingsStore.settings]);
 
+    useEffect(() => {
+        getSettingAction('tunnel_url').then((val) => {
+            if (val) {
+                try { setTunnelUrl(JSON.parse(val)); } catch { setTunnelUrl(val); }
+            }
+        }).catch(() => {});
+    }, []);
+
     const { data: session } = useSession();
 
     // Considera conectado via OAuth (NextAuth) OU token manual (settings)
@@ -97,6 +108,18 @@ export default function SettingsPage() {
     const metaExpiringSoon = metaExpiresAt
         ? metaExpiresAt - Math.floor(Date.now() / 1000) < 7 * 24 * 60 * 60
         : false;
+
+    const handleSaveTunnelUrl = async () => {
+        setIsSavingTunnel(true);
+        try {
+            await saveSettingAction('tunnel_url', JSON.stringify(tunnelUrl.trim()));
+            toast.success('Tunnel URL salva!');
+        } catch {
+            toast.error('Erro ao salvar Tunnel URL.');
+        } finally {
+            setIsSavingTunnel(false);
+        }
+    };
 
     const handleSaveMetaToken = async () => {
         if (!metaToken.trim()) {
@@ -291,6 +314,28 @@ export default function SettingsPage() {
                                 <Button onClick={handleSaveMetaToken} isLoading={isSavingMeta} variant="solid" className="font-mono text-[10px] tracking-widest uppercase flex-1">UPDATE_LINK</Button>
                                 <Button variant="outline" className="font-mono text-[10px] tracking-widest uppercase flex-1" onClick={() => window.location.href = '/connect'}>OAUTH_META ↗</Button>
                             </div>
+                        </div>
+
+                        <div className="space-y-2 pt-4 border-t border-white/5">
+                            <label className={cn(
+                                "text-[10px] font-mono uppercase tracking-widest block",
+                                !tunnelUrl.trim() ? "text-[#F59E0B]/70" : "text-[#4A4A4A]"
+                            )}>
+                                Tunnel_URL_Proxy
+                            </label>
+                            <Input
+                                type="text"
+                                value={tunnelUrl}
+                                onChange={e => setTunnelUrl(e.target.value)}
+                                placeholder="https://seu-tunnel.ngrok.io"
+                                isMono
+                            />
+                            <p className="font-mono text-[10px] text-white/30 mt-1 leading-relaxed">
+                                Necessária para publicar mídia local via Meta API. O Meta precisa de uma URL
+                                pública para acessar suas imagens. Use ngrok, cloudflared ou similar.
+                                Exemplo: https://seu-tunnel.ngrok.io
+                            </p>
+                            <Button onClick={handleSaveTunnelUrl} isLoading={isSavingTunnel} variant="solid" className="w-full font-mono text-[10px] tracking-widest uppercase">SAVE_TUNNEL_URL</Button>
                         </div>
                     </div>
                 </SectionCard>

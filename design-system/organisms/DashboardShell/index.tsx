@@ -7,6 +7,9 @@ import { useSession, signOut } from 'next-auth/react'
 import { cn } from '@/design-system/utils/cn'
 import { AccountFilter } from '@/features/accounts/components/account-filter'
 import { useAccountStore, useSettingsStore } from '@/stores'
+import { useContentStore } from '@/stores/content-slice'
+import type { Content } from '@/types/content'
+import { toast } from 'sonner'
 
 interface NavItem {
   index: string
@@ -21,17 +24,10 @@ interface NavGroup {
 
 const NAVIGATION: NavGroup[] = [
   {
-    title: 'MONITORAR',
+    title: 'CONFIGURAR',
     items: [
-      { index: '01', label: 'Overview', href: '/dashboard' },
-      { index: '02', label: 'Analytics', href: '/dashboard/analytics' },
-    ]
-  },
-  {
-    title: 'ANÚNCIOS',
-    items: [
-      { index: '03', label: 'Ads', href: '/dashboard/ads' },
-      { index: '04', label: 'Intelligence', href: '/dashboard/intelligence' },
+      { index: '08', label: 'Accounts', href: '/dashboard/accounts' },
+      { index: '09', label: 'Settings', href: '/dashboard/settings' },
     ]
   },
   {
@@ -43,12 +39,19 @@ const NAVIGATION: NavGroup[] = [
     ]
   },
   {
-    title: 'CONFIGURAR',
+    title: 'ANÚNCIOS',
     items: [
-      { index: '08', label: 'Accounts', href: '/dashboard/accounts' },
-      { index: '09', label: 'Settings', href: '/dashboard/settings' },
+      { index: '03', label: 'Ads', href: '/dashboard/ads' },
+      { index: '04', label: 'Intelligence', href: '/dashboard/intelligence' },
     ]
-  }
+  },
+  {
+    title: 'MONITORAR',
+    items: [
+      { index: '01', label: 'Overview', href: '/dashboard' },
+      { index: '02', label: 'Analytics', href: '/dashboard/analytics' },
+    ]
+  },
 ]
 
 export interface DashboardShellProps {
@@ -60,6 +63,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const { data: session } = useSession()
   const { isLoaded, loadAccounts } = useAccountStore()
   const settingsStore = useSettingsStore()
+  const { recentPublished, recentFailed, clearRecentEvents } = useContentStore()
   const [mobileOpen, setMobileOpen] = React.useState(false)
 
   // Meta connection source distinction
@@ -70,6 +74,20 @@ export function DashboardShell({ children }: DashboardShellProps) {
   React.useEffect(() => {
     if (!isLoaded) loadAccounts()
   }, [isLoaded, loadAccounts])
+
+  React.useEffect(() => {
+    if (recentPublished.length === 0 && recentFailed.length === 0) return;
+
+    recentPublished.forEach(post => {
+      toast.success(`◆ Publicado: ${post.title}`);
+    });
+    recentFailed.forEach(post => {
+      const reason = (post as Content & { errorMessage?: string }).errorMessage;
+      toast.error(`✕ Falha: ${post.title}${reason ? ` — ${reason}` : ''}`);
+    });
+
+    clearRecentEvents();
+  }, [recentPublished, recentFailed, clearRecentEvents])
 
   // Derive title from NAVIGATION
   const activeItem = React.useMemo(() => {

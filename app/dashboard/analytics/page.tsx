@@ -70,6 +70,14 @@ export default function AnalyticsPage() {
     const { accounts, isLoaded: accountsLoaded, loadAccounts } = useAccountStore();
     const settingsStore = useSettingsStore();
     const isMetaApiActive = !!(session?.accessToken || settingsStore?.settings?.metaAccessToken);
+    const hasToken = isMetaApiActive;
+    const [tokenExpired, setTokenExpired] = useState(false);
+    useEffect(() => {
+        setTokenExpired(
+            session?.error === 'RefreshAccessTokenError' ||
+            (session?.expiresAt != null && session.expiresAt * 1000 < Date.now()),
+        );
+    }, [session?.error, session?.expiresAt]);
 
     const [competitors, setCompetitors] = useState<CompetitorProfile[]>([]);
     const [showAddCompetitor, setShowAddCompetitor] = useState(false);
@@ -381,6 +389,54 @@ export default function AnalyticsPage() {
 
     return (
         <motion.div className="space-y-8" variants={container} initial="hidden" animate="show">
+            {/* Token State Banners */}
+            {!hasToken && (
+                <div className="flex flex-col items-center justify-center py-20 gap-6 text-center">
+                    <span className="font-mono text-[40px] text-[#2A2A2A] select-none">◆</span>
+                    <div className="space-y-2 max-w-sm">
+                        <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: '#A3E635' }}>
+                            [SETUP_REQUIRED]
+                        </p>
+                        <h2 className="text-[15px] font-bold uppercase tracking-tight text-[#F5F5F5]">
+                            Conecte sua conta Meta
+                        </h2>
+                        <p className="font-mono text-[11px] leading-relaxed" style={{ color: '#4A4A4A' }}>
+                            Conecte sua conta Meta para acessar o Ads Manager.
+                        </p>
+                    </div>
+                    <a
+                        href="/connect"
+                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 border transition-colors"
+                        style={{ borderColor: 'rgba(163,230,53,0.4)', color: '#A3E635' }}
+                    >
+                        ⚡ Conectar Meta →
+                    </a>
+                </div>
+            )}
+            {hasToken && tokenExpired && (
+                <div className="flex flex-col items-center justify-center py-20 gap-6 text-center">
+                    <span className="font-mono text-[40px] text-[#2A2A2A] select-none">◆</span>
+                    <div className="space-y-2 max-w-sm">
+                        <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: '#FBBF24' }}>
+                            [TOKEN_EXPIRADO]
+                        </p>
+                        <h2 className="text-[15px] font-bold uppercase tracking-tight text-[#F5F5F5]">
+                            Token Meta Expirado
+                        </h2>
+                        <p className="font-mono text-[11px] leading-relaxed" style={{ color: '#4A4A4A' }}>
+                            Seu token Meta expirou. Renove para continuar vendo dados de campanhas.
+                        </p>
+                    </div>
+                    <a
+                        href="/connect"
+                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 border transition-colors"
+                        style={{ borderColor: 'rgba(251,191,36,0.4)', color: '#FBBF24' }}
+                    >
+                        ⚡ Renovar Token →
+                    </a>
+                </div>
+            )}
+
             {/* Header & Mode Switcher */}
             <motion.div variants={item} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border-b pb-8" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                 <div>

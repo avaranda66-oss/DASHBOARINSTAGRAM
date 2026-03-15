@@ -21,9 +21,18 @@ const eslintConfig = defineConfig([
   ]),
   ...nextVitals,
   ...nextTs,
+  // Stub missing react-compiler plugin to avoid "definition not found" error
+  {
+    plugins: {
+      "react-compiler": {
+        rules: { "react-compiler": { create: () => ({}) } },
+      },
+    },
+  },
   // Project-wide overrides: downgrade pervasive patterns to warnings
   {
     rules: {
+      "react-compiler/react-compiler": "off",
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/no-unused-expressions": "warn",

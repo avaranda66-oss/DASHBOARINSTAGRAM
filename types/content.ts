@@ -13,6 +13,7 @@ export interface Content {
     accountId: string | null;
     collectionIds: string[];
     order: number;
+    errorMessage?: string | null;
     createdAt: string;
     updatedAt: string;
 }

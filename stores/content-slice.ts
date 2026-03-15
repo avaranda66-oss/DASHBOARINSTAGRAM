@@ -14,6 +14,8 @@ import {
 interface ContentSlice {
     contents: Content[];
     isLoaded: boolean;
+    recentPublished: Content[];
+    recentFailed: Content[];
     loadContents: () => Promise<void>;
     addContent: (data: Omit<Content, 'id' | 'createdAt' | 'updatedAt' | 'order'>) => void;
     updateContent: (id: string, data: Partial<Content>) => void;
@@ -21,11 +23,14 @@ interface ContentSlice {
     duplicateContent: (id: string) => void;
     moveContent: (id: string, newStatus: ContentStatus, newOrder: number) => void;
     refreshContents: () => Promise<void>;
+    clearRecentEvents: () => void;
 }
 
 export const useContentStore = create<ContentSlice>()((set, get) => ({
     contents: [],
     isLoaded: false,
+    recentPublished: [] as Content[],
+    recentFailed: [] as Content[],
 
     loadContents: async () => {
         try {
@@ -128,12 +133,31 @@ export const useContentStore = create<ContentSlice>()((set, get) => ({
 
     refreshContents: async () => {
         try {
-            const contents = await getContentsAction();
-            if (contents.length > 0) {
-                set({ contents });
+            const freshContents = await getContentsAction();
+            if (freshContents.length > 0) {
+                const previous = get().contents;
+
+                const newlyPublished = freshContents.filter(n => {
+                    const prev = previous.find(p => p.id === n.id);
+                    return prev && prev.status !== 'published' && n.status === 'published';
+                });
+
+                const newlyFailed = freshContents.filter(n => {
+                    const prev = previous.find(p => p.id === n.id);
+                    return prev && prev.status !== 'failed' && n.status === 'failed';
+                });
+
+                set({
+                    contents: freshContents,
+                    isLoaded: true,
+                    recentPublished: newlyPublished,
+                    recentFailed: newlyFailed,
+                });
             }
         } catch (e) {
             console.error('[ContentStore] Error refreshing contents:', e);
         }
     },
+
+    clearRecentEvents: () => set({ recentPublished: [], recentFailed: [] }),
 }));
