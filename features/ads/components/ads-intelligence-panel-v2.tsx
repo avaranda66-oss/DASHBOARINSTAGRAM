@@ -31,6 +31,7 @@ import { AdsQualityRankingsSection } from './ads-quality-rankings-section';
 import { AdsEfficiencyPanel } from './ads-efficiency-panel';
 import { AdsAiDiagnosis } from './ads-ai-diagnosis';
 import { AdsAbTestingPanel } from './ads-ab-testing-panel';
+import { AdsCopyAnalyzer } from './ads-copy-analyzer';
 import type { DailyAdInsight, AdCampaign } from '@/types/ads';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -773,6 +774,8 @@ export function AdsIntelligencePanelV2({ token, accountId, daily, campaigns }: P
             {campaigns && campaigns.length > 0 && <AdsQualityRankingsSection campaigns={campaigns} />}
             {/* US-53: Painel de Eficiência — Michaelis-Menten + Elasticidade */}
             {campaigns && campaigns.length >= 3 && <AdsEfficiencyPanel campaigns={campaigns} />}
+            {/* Fogg Copy Analyzer — experimental */}
+            <AdsCopyAnalyzer />
             
             {/* Footer markers */}
             <div className="flex items-center justify-center gap-8 opacity-10 font-mono text-[8px] uppercase tracking-[0.6em] py-12">
