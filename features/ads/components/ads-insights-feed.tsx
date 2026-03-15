@@ -279,8 +279,9 @@ function EmptyState({ reason }: { reason: 'data' | 'nominal' }) {
 export function AdsInsightsFeed({ daily, maxInsights = DEFAULT_MAX }: Props) {
     const insights = useInsights(daily, maxInsights);
 
-    const criticalCount = insights.filter(i => i.severity === 'CRITICAL').length;
-    const warnCount     = insights.filter(i => i.severity === 'WARN').length;
+    const criticalCount    = insights.filter(i => i.severity === 'CRITICAL').length;
+    const warnCount        = insights.filter(i => i.severity === 'WARN').length;
+    const suspectBaseline  = insights.length > 0 && insights.some(i => Math.abs(i.zScore) >= 10);
 
     if (daily.length < MIN_POINTS) {
         return <EmptyState reason="data" />;
@@ -324,6 +325,18 @@ export function AdsInsightsFeed({ daily, maxInsights = DEFAULT_MAX }: Props) {
                 <span>METHODS: MAD_ZSCORE + HW_PI + STL_CUSUM</span>
                 <span>WINDOW: {Math.min(daily.length, 90)}D</span>
             </div>
+
+            {/* Baseline warning */}
+            {suspectBaseline && (
+                <div className="flex flex-col gap-1 px-3 py-2 rounded border bg-[#FBBF24]/5 border-[#FBBF24]/20 font-mono">
+                    <span className="text-[11px] text-[#FBBF24]">
+                        ◎ BASELINE INSUFICIENTE — menos de 14 dias com gasto ativo detectados.
+                    </span>
+                    <span className="text-[11px] text-[#8A8A8A]">
+                        Z-scores podem estar inflados. Alertas são indicativos, não conclusivos.
+                    </span>
+                </div>
+            )}
 
             {/* Feed */}
             {insights.length === 0 ? (
