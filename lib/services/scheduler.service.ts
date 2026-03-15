@@ -53,6 +53,8 @@ async function optimizeImageForMeta(
 export class SchedulerService {
     private static isRunning = false;
     private static CHECK_INTERVAL = 1 * 60 * 1000; // 1 minuto para ser mais responsivo sem pesar o PC
+    private static lastAlertCheck = 0;
+    private static ALERT_CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 horas
 
     static async start() {
         // Padrão Singleton para Hot Reload do Next.js (evita duplicar o intervalo ao salvar arquivos)
@@ -299,6 +301,27 @@ export class SchedulerService {
                 await checkAndSendScheduledReports();
             } catch (reportErr: unknown) {
                 console.error('[Scheduler] Erro ao verificar relatórios agendados:', reportErr instanceof Error ? reportErr.message : String(reportErr));
+            }
+
+            // predictive-alert-loop — Verificar alertas a cada 6 horas
+            const nowMs = Date.now();
+            if (nowMs - SchedulerService.lastAlertCheck >= SchedulerService.ALERT_CHECK_INTERVAL) {
+                SchedulerService.lastAlertCheck = nowMs;
+                try {
+                    const token = process.env.META_TOKEN;
+                    const accountId = process.env.META_ACCOUNT_ID;
+                    const recipient = process.env.GMAIL_USER;
+                    if (token && accountId) {
+                        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+                        await fetch(`${baseUrl}/api/alerts/check`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token, accountId, recipient }),
+                        });
+                    }
+                } catch (alertErr: unknown) {
+                    console.error('[Scheduler] Erro ao verificar alertas:', alertErr instanceof Error ? alertErr.message : String(alertErr));
+                }
             }
 
         } catch (err: unknown) {
