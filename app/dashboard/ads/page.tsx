@@ -26,6 +26,7 @@ import { AdsAccountSwitcher } from '@/features/ads/components/ads-account-switch
 import { AdsMultiAccountOverview } from '@/features/ads/components/ads-multi-account-overview';
 import { AdsBudgetPacing } from '@/features/ads/components/ads-budget-pacing';
 import { AdsRulesEngine } from '@/features/ads/components/ads-rules-engine';
+import { AdsCreativeLibrary } from '@/features/ads/components/ads-creative-library';
 
 type ViewTab = 'overview' | 'charts' | 'intelligence' | 'creatives';
 
@@ -679,6 +680,12 @@ export default function AdsDashboardPage() {
 
                     {activeTab === 'creatives' && (
                         <div className="space-y-12">
+                            {/* US-67+68: Creative Library + Analysis Panel */}
+                            <AdsCreativeLibrary
+                                token={adsToken}
+                                accountId={adsAccountId}
+                            />
+                            {/* Legacy gallery + performance ranking */}
                             <CreativesGallery
                                 ads={creativeAds}
                                 currency={currency}

@@ -356,6 +356,38 @@ export interface CreativeScore {
     analyzedAt: string;
 }
 
+// ─── Creative Library Types (US-67 + US-68) ─────────────────────────────────
+
+export type CreativeClassification = 'TOP_PERFORMER' | 'MÉDIO' | 'UNDERPERFORM';
+
+export interface AdCreative {
+    adId: string;
+    adName: string;
+    status: AdStatus;
+    effectiveStatus: AdEffectiveStatus;
+    creative: {
+        id: string;
+        name?: string;
+        thumbnailUrl?: string;
+        body?: string;
+        title?: string;
+        imageHash?: string;
+        imageUrl?: string;
+        videoId?: string;
+    };
+    metrics: {
+        spend: number;
+        impressions: number;
+        clicks: number;
+        ctr: number;
+        cpc: number;
+        frequency: number;
+        roas: number | null;
+        conversions: number;
+    };
+    classification: CreativeClassification;
+}
+
 // ─── Budget Pacing Types (US-63) ─────────────────────────────────────────────
 
 export type PacingStatus = 'on_track' | 'overspending' | 'underspending' | 'exhausted';
