@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import type { AdsKpiSummary, AdsKpiDelta } from '@/types/ads';
 import { cn } from '@/design-system/utils/cn';
 import { viralPotentialIndex } from '@/lib/utils/statistics';
+import { useProfitConfigStore } from '@/stores/profit-config-slice';
+import { getRoasStatus } from '@/lib/utils/profit-calculator';
 
 interface Props {
     kpi: AdsKpiSummary;
@@ -57,7 +59,16 @@ function DeltaBadge({ value, invert = false }: { value: number | null | undefine
     );
 }
 
+const ROAS_STATUS_LABEL = { profit: '▲ PROFIT', breakeven: '─ BREAKEVEN', loss: '▼ LOSS', unknown: '' };
+const ROAS_STATUS_COLOR = { profit: '#A3E635', breakeven: '#FBBF24', loss: '#EF4444', unknown: '#4A4A4A' };
+
 export function AdsKpiCards({ kpi, delta }: Props) {
+    const { config: profitConfig } = useProfitConfigStore();
+    const roasStatus = useMemo(
+        () => profitConfig.enabled ? getRoasStatus(kpi.roas, profitConfig) : null,
+        [kpi.roas, profitConfig]
+    );
+
     // US-55: Viral Potential Index — computed de totalEngagements/impressions + CTR
     const viral = useMemo(() => {
         if (!kpi.totalImpressions || kpi.totalImpressions === 0) return null;
@@ -202,6 +213,18 @@ function FrequencyBadge({ frequency }: { frequency: number }) {
                         <p className={cn('text-[1.5rem] font-bold tracking-tighter leading-none mb-1', card.color)}>{card.value}</p>
                         <div className="h-0.5 w-8 bg-white/5 group-hover:bg-[#A3E635]/20 transition-colors mb-1" />
                         <DeltaBadge value={card.deltaKey} invert={card.invert} />
+                        {card.label === 'ROAS_Factor' && roasStatus && roasStatus !== 'unknown' && (
+                            <span
+                                className="inline-flex items-center mt-1 px-1.5 py-0.5 rounded border font-mono text-[8px] font-black uppercase tracking-widest"
+                                style={{
+                                    color: ROAS_STATUS_COLOR[roasStatus],
+                                    borderColor: `${ROAS_STATUS_COLOR[roasStatus]}40`,
+                                    backgroundColor: `${ROAS_STATUS_COLOR[roasStatus]}10`,
+                                }}
+                            >
+                                {ROAS_STATUS_LABEL[roasStatus]}
+                            </span>
+                        )}
                     </div>
                 </div>
             ))}

@@ -28,6 +28,7 @@ import { AdsBudgetPacing } from '@/features/ads/components/ads-budget-pacing';
 import { AdsRulesEngine } from '@/features/ads/components/ads-rules-engine';
 import { AdsCreativeLibrary } from '@/features/ads/components/ads-creative-library';
 import { AdsScheduledReports } from '@/features/ads/components/ads-scheduled-reports';
+import { AdsProfitDashboard } from '@/features/ads/components/ads-profit-dashboard';
 
 type ViewTab = 'overview' | 'charts' | 'intelligence' | 'creatives';
 
@@ -749,6 +750,12 @@ export default function AdsDashboardPage() {
 
                     {activeTab === 'intelligence' && (
                         <div className="space-y-16">
+                            {filteredKpiSummary && (
+                                <AdsProfitDashboard
+                                    kpi={filteredKpiSummary}
+                                    campaigns={campaigns}
+                                />
+                            )}
                             <AdsIntelligencePanelV2
                                 token={adsToken}
                                 accountId={adsAccountId}

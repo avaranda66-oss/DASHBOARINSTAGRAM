@@ -8,3 +8,5 @@ export { useAutomationStore } from './automation-slice';
 export { useSettingsStore } from './settings-slice';
 export { useAdsStore } from './ads-slice';
 export { useAdsRulesStore } from './ads-rules-slice';
+export { useProfitConfigStore } from './profit-config-slice';
+export type { ProfitConfig } from './profit-config-slice';
