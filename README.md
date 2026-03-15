@@ -68,20 +68,30 @@
 
 ## Sobre o Projeto
 
-O **Instagram Dashboard OSS** e uma plataforma completa para gerenciamento profissional de contas Instagram. Combina gestao de conteudo, analytics avancados, gerenciamento de campanhas Meta Ads, inteligencia artificial multimodal (Google Gemini) e automacao de publicacao em uma interface moderna com design glassmorphism.
+O **Instagram Dashboard OSS** e uma plataforma completa para gerenciamento profissional de contas Instagram. Combina gestao de conteudo, analytics avancados, gerenciamento de campanhas Meta Ads, inteligencia artificial multimodal (Google Gemini) e automacao de publicacao em uma interface Industrial HUD (design system V2).
+
+### Acesso e Autenticacao
+
+O sistema usa **dois provedores de autenticacao em sequencia**:
+
+1. **Login com email/senha** (obrigatorio) — Apenas usuarios cadastrados na tabela `allowed_users` do Supabase podem acessar o dashboard. Senhas com hash via **scrypt** (Node.js crypto nativo — `scryptSync` + `timingSafeEqual`).
+2. **Conexao Meta OAuth** (opcional, para publishing + Meta API) — Apos o login, o usuario conecta sua conta Facebook/Instagram em **Contas** para ativar publicacao automatica e dados privados.
+
+> Nenhum usuario nao autorizado consegue acessar o dashboard, mesmo conhecendo a URL.
 
 ### Destaques
 
+- **Auth Gate**: Login email+senha via Supabase `allowed_users` antes de qualquer acesso — NextAuth v5 Credentials provider
 - **Meta Ads Manager**: Painel completo de campanhas com KPIs, graficos, criativos visuais e IA de otimizacao
 - **Galeria de Criativos**: Visualize todos os criativos dos anuncios com metricas por ad (Gasto, CTR, CPC)
 - **Analytics em 3 camadas**: Apify (scraping publico), Meta Graph API (dados privados), IA (insights estrategicos)
 - **IA Multimodal**: Google Gemini analisa visualmente o grid do feed, sugere ordem de publicacao e gera estrategias
-- **Automacao completa**: Publicacao automatizada via Meta API ou Playwright (browser automation)
-- **Inteligencia competitiva**: Compare seu perfil com concorrentes lado a lado
+- **Automacao completa**: Publicacao automatizada via Meta API (scheduler a cada 1 min) ou Playwright (browser automation)
+- **Inteligencia competitiva**: Compare seu perfil com concorrentes no Google Maps e via FireCrawl
 - **Feed Preview**: Visualize como seu feed ficara no celular antes de publicar
-- **Kanban Storyboard**: Gerencie o ciclo de vida do conteudo (Ideia -> Publicado) — agora com tipo "Campanha"
+- **Kanban Storyboard**: Gerencie o ciclo de vida do conteudo (Ideia → Publicado) com drag-and-drop
 - **Agendamento inteligente**: IA sugere dias e horarios otimos para publicacao
-- **Dark mode premium**: Design glassmorphism com tema escuro profissional
+- **Industrial HUD Design System**: Tipografia monospace, tema escuro, acentos neon verde (#A3E635)
 
 ---
 
@@ -346,7 +356,9 @@ Board de planejamento criativo com drag-and-drop (`@dnd-kit`):
 - **Semana**: 7 colunas (Seg-Dom) com cards empilhados + botao "+ Adicionar"
 - **Dia**: Feed vertical detalhado do dia selecionado
 
-Cards com cores por tipo (incluindo verde para Campanha) e badges de status.
+Cards com cores por tipo (incluindo verde para Campanha) e badges de status. Clique em qualquer card para abrir o editor.
+
+> **Nota:** O calendario e **somente leitura + clique**. Drag-and-drop para reagendar **nao esta implementado** no calendario. Para mover conteudo entre datas, abra o editor de conteudo e altere a data manualmente. O drag-and-drop existe apenas no **Storyboard Kanban** (para mudar status entre colunas).
 
 ---
 
@@ -855,9 +867,18 @@ Central de pesquisa com **3 abas**:
 |-------|--------|-----------|
 | **Meta API** | Automatico | Publica imagens, videos, carrosseis, stories pela API oficial |
 | **Playwright** | Semi-automatico | Automacao de browser quando API nao disponivel |
-| **Fila** | Background | Queue com retry automatico para publicacoes agendadas |
+| **Scheduler** | Background | Verifica conteudos agendados a cada **1 minuto** — publica via Meta API |
 | **Comentarios** | Batch | Respostas IA enviadas em lote via automacao |
 | **Sessao** | Persistente | Playwright salva sessao para evitar login repetido |
+
+### Scheduler (publicacao automatica)
+
+O `scheduler.service.ts` roda como background service:
+- Verifica conteudos com `status=scheduled` e `scheduledAt <= now()` a cada 60 segundos
+- Publica via Meta API (`/api/meta-publish`)
+- Salva `errorMessage` no banco em 4 cenarios de falha: sem midia, conta invalida, erro Meta API, erro geral
+- **Requer `tunnel_url`** nas configuracoes para midia local (imagens do servidor local)
+- Midia ja hospedada em URL externa (CDN) funciona sem tunnel
 
 ---
 
@@ -867,15 +888,17 @@ Central de pesquisa com **3 abas**:
 
 | Camada | Tecnologias |
 |--------|-------------|
-| **Frontend** | Next.js 16, React 19, TypeScript 5, Tailwind CSS 4 |
-| **UI** | Shadcn/UI, Framer Motion, Recharts, Lucide Icons |
-| **State** | Zustand 5 (stores tipados) |
+| **Frontend** | Next.js 16.1.6, React 19, TypeScript 5 (strict), Tailwind CSS 4 |
+| **UI** | Shadcn/UI, Framer Motion, Recharts, dnd-kit (drag-and-drop Storyboard) |
+| **State** | Zustand 5 (11+ slices tipados) |
 | **Backend** | Next.js API Routes + Server Actions |
-| **Database** | SQLite via Prisma 5 ORM |
+| **Auth** | NextAuth v5 (beta.30) — Credentials (email+scrypt) + Facebook OAuth |
+| **DB Conteudo** | SQLite via Prisma 5 ORM |
+| **DB Auth/Config** | Supabase PostgreSQL (service_role, bypassa RLS) |
 | **IA** | Google Gemini (multimodal — texto + imagem) |
-| **APIs** | Meta Graph API v25.0, Meta Ads API, Apify, FireCrawl |
+| **APIs** | Meta Graph API v25.0, Meta Ads API v25.0, Apify, FireCrawl |
 | **Automacao** | Playwright (browser automation) |
-| **Imagem** | Sharp (composicao, resize, thumbnails) |
+| **Imagem** | Sharp (PNG→JPEG, mozjpeg 92, resize 1080×1350 feed / 1080×1920 story) |
 
 ### API Routes (45)
 
@@ -921,6 +944,10 @@ Central de pesquisa com **3 abas**:
 | `POST /api/automation/respond-comments` | Resposta automatica a comentarios |
 | `POST /api/auth/instagram` | OAuth Instagram |
 | `GET /api/auth/instagram/callback` | Callback OAuth |
+| `GET /api/user/profit-config` | Configuracao de margem de lucro (Supabase) |
+| `POST /api/user/profit-config` | Upsert margem de lucro por user_identifier |
+| `GET /api/user/automation-rules` | Regras de automacao (Supabase) |
+| `POST /api/user/automation-rules` | Salvar regras de automacao (DELETE+INSERT) |
 
 ### Server Actions (9)
 
@@ -940,17 +967,27 @@ Central de pesquisa com **3 abas**:
 
 ## Banco de Dados
 
-SQLite local via Prisma ORM. **7 modelos:**
+### SQLite local via Prisma ORM — 7 modelos de conteudo
 
 | Modelo | Descricao |
 |--------|-----------|
 | **Account** | Contas Instagram + info de negocio + tokens Ads (endereco, telefone, horarios como JSON) |
-| **Content** | Posts, Stories, Reels, Carrosseis, Campanhas com workflow de 6 status |
+| **Content** | Posts, Stories, Reels, Carrosseis, Campanhas com workflow de 6 status + `errorMessage` (falha de publish) |
 | **Collection** | Campanhas/temas com cor, icone e periodo |
 | **Competitor** | Perfis concorrentes salvos com metricas |
 | **Analytics** | Cache de metricas (Apify + Meta) em JSON. `type='meta'` = dados privados |
-| **Setting** | Configuracoes key-value (API keys, preferencias) |
+| **Setting** | Configuracoes key-value (API keys, preferencias, `tunnelUrl`) |
 | **MapsBusiness** | Dados Google Maps (reviews, analise IA) |
+
+### Supabase (PostgreSQL) — 3 tabelas de controle de acesso
+
+| Tabela | Descricao |
+|--------|-----------|
+| **allowed_users** | Usuarios autorizados a acessar o sistema: id, email (UNIQUE), password_hash (scrypt), name, role, active. RLS habilitado, zero politicas publicas. |
+| **profit_configs** | Configuracao de margem de lucro por usuario (UNIQUE user_identifier: `meta:{id}` ou `email:{email}`) |
+| **automation_rules** | Regras de automacao por usuario (DELETE+INSERT a cada save) |
+
+> **Arquitetura dual:** SQLite = dados da aplicacao (conteudo, contas, anuncios). Supabase = autenticacao e configuracoes de negocio. Supabase usa `service_role` key para bypass de RLS nas operacoes server-side.
 
 ---
 
@@ -1041,8 +1078,9 @@ instagram-dashboard/
 
 - **Node.js** 18+ (recomendado 20+)
 - **pnpm** (ou npm/yarn)
+- **Supabase** — Projeto criado em [supabase.com](https://supabase.com/) (plano free suficiente)
 
-### Setup
+### Setup Completo
 
 ```bash
 # 1. Clone o repositorio
@@ -1052,25 +1090,52 @@ cd DASHBOARINSTAGRAM
 # 2. Instale as dependencias
 pnpm install
 
-# 3. Copie o arquivo de ambiente
+# 3. Copie o arquivo de ambiente e preencha as variaveis
 cp .env.example .env
+```
 
-# 4. Gere o cliente Prisma e crie o banco
+**Variaveis obrigatorias no `.env`:**
+
+```env
+# NextAuth (gere com: openssl rand -base64 32)
+NEXTAUTH_SECRET=seu_secret_aqui
+NEXTAUTH_URL=http://localhost:3000
+
+# Supabase (obtenha em: Project Settings > API)
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+```
+
+```bash
+# 4. Execute as migracoes do Supabase (tabelas de auth)
+# Cole o conteudo de lib/db/migrations/002_allowed_users.sql no SQL Editor do Supabase
+# Cole o conteudo de lib/db/migrations/003_profit_configs.sql no SQL Editor do Supabase
+
+# 5. Crie o primeiro usuario admin
+node scripts/create-admin-user.mjs
+
+# 6. Gere o cliente Prisma e crie o banco SQLite
 npx prisma generate
 npx prisma db push
 
-# 5. (Opcional) Instale browsers do Playwright para automacao
+# 7. (Opcional) Instale browsers do Playwright para automacao
 npx playwright install chromium
 
-# 6. Inicie o servidor de desenvolvimento
+# 8. Inicie o servidor de desenvolvimento
 pnpm dev
 ```
 
-Abra `http://localhost:3000` no navegador.
+Abra `http://localhost:3000` — sera redirecionado para `/login`. Use as credenciais criadas no passo 5.
 
-### Configuracao de APIs (via UI)
+### Sequencia de Configuracao Pos-Login
 
-Apos iniciar, va em **Configuracoes** e configure as chaves:
+1. **Configuracoes** → Adicione `Tunnel URL` (ngrok/cloudflare tunnel) se quiser publicar midia local
+2. **Configuracoes** → Adicione chaves de API (Gemini, Apify, FireCrawl)
+3. **Contas** → Conecte sua conta Meta via OAuth para ativar publishing e Meta API
+4. **Storyboard** → Crie conteudo e agende publicacoes
+
+### APIs Opcionais (via UI em Configuracoes)
 
 | API | Onde obter | Para que serve |
 |-----|-----------|----------------|
@@ -1079,7 +1144,7 @@ Apos iniciar, va em **Configuracoes** e configure as chaves:
 | **Meta Graph API** | [Meta for Developers](https://developers.facebook.com/) | Dados privados (alcance, saves, shares) |
 | **FireCrawl** | [firecrawl.dev](https://firecrawl.dev/) | Web scraping |
 
-> **Nota:** O dashboard funciona sem nenhuma API configurada. Cada funcionalidade que requer API mostrara indicadores visuais no header (Gemini OK, Apify OK, etc.).
+> **Nota:** O dashboard funciona sem APIs opcionais configuradas. Funcionalidades que requerem API mostram indicadores visuais (Gemini OK, Apify OK, etc.). **Supabase e NextAuth sao obrigatorios para o sistema de login funcionar.**
 
 ### Meta Graph API (Dados Privados)
 
@@ -1108,12 +1173,24 @@ Para gerenciar campanhas de anuncios:
 
 ## Seguranca
 
-- **Nenhuma API key e armazenada em arquivos** — todas ficam no banco SQLite local
+### Autenticacao
+- **Hash de senhas**: `scrypt` (Node.js crypto nativo — `scryptSync` + `timingSafeEqual`). Nao usa bcrypt.
+- **Usuarios autorizados**: Apenas emails cadastrados na tabela `allowed_users` do Supabase conseguem logar
+- **Supabase RLS**: Tabelas `allowed_users`, `profit_configs` e `automation_rules` tem Row Level Security ativo com zero politicas publicas — acesso somente via `service_role` server-side
+- **NEXTAUTH_SECRET**: Obrigatorio — sessoes JWT assinadas
+
+### Dados
+- **Nenhuma API key e armazenada em arquivos** — todas ficam no banco SQLite local (Setting key-value)
 - **Banco de dados (`.db`) e gitignored** — nunca commitado
 - **Sessoes Playwright** salvas localmente em `sessions/` (gitignored)
-- **Nenhum dado e enviado a terceiros** exceto as APIs que voce configurou
-- **Senhas de Instagram** armazenadas em plaintext no SQLite local — recomendamos usar tokens de API quando possivel
-- `.gitignore` extenso cobrindo: banco, sessoes, uploads, screenshots, scripts de teste
+- **Nenhum dado e enviado a terceiros** exceto as APIs que voce configurou (Gemini, Apify, Meta, FireCrawl)
+- **Senhas de contas Instagram** armazenadas no SQLite local — recomendamos usar tokens de API quando possivel
+- `.gitignore` extenso cobrindo: banco SQLite, sessoes, uploads, screenshots, scripts de teste
+
+### Tunnel URL
+- Midia local (uploads) requer `tunnel_url` (ngrok/cloudflare) para que o scheduler consiga publicar
+- Sem tunnel URL, agendamentos com midia local retornam erro estruturado (`errorMessage` salvo no banco)
+- URLs de midia externa (CDN, S3) nao requerem tunnel
 
 ---
 
