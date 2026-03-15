@@ -250,6 +250,36 @@ function DecayBar({ label, value }: { label: string; value: number | null }) {
     );
 }
 
+// ─── Lifecycle Helpers (US-87) ───────────────────────────────────────────────
+
+type LifecyclePhase = 'RISING' | 'PLATEAU' | 'DECLINING';
+
+function calcLifecyclePhase(trend: number[]): LifecyclePhase {
+    if (trend.length < 6) return 'PLATEAU';
+    const recent = trend.slice(-3);
+    const previous = trend.slice(-6, -3);
+    const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length;
+    const avgPrevious = previous.reduce((a, b) => a + b, 0) / previous.length;
+    if (avgPrevious === 0) return 'PLATEAU';
+    const delta = ((avgRecent - avgPrevious) / Math.abs(avgPrevious)) * 100;
+    if (delta > 5) return 'RISING';
+    if (delta < -5) return 'DECLINING';
+    return 'PLATEAU';
+}
+
+function estimateDaysRemaining(fatigueScore: number): string {
+    if (fatigueScore <= 0.3) return '~14+ dias restantes';
+    if (fatigueScore <= 0.5) return '~7 dias restantes';
+    if (fatigueScore <= 0.7) return '~3 dias restantes';
+    return 'em fadiga';
+}
+
+const lifecycleCfg: Record<LifecyclePhase, { glyph: string; color: string; bg: string }> = {
+    RISING:    { glyph: '↗', color: '#A3E635', bg: 'bg-[#A3E635]/10 border-[#A3E635]/30' },
+    PLATEAU:   { glyph: '─', color: '#FBBF24', bg: 'bg-[#FBBF24]/10 border-[#FBBF24]/30' },
+    DECLINING: { glyph: '↘', color: '#EF4444', bg: 'bg-[#EF4444]/10 border-[#EF4444]/30' },
+};
+
 // ─── Sections ─────────────────────────────────────────────────────────────
 
 function AccountHealthSection({ health }: { health: AccountHealthScore }) {
@@ -339,6 +369,23 @@ function CreativeFatigueSection({ scores }: { scores: CreativeFatigueScore[] }) 
                                             {item.score.toFixed(2)}
                                         </span>
                                     </div>
+                                    {(() => {
+                                        const phase = calcLifecyclePhase(item.trend ?? []);
+                                        const cfg = lifecycleCfg[phase];
+                                        return (
+                                            <div className="flex items-center gap-2 mt-1.5">
+                                                <span
+                                                    className={cn('font-mono text-[10px] px-1.5 py-0.5 border uppercase', cfg.bg)}
+                                                    style={{ color: cfg.color }}
+                                                >
+                                                    {cfg.glyph} {phase}
+                                                </span>
+                                                <span className="text-[#8A8A8A] text-[11px]">
+                                                    {estimateDaysRemaining(item.score)}
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
 
