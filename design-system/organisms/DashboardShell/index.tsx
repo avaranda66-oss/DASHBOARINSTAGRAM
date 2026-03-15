@@ -57,6 +57,7 @@ export interface DashboardShellProps {
 export function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname()
   const { isLoaded, loadAccounts } = useAccountStore()
+  const [mobileOpen, setMobileOpen] = React.useState(false)
 
   // Pre-load accounts at shell level so AccountFilter and all pages have data ready
   React.useEffect(() => {
@@ -69,7 +70,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
     // Exact match
     const exact = allItems.find(item => item.href === pathname)
     if (exact) return exact
-    
+
     // Prefix match for sub-routes (longest prefix wins)
     return allItems
       .filter(item => pathname.startsWith(item.href))
@@ -80,10 +81,23 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
   return (
     <div className="flex min-h-screen bg-[#000000] text-[#F5F5F5] font-body selection:bg-[#A3E635]/30">
-      
+
+      {/* ─── MOBILE OVERLAY ─── */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       {/* ─── SIDEBAR (256px) ─── */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#050505] flex flex-col z-50 border-r"
-             style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      <aside
+        className={cn(
+          "fixed left-0 top-0 bottom-0 w-64 bg-[#050505] flex-col z-50 border-r",
+          mobileOpen ? "flex" : "hidden md:flex"
+        )}
+        style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+      >
         
         {/* Logo Area */}
         <div className="p-6 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
@@ -151,12 +165,20 @@ export function DashboardShell({ children }: DashboardShellProps) {
       </aside>
 
       {/* ─── MAIN CONTENT ─── */}
-      <div className="flex-1 pl-64 flex flex-col">
-        
+      <div className="flex-1 pl-0 md:pl-64 flex flex-col">
+
         {/* Topbar */}
         <header className="h-12 border-b flex items-center justify-between px-8 bg-[#000000]/80 backdrop-blur-md sticky top-0 z-40"
                 style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="flex items-center gap-2">
+            {/* Hamburger — mobile only */}
+            <button
+              className="md:hidden mr-2 font-mono text-[#A3E635] text-lg leading-none select-none"
+              onClick={() => setMobileOpen(v => !v)}
+              aria-label="Menu"
+            >
+              ≡
+            </button>
             <span className="font-mono text-[10px] uppercase tracking-widest text-[#4A4A4A] select-none">
               ◆ / {derivedTitle}
             </span>

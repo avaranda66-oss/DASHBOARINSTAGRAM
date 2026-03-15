@@ -154,7 +154,7 @@ export function AdsCharts({ daily, campaigns, isLoading = false, dateLabel }: Ad
                     footer="Time_Series_Calibration"
                     className="col-span-12"
                 >
-                    <div className="h-[280px]">
+                    <div className="h-[280px]" style={{ minHeight: 1 }}>
                         {daily.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center gap-2 opacity-30">
                                 <span className="text-[#A3E635] text-[10px] uppercase tracking-[0.4em]">◈ NO_TIMELINE_DATA</span>
@@ -163,7 +163,7 @@ export function AdsCharts({ daily, campaigns, isLoading = false, dateLabel }: Ad
                                 </p>
                             </div>
                         ) : (
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={280} minWidth={0}>
                             <AreaChart data={daily} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="blueprintArea" x1="0" y1="0" x2="0" y2="1">
@@ -212,8 +212,8 @@ export function AdsCharts({ daily, campaigns, isLoading = false, dateLabel }: Ad
                     footer="Cluster_Analysis"
                     className="col-span-12 xl:col-span-5"
                 >
-                    <div className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-[300px]" style={{ minHeight: 1 }}>
+                        <ResponsiveContainer width="100%" height={300} minWidth={0}>
                             <PieChart>
                                 <Pie
                                     data={campaignSpendData}
@@ -261,8 +261,8 @@ export function AdsCharts({ daily, campaigns, isLoading = false, dateLabel }: Ad
                     footer="Competitive_Calibration"
                     className="col-span-12 xl:col-span-7"
                 >
-                    <div className="h-[340px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-[340px]" style={{ minHeight: 1 }}>
+                        <ResponsiveContainer width="100%" height={340} minWidth={0}>
                             <BarChart data={campaignCompareData} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" horizontal={false} />
                                 <XAxis type="number" hide />
